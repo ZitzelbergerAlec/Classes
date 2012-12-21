@@ -1,0 +1,104 @@
+/*	stack.c: Stack application.
+ * Name: David Merrick
+ * Date: 1/21/12
+ * Development Environment: Notepad++ and GCC (on flop.engr.oregonstate.edu)
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h> //for strlen function
+#include "dynArray.h"
+
+
+/* ***************************************************************
+Using stack to check for unbalanced parentheses.
+***************************************************************** */
+
+/* Returns the next character of the string, once reaches end return '0' (zero)
+	param: 	s pointer to a string 	
+	pre: s is not null		
+*/
+char nextChar(char* s)
+{
+	static int i = -1;	
+	char c;
+	++i;	
+	c = *(s+i);			
+	if ( c == '\0' )
+		return '\0';	
+	else 
+		return c;
+}
+
+/* Checks whether the (), {}, and [] are balanced or not
+	param: 	s pointer to a string 	
+	pre: s is not null	
+	post:	
+*/
+int isBalanced(char* s)
+{
+	printf("Flag 0");
+	//if(s == NULL || s == '\0'){ //make sure s is not NULL or empty.
+	if(s == NULL){ //make sure s is not NULL or empty.
+		return 0;
+	}
+	printf("Flag 1");
+	int cap = strlen(s);
+	DynArr* pArr = newDynArr(cap); //array for parentheses
+	DynArr* cArr = newDynArr(cap); //array for curly brackets: "{}"
+	DynArr* sArr = newDynArr(cap); //array for square brackets: "[]"
+	printf("Flag 2");
+	char currChar; //current character we're working with
+	DynArr* currArr;
+	while(currChar != '/0'){
+		currChar = nextChar(s);
+		switch(currChar) {
+			case '(':
+				currArr = pArr;
+				break;
+			case ')':
+				currArr = pArr;
+				break;
+			case '{':
+				currArr = cArr;
+				break;
+			case '}':
+				currArr = cArr;
+				break;
+			case '[':
+				currArr = sArr;
+				break;
+			case ']':
+				currArr = sArr;
+				break;
+			default:
+				continue; //skip the rest of the loop if nothing was found
+		}
+		pushDynArr(currArr, currChar);
+	}
+	if((sizeDynArr(pArr) + sizeDynArr(cArr) + sizeDynArr(sArr)) % 2 == 0){ //passed initial test; they're all divisible by 2
+		//run secondary test on each to make sure for every open bracket there is a closed one.
+	} else {
+		return 0;
+	}
+	return 0;
+}
+
+int main(int argc, char* argv[]){
+	
+	char* s=*argv[1];	
+	
+	int res;
+	
+	printf("Assignment 2\n");
+
+	res = isBalanced(s);
+
+	if (res)
+		printf("The string %s is balanced\n",s);
+	else 
+		printf("The string %s is not balanced\n",s);
+	
+	return 0;	
+}
+

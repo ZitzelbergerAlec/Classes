@@ -1,0 +1,32 @@
+//Perfect hash function for days of the week.
+//Days of week:
+//Assign the letters of the alphabet values from 0-25.
+//Convert the second and third letters of each day to integers, add one to each, and take their product. Then mod by 10.
+
+//Perfect hash function for months of the year.
+
+int stringHash(char* str){
+	int i;
+    int r = 1;
+    for (i = 0; str[i] != '\0'; i++){
+          r += (str[i] * (i+1));
+     }
+     r += sizeof(str);
+     return (r % 15);
+}
+
+Result:
+January => 1
+February => 4
+March => 8
+April => 10
+May => 13
+June => 1
+July => 0
+August => 1
+September => 3
+October => 2
+November => 9
+December => 12
+
+2 collisions

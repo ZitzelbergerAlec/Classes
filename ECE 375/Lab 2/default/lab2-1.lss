@@ -1,0 +1,335 @@
+
+lab2-1.elf:     file format elf32-avr
+
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .text         0000017a  00000000  00000000  00000054  2**1
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+  1 .debug_aranges 00000020  00000000  00000000  000001ce  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  2 .debug_pubnames 0000001b  00000000  00000000  000001ee  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  3 .debug_info   00000364  00000000  00000000  00000209  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  4 .debug_abbrev 000000ea  00000000  00000000  0000056d  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  5 .debug_line   00000293  00000000  00000000  00000657  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  6 .debug_frame  00000020  00000000  00000000  000008ec  2**2
+                  CONTENTS, READONLY, DEBUGGING
+  7 .debug_str    000000b2  00000000  00000000  0000090c  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  8 .debug_loc    00000290  00000000  00000000  000009be  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  9 .debug_ranges 00000048  00000000  00000000  00000c4e  2**0
+                  CONTENTS, READONLY, DEBUGGING
+
+Disassembly of section .text:
+
+00000000 <__vectors>:
+   0:	0c 94 46 00 	jmp	0x8c	; 0x8c <__ctors_end>
+   4:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+   8:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+   c:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  10:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  14:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  18:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  1c:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  20:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  24:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  28:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  2c:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  30:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  34:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  38:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  3c:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  40:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  44:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  48:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  4c:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  50:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  54:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  58:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  5c:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  60:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  64:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  68:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  6c:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  70:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  74:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  78:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  7c:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  80:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  84:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+  88:	0c 94 5d 00 	jmp	0xba	; 0xba <__bad_interrupt>
+
+0000008c <__ctors_end>:
+  8c:	11 24       	eor	r1, r1
+  8e:	1f be       	out	0x3f, r1	; 63
+  90:	cf ef       	ldi	r28, 0xFF	; 255
+  92:	d0 e1       	ldi	r29, 0x10	; 16
+  94:	de bf       	out	0x3e, r29	; 62
+  96:	cd bf       	out	0x3d, r28	; 61
+
+00000098 <__do_copy_data>:
+  98:	11 e0       	ldi	r17, 0x01	; 1
+  9a:	a0 e0       	ldi	r26, 0x00	; 0
+  9c:	b1 e0       	ldi	r27, 0x01	; 1
+  9e:	ea e7       	ldi	r30, 0x7A	; 122
+  a0:	f1 e0       	ldi	r31, 0x01	; 1
+  a2:	00 e0       	ldi	r16, 0x00	; 0
+  a4:	0b bf       	out	0x3b, r16	; 59
+  a6:	02 c0       	rjmp	.+4      	; 0xac <__do_copy_data+0x14>
+  a8:	07 90       	elpm	r0, Z+
+  aa:	0d 92       	st	X+, r0
+  ac:	a0 30       	cpi	r26, 0x00	; 0
+  ae:	b1 07       	cpc	r27, r17
+  b0:	d9 f7       	brne	.-10     	; 0xa8 <__do_copy_data+0x10>
+  b2:	0e 94 5f 00 	call	0xbe	; 0xbe <main>
+  b6:	0c 94 bb 00 	jmp	0x176	; 0x176 <_exit>
+
+000000ba <__bad_interrupt>:
+  ba:	0c 94 00 00 	jmp	0	; 0x0 <__vectors>
+
+000000be <main>:
+#include <stdio.h>
+
+int main(void)
+{
+
+DDRB =0b11110000;	//Setup Port B for Input/Output
+  be:	80 ef       	ldi	r24, 0xF0	; 240
+  c0:	87 bb       	out	0x17, r24	; 23
+PORTB=0b11110000;	//Turn off both motors
+  c2:	88 bb       	out	0x18, r24	; 24
+
+while (1)	       					// Loop Forever
+      {
+	      PORTB=0b01100000;	//Move forward
+  c4:	60 e6       	ldi	r22, 0x60	; 96
+    milliseconds can be achieved.
+ */
+void
+_delay_loop_2(uint16_t __count)
+{
+	__asm__ volatile (
+  c6:	20 e9       	ldi	r18, 0x90	; 144
+  c8:	31 e0       	ldi	r19, 0x01	; 1
+		  if(!(PIND & 0b00000010)){ //Left whisker triggered
+				_delay_ms(500);
+				PORTB=0b00000000;	//Reverse
+				_delay_ms(500);
+				PORTB=0b00100000; //Turn Left
+  ca:	50 e2       	ldi	r21, 0x20	; 32
+      			_delay_ms(1000);
+		  } else if(!(PIND & 0b00000011)){ //Both whiskers triggered 
+				_delay_ms(500);
+				PORTB=0b00000000;	//Reverse
+				_delay_ms(500);
+				PORTB=0b01000000; //Turn Right
+  cc:	40 e4       	ldi	r20, 0x40	; 64
+DDRB =0b11110000;	//Setup Port B for Input/Output
+PORTB=0b11110000;	//Turn off both motors
+
+while (1)	       					// Loop Forever
+      {
+	      PORTB=0b01100000;	//Move forward
+  ce:	68 bb       	out	0x18, r22	; 24
+		  if(!(PIND & 0b00000010)){ //Left whisker triggered
+  d0:	81 99       	sbic	0x10, 1	; 16
+  d2:	18 c0       	rjmp	.+48     	; 0x104 <main+0x46>
+  d4:	88 e8       	ldi	r24, 0x88	; 136
+  d6:	93 e1       	ldi	r25, 0x13	; 19
+  d8:	f9 01       	movw	r30, r18
+  da:	31 97       	sbiw	r30, 0x01	; 1
+  dc:	f1 f7       	brne	.-4      	; 0xda <main+0x1c>
+		__ticks = (uint16_t) (__ms * 10.0);
+		while(__ticks)
+		{
+			// wait 1/10 ms
+			_delay_loop_2(((F_CPU) / 4e3) / 10);
+			__ticks --;
+  de:	01 97       	sbiw	r24, 0x01	; 1
+		__ticks = 1;
+	else if (__tmp > 65535)
+	{
+		//	__ticks = requested delay in 1/10 ms
+		__ticks = (uint16_t) (__ms * 10.0);
+		while(__ticks)
+  e0:	d9 f7       	brne	.-10     	; 0xd8 <main+0x1a>
+				_delay_ms(500);
+				PORTB=0b00000000;	//Reverse
+  e2:	18 ba       	out	0x18, r1	; 24
+  e4:	88 e8       	ldi	r24, 0x88	; 136
+  e6:	93 e1       	ldi	r25, 0x13	; 19
+  e8:	f9 01       	movw	r30, r18
+  ea:	31 97       	sbiw	r30, 0x01	; 1
+  ec:	f1 f7       	brne	.-4      	; 0xea <main+0x2c>
+		{
+			// wait 1/10 ms
+			_delay_loop_2(((F_CPU) / 4e3) / 10);
+			__ticks --;
+  ee:	01 97       	sbiw	r24, 0x01	; 1
+		__ticks = 1;
+	else if (__tmp > 65535)
+	{
+		//	__ticks = requested delay in 1/10 ms
+		__ticks = (uint16_t) (__ms * 10.0);
+		while(__ticks)
+  f0:	d9 f7       	brne	.-10     	; 0xe8 <main+0x2a>
+				_delay_ms(500);
+				PORTB=0b00100000; //Turn Left
+  f2:	58 bb       	out	0x18, r21	; 24
+  f4:	80 e1       	ldi	r24, 0x10	; 16
+  f6:	97 e2       	ldi	r25, 0x27	; 39
+  f8:	f9 01       	movw	r30, r18
+  fa:	31 97       	sbiw	r30, 0x01	; 1
+  fc:	f1 f7       	brne	.-4      	; 0xfa <main+0x3c>
+		{
+			// wait 1/10 ms
+			_delay_loop_2(((F_CPU) / 4e3) / 10);
+			__ticks --;
+  fe:	01 97       	sbiw	r24, 0x01	; 1
+		__ticks = 1;
+	else if (__tmp > 65535)
+	{
+		//	__ticks = requested delay in 1/10 ms
+		__ticks = (uint16_t) (__ms * 10.0);
+		while(__ticks)
+ 100:	d9 f7       	brne	.-10     	; 0xf8 <main+0x3a>
+ 102:	e5 cf       	rjmp	.-54     	; 0xce <main+0x10>
+      			_delay_ms(1000);
+		  } else if(!(PIND & 0b00000001)){ //Right whisker triggered 
+ 104:	80 99       	sbic	0x10, 0	; 16
+ 106:	18 c0       	rjmp	.+48     	; 0x138 <main+0x7a>
+ 108:	88 e8       	ldi	r24, 0x88	; 136
+ 10a:	93 e1       	ldi	r25, 0x13	; 19
+ 10c:	f9 01       	movw	r30, r18
+ 10e:	31 97       	sbiw	r30, 0x01	; 1
+ 110:	f1 f7       	brne	.-4      	; 0x10e <main+0x50>
+		{
+			// wait 1/10 ms
+			_delay_loop_2(((F_CPU) / 4e3) / 10);
+			__ticks --;
+ 112:	01 97       	sbiw	r24, 0x01	; 1
+		__ticks = 1;
+	else if (__tmp > 65535)
+	{
+		//	__ticks = requested delay in 1/10 ms
+		__ticks = (uint16_t) (__ms * 10.0);
+		while(__ticks)
+ 114:	d9 f7       	brne	.-10     	; 0x10c <main+0x4e>
+				_delay_ms(500);
+				PORTB=0b00000000;	//Reverse
+ 116:	18 ba       	out	0x18, r1	; 24
+ 118:	88 e8       	ldi	r24, 0x88	; 136
+ 11a:	93 e1       	ldi	r25, 0x13	; 19
+ 11c:	f9 01       	movw	r30, r18
+ 11e:	31 97       	sbiw	r30, 0x01	; 1
+ 120:	f1 f7       	brne	.-4      	; 0x11e <main+0x60>
+		{
+			// wait 1/10 ms
+			_delay_loop_2(((F_CPU) / 4e3) / 10);
+			__ticks --;
+ 122:	01 97       	sbiw	r24, 0x01	; 1
+		__ticks = 1;
+	else if (__tmp > 65535)
+	{
+		//	__ticks = requested delay in 1/10 ms
+		__ticks = (uint16_t) (__ms * 10.0);
+		while(__ticks)
+ 124:	d9 f7       	brne	.-10     	; 0x11c <main+0x5e>
+				_delay_ms(500);
+				PORTB=0b01000000; //Turn Right
+ 126:	48 bb       	out	0x18, r20	; 24
+ 128:	80 e1       	ldi	r24, 0x10	; 16
+ 12a:	97 e2       	ldi	r25, 0x27	; 39
+ 12c:	f9 01       	movw	r30, r18
+ 12e:	31 97       	sbiw	r30, 0x01	; 1
+ 130:	f1 f7       	brne	.-4      	; 0x12e <main+0x70>
+		{
+			// wait 1/10 ms
+			_delay_loop_2(((F_CPU) / 4e3) / 10);
+			__ticks --;
+ 132:	01 97       	sbiw	r24, 0x01	; 1
+		__ticks = 1;
+	else if (__tmp > 65535)
+	{
+		//	__ticks = requested delay in 1/10 ms
+		__ticks = (uint16_t) (__ms * 10.0);
+		while(__ticks)
+ 134:	d9 f7       	brne	.-10     	; 0x12c <main+0x6e>
+ 136:	cb cf       	rjmp	.-106    	; 0xce <main+0x10>
+      			_delay_ms(1000);
+		  } else if(!(PIND & 0b00000011)){ //Both whiskers triggered 
+ 138:	80 b3       	in	r24, 0x10	; 16
+ 13a:	90 e0       	ldi	r25, 0x00	; 0
+ 13c:	83 70       	andi	r24, 0x03	; 3
+ 13e:	90 70       	andi	r25, 0x00	; 0
+ 140:	89 2b       	or	r24, r25
+ 142:	09 f0       	breq	.+2      	; 0x146 <main+0x88>
+ 144:	c4 cf       	rjmp	.-120    	; 0xce <main+0x10>
+ 146:	88 e8       	ldi	r24, 0x88	; 136
+ 148:	93 e1       	ldi	r25, 0x13	; 19
+ 14a:	f9 01       	movw	r30, r18
+ 14c:	31 97       	sbiw	r30, 0x01	; 1
+ 14e:	f1 f7       	brne	.-4      	; 0x14c <main+0x8e>
+		{
+			// wait 1/10 ms
+			_delay_loop_2(((F_CPU) / 4e3) / 10);
+			__ticks --;
+ 150:	01 97       	sbiw	r24, 0x01	; 1
+		__ticks = 1;
+	else if (__tmp > 65535)
+	{
+		//	__ticks = requested delay in 1/10 ms
+		__ticks = (uint16_t) (__ms * 10.0);
+		while(__ticks)
+ 152:	d9 f7       	brne	.-10     	; 0x14a <main+0x8c>
+				_delay_ms(500);
+				PORTB=0b00000000;	//Reverse
+ 154:	18 ba       	out	0x18, r1	; 24
+ 156:	88 e8       	ldi	r24, 0x88	; 136
+ 158:	93 e1       	ldi	r25, 0x13	; 19
+ 15a:	f9 01       	movw	r30, r18
+ 15c:	31 97       	sbiw	r30, 0x01	; 1
+ 15e:	f1 f7       	brne	.-4      	; 0x15c <main+0x9e>
+		{
+			// wait 1/10 ms
+			_delay_loop_2(((F_CPU) / 4e3) / 10);
+			__ticks --;
+ 160:	01 97       	sbiw	r24, 0x01	; 1
+		__ticks = 1;
+	else if (__tmp > 65535)
+	{
+		//	__ticks = requested delay in 1/10 ms
+		__ticks = (uint16_t) (__ms * 10.0);
+		while(__ticks)
+ 162:	d9 f7       	brne	.-10     	; 0x15a <main+0x9c>
+				_delay_ms(500);
+				PORTB=0b01000000; //Turn Right
+ 164:	48 bb       	out	0x18, r20	; 24
+ 166:	80 e1       	ldi	r24, 0x10	; 16
+ 168:	97 e2       	ldi	r25, 0x27	; 39
+ 16a:	f9 01       	movw	r30, r18
+ 16c:	31 97       	sbiw	r30, 0x01	; 1
+ 16e:	f1 f7       	brne	.-4      	; 0x16c <main+0xae>
+		{
+			// wait 1/10 ms
+			_delay_loop_2(((F_CPU) / 4e3) / 10);
+			__ticks --;
+ 170:	01 97       	sbiw	r24, 0x01	; 1
+		__ticks = 1;
+	else if (__tmp > 65535)
+	{
+		//	__ticks = requested delay in 1/10 ms
+		__ticks = (uint16_t) (__ms * 10.0);
+		while(__ticks)
+ 172:	d9 f7       	brne	.-10     	; 0x16a <main+0xac>
+ 174:	ac cf       	rjmp	.-168    	; 0xce <main+0x10>
+
+00000176 <_exit>:
+ 176:	f8 94       	cli
+
+00000178 <__stop_program>:
+ 178:	ff cf       	rjmp	.-2      	; 0x178 <__stop_program>

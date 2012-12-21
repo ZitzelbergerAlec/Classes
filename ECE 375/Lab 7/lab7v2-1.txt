@@ -1,0 +1,418 @@
+;***********************************************************
+;*
+;*	Final Project: AOL Infared Messenger
+;*
+;*	An infared messaging system. Press the buttons to select messages,
+;*  press button S8 to send them.
+;*
+;***********************************************************
+;*
+;*	 Author: Garrett Clay, David Merrick
+;*	 Date: 2012-11-12
+;*
+;***********************************************************
+
+.include "m128def.inc"			; Include definition file
+
+;***********************************************************
+;*	Internal Register Definitions and Constants
+;***********************************************************
+; Reserved registers for LCD: r17-r22. Reserved for XYZ: r26-r31. There are 32 GPRs in the ATmega128. 
+; We have to figure out how to only use 4 of them for this project.
+.def	mpr = r16				; Multi-Purpose Register
+.def	waitcnt  = r23
+.def	flag	 = r24
+.def	mpr2	= r25	
+
+.equ	WTime = 100
+.equ	WskrR = 4				; Right Whisker Input Bit
+.equ	WskrL = 5				; Left Whisker Input Bit
+.equ	EngEnR = 4				; Right Engine Enable Bit
+.equ	EngEnL = 7				; Left Engine Enable Bit
+.equ	EngDirR = 5				; Right Engine Direction Bit
+.equ	EngDirL = 6				; Left Engine Direction Bit
+
+.equ	BotID = 0b00000100 ;(Enter you group ID here (8bits)); Unique XD ID (MSB = 0)
+
+;***********************************************************
+;*	Start of Code Segment
+;***********************************************************
+.cseg							; Beginning of code segment
+
+;-----------------------------------------------------------
+; Interrupt Vectors
+;-----------------------------------------------------------
+.org	$0000					; Beginning of IVs
+		rjmp 	INIT			; Reset interrupt
+
+;Should have Interrupt vectors for:
+;- USART receive
+.org	$003C			; USART1 - this one is tied to the IR
+	rcall	USARTrec
+	reti
+
+.org	$0046					; End of Interrupt Vectors
+
+;-----------------------------------------------------------
+; Program Initialization
+;-----------------------------------------------------------
+INIT:
+	;Stack Pointer (VERY IMPORTANT!!!!)
+	ldi	mpr,	LOW(RAMEND)
+	out	SPL,	R16
+	ldi	mpr,	HIGH(RAMEND)
+	out	SPH,	R16
+
+	;I/O Ports
+	;PORT B
+;	ldi	mpr,	(1<<EngEnL)|(1<<EngEnR)|(1<<EngDirR)|(1<<EngDirL)	;select direction as output on all pins
+;	out	DDRB,	mpr			; set value in DDRB
+;	ldi	mpr,	$00			; set initial value to high on all pins
+;	out	PORTB,	mpr			; set PORTB value, PORT B pins should all be high
+
+	;PORT D
+	ldi	mpr,	$00
+	out	DDRD,	mpr
+	ldi	mpr,	$FF
+	out	PORTD,	mpr
+	
+	;USART1
+	;Set baudrate at 2400bps U2X set to 1. clk = 16 Mhz. UBRR = 832
+	ldi	mpr,	$03
+	sts	UBRR1H,	mpr
+	ldi	mpr, 	$40
+	sts	UBRR1L,	mpr
+
+	;Enable receiver and enable receive interrupts. Enable transmitter
+	ldi	mpr,	(1<<RXEN1)|(1<<RXCIE1)|(1<<TXEN1)
+	sts	UCSR1B,	mpr
+	ldi	mpr,	(1<<U2X1)
+	sts	UCSR1A,	mpr		
+
+	;Set frame format: 8data bits, 2 stop bit
+	ldi	mpr, 	(1<<USBS1)|(1<<UCSZ11)|(1<<UCSZ10)
+	sts	UCSR1C,	mpr
+
+	;External Interrupts
+	;Set the External Interrupt Mask
+	ldi	mpr,	(1<<INT0)|(1<<INT1)	
+	out	EIMSK,	mpr
+
+	;Set the Interrupt Sense Control to Rising Edge detection
+	ldi	mpr,	$00
+	out	EICRB,	mpr
+	ldi	mpr,	(1<<ISC01)|(0<<ISC00)|(1<<ISC11)|(0<<ISC10)
+	sts	EICRA,	mpr
+
+	ldi		ZL, low(TXT0<<1); Init variable registers
+	ldi		ZH, high(TXT0<<1)
+	ldi		YL, low(LCDLn1Addr)
+	ldi		YH, high(LCDLn1Addr)	
+	ldi		mpr2, LCDMaxCnt
+
+	;ldi		waitcnt, 10 	; Initialize waitcnt to 10 ms
+	rcall	LCDInit
+
+	;Other
+	sei
+
+INIT_LINE1:
+	lpm		mpr, Z+			; Read Program memory
+	st		Y+, mpr			; Store into memory
+	dec		mpr2			; Decrement Read Counter
+	brne	INIT_LINE1		; Continue untill all data is read
+	rcall	LCDWrLn1		; WRITE LINE 1 DATA
+
+;-----------------------------------------------------------
+; Main Program
+;-----------------------------------------------------------
+MAIN:
+	in		mpr2,	PIND
+	mov		mpr, mpr2
+	com		mpr
+	out		PORTB, mpr
+	
+	mov		mpr, mpr2
+	andi	mpr,	0b00000001		; button S1
+	breq	HELLOTRAN
+	
+	mov		mpr, mpr2
+	andi	mpr,	0b00000010		; button S2
+	breq	WORLDTRAN
+	; Using buttons 1 and 5-8 because 3 and 4 seem to cause problems.
+	rjmp	MAIN
+
+;***********************************************************
+;*	Functions and Subroutines
+;***********************************************************
+;-------------------------------
+;-------------------------------
+USARTrec:
+	; save variables
+	push	mpr
+	push	waitcnt
+	in		mpr,	SREG
+	push	mpr
+
+	lds		mpr,	UDR1
+
+	cpi		mpr,	BotID
+	breq	FLAGSET			; set BotID check flag to 1 meaning ID was correct
+
+	cpi		mpr,	BotID
+	brne	FLAGNSET		; set BotID check flag to 0 meaning ID was incorrect
+
+IGNORE_SIG:
+	lds		mpr, 	UCSR1A
+	sbrs	mpr,	RXC1
+	rjmp	IGNORE_SIG
+
+	lds		mpr,	UDR1
+
+	ret
+
+JUMP:
+	cpi		flag,	$01
+	breq	RECcmd
+	
+POPVAR:
+	; return variables
+	pop		mpr
+	out		SREG,	mpr
+	pop		waitcnt
+	pop		mpr
+	
+	
+	ret						; only want one return. return increments PC
+
+FLAGSET:
+	ldi		flag,	$01		; correct BotID
+	rjmp	JUMP
+
+FLAGNSET:
+	ldi		flag,	$00		; not correct BotID
+	rjmp	JUMP
+
+RECcmd:
+	lds		mpr,	UDR1
+
+	clc 		; Clear the carry bit
+	rol mpr		; Shift everything left so the command will parse/compare correctly
+
+	cpi		mpr,	$01			; code 1 = hello
+	breq	HELLO
+	cpi		mpr,	$02			; code 2 = world	
+	breq	WORLD
+
+	rjmp	POPVAR			; return to pop variables
+
+HELLO:
+	ldi		ZL, low(TXT1<<1); Load Z pointer with address
+	ldi		ZH,high(TXT1<<1); of Text message 1
+
+	rcall	WriteText2
+
+	rjmp	POPVAR
+
+HELLOTRAN:
+	ldi		mpr2,	BotID
+	rcall	USARTtran
+
+	ldi		mpr2,	$01
+	rcall	USARTtran
+
+	ldi		ZL, low(TXT1<<1); Load Z pointer with address
+	ldi		ZH,high(TXT1<<1); of Text message 1
+
+	rcall	LCDClrLn1
+	rcall	LCDClrLn2
+
+	rcall	WriteText2
+
+	ldi		waitcnt, 200
+	rcall	Pause
+
+	rcall	SENT
+
+	ldi		waitcnt, 200
+	rcall	Pause
+
+	rcall	LCDClrLn1
+	rcall	LCDClrLn2
+
+	ret
+
+WORLD:
+	ldi		ZL, low(TXT2<<1); Load Z pointer with address
+	ldi		ZH,high(TXT2<<1); of Text message 1
+
+	rcall	WriteText2
+
+	rjmp	POPVAR
+
+WORLDTRAN:
+	ldi		mpr2,	BotID
+	rcall	USARTtran
+
+	ldi		mpr2,	$02
+	rcall	USARTtran
+
+	ldi		ZL, low(TXT2<<1); Load Z pointer with address
+	ldi		ZH,high(TXT2<<1); of Text message 1
+
+	rcall	LCDClrLn1
+	rcall	LCDClrLn2
+
+	rcall	WriteText2
+
+	ldi		waitcnt, 200
+	rcall	Pause
+
+	rcall	SENT
+
+	ldi		waitcnt, 200
+	rcall	Pause
+
+	rcall	LCDClrLn1
+	rcall	LCDClrLn2
+
+	ret
+
+SENT:
+	ldi		ZL, low(TXT3<<1); 
+	ldi		ZH,high(TXT3<<1); message sent = txt3
+
+	rcall	WriteText1
+
+	ldi		waitcnt, 200
+	rcall	Pause
+
+	rcall	LCDClrLn2
+
+	ldi		ZL, low(TXT0<<1); select message
+	ldi		ZH, high(TXT0<<1)
+
+	rcall	WriteText1
+
+	ldi		waitcnt, 200
+	rcall	Pause
+
+	ret
+
+RECEIVED:
+	ldi		ZL, low(TXT4<<1); Load Z pointer with address
+	ldi		ZH,high(TXT4<<1); of Text message 1	
+
+	rcall	WriteText1
+
+	ret
+
+USARTtran:
+	lds		mpr,	UCSR1A		; load status of USART1
+	sbrs 	mpr,	UDRE1		; check UDRE1 to see if set
+	rjmp	USARTtran			; loop until UDRE1 is set
+	
+	sts		UDR1,	mpr2
+	ret
+
+;***********************************************************
+;* Func:	WriteText
+;* Desc:	Writes the text that is pointed to by the Z pointer
+;*			from Program Memory to the second line of the LCD 
+;*			Display.
+;***********************************************************
+WriteText1:						; WRITE TO LINE 2
+		push	mpr				; Save the mpr register
+		push	mpr2			; Save the ReadCounter
+		rcall	LCDClrLn1		; CLEAR LINE 2 OF LCD
+								; LOAD THE LCD MAX LINE COUNT (16)
+		ldi		mpr2, LCDMaxCnt
+								; LOAD THE Y POINTER WITH THE DATA
+								; ADDRESS FOR LINE 2 DATA
+		ldi		YL, low(LCDLn1Addr)
+		ldi		YH, high(LCDLn1Addr)
+WriteText_lp:					; Loop that reads the data
+		lpm		mpr, Z+			; Read program data
+		st		Y+, mpr			; Store data to memory
+		dec		mpr2			; Decrement counter
+		brne	WriteText_lp	; Loop untill all data is read
+		rcall	LCDWrLn1		; WRITE DATA TO LINE 2
+		pop		mpr2			; Restore the ReadCounter
+		pop		mpr				; Restore the mpr register
+		ret			
+
+WriteText2:						; WRITE TO LINE 1
+		push	mpr				; Save the mpr register
+		push	mpr2			; Save the ReadCounter
+		rcall	LCDClrLn2
+		
+								; LOAD THE LCD MAX LINE COUNT (16)
+		ldi		mpr2, LCDMaxCnt
+								; LOAD THE Y POINTER WITH THE DATA
+								; ADDRESS FOR LINE 2 DATA
+		ldi		YL, low(LCDLn2Addr)
+		ldi		YH, high(LCDLn2Addr)
+WriteText_lp2:					; Loop that reads the data
+		lpm		mpr, Z+			; Read program data
+		st		Y+, mpr			; Store data to memory
+		dec		mpr2			; Decrement counter
+		brne	WriteText_lp2	; Loop untill all data is read
+		rcall	LCDWrLn2		; WRITE DATA TO LINE 2
+		pop		mpr2			; Restore the ReadCounter
+		pop		mpr				; Restore the mpr register
+		ret			
+
+
+;----------------------------------------------------------------
+; Sub:	Wait
+; Desc:	A wait loop that is 16 + 159975*waitcnt cycles or roughly 
+;		waitcnt*10ms.  Just initialize wait for the specific amount 
+;		of time in 10ms intervals. Here is the general eqaution
+;		for the number of clock cycles in the wait loop:
+;			((3 * ilcnt + 3) * olcnt + 3) * waitcnt + 13 + call
+;----------------------------------------------------------------
+Pause:
+		push	waitcnt			; Save wait register
+		push	mpr			; Save ilcnt register
+		push	mpr2			; Save olcnt register
+
+Loop:	ldi		mpr2, 224		; load olcnt register
+OLoop:	ldi		mpr, 237		; load ilcnt register
+ILoop:	dec		mpr			; decrement ilcnt
+		brne	ILoop			; Continue Inner Loop
+		dec		mpr2		; decrement olcnt
+		brne	OLoop			; Continue Outer Loop
+		dec		waitcnt		; Decrement wait 
+		brne	Loop			; Continue Wait loop	
+
+		pop		mpr2		; Restore olcnt register
+		pop		mpr		; Restore ilcnt register
+		pop		waitcnt		; Restore wait register
+		ret				; Return from subroutine
+
+;----------------------------------------------------------
+; An example of storing a string, note the preceeding and
+; appending labels, these help to access the data
+;----------------------------------------------------------
+TXT0:
+.DB " Select Message  "
+TXT1:
+.DB "     Hello       "
+TXT2:
+.DB "     World       "
+TXT3:
+.DB "  Message Sent  "
+TXT4:
+.DB "Message Received "
+;TXT5:
+;.DB " Roger Traylor  "
+;TXT6:
+;.DB "    Don Heer    "
+;TXT7:
+;.DB " David Zier :-) "
+
+
+;***********************************************************
+;*	Additional Program Includes
+;***********************************************************
+.include "ece375-LCD_Driver.asm"		; Include the LCD Driver

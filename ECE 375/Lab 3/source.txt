@@ -1,0 +1,121 @@
+;***********************************************************
+;*
+;*	LCD Writer
+;*
+;*	This program will take text and write it to the LCD on the Mega128 board
+;*
+;*	This was based off the skeleton file for Lab 3 of ECE 375
+;*
+;***********************************************************
+;*
+;*	 Author: David Merrick
+;*	   Date: 10/13/2012
+;*
+;***********************************************************
+ 
+.include "m128def.inc"			; Include definition file
+ 
+;***********************************************************
+;*	Internal Register Definitions and Constants
+;***********************************************************
+.def	mpr = r16				; Multipurpose register required for LCD Driver
+.equ 	TOP_LINE = $0100                        ; Space in memory for top line of LCD
+.equ	BOT_LINE = $0110                        ; Space in memory for bottom line of LCD
+ 
+ 
+;***********************************************************
+;*	Start of Code Segment
+;***********************************************************
+.cseg							; Beginning of code segment
+ 
+;-----------------------------------------------------------
+; Interrupt Vectors
+;-----------------------------------------------------------
+.org	$0000					; Beginning of IVs
+		rjmp INIT				; Reset interrupt
+ 
+.org	$0046					; End of Interrupt Vectors
+ 
+;-----------------------------------------------------------
+; Program Initialization
+;-----------------------------------------------------------
+INIT:							; The initialization routine
+		; Initialize Stack Pointer
+		ldi mpr,	low(RAMEND)
+		out SPL,	mpr						; Init the 2 stack pointer registers
+		ldi mpr,	high(RAMEND)
+		out SPH,	mpr
+ 
+		; Initialize LCD Display
+		rcall LCDInit			; An RCALL statement
+ 
+		; Move strings from Program Memory to Data Memory
+ 
+		ldi ZL,		low(STRING_BEG<<1)     ; Point Z to the first line of text
+		ldi ZH,		high(STRING_BEG<<1)
+		ldi YL,		low(TOP_LINE)	       ; Point Y to memory where the LCD will be looking
+		ldi YH,		high(TOP_LINE)
+		ldi XH,		high(BOT_LINE)	       ; Point X to memory where the LCD will be looking
+		ldi XL,		low(BOT_LINE)
+ 
+LINE1:
+		LPM mpr,	Z+                     ; Load next character
+		ST Y+,		mpr
+ 
+		CPI ZL,		low(STRING_END<<1)     ; Repeat if Z not at line end
+		BRNE 		LINE1
+ 
+		CPI ZH,		high(STRING_END<<1)
+		BRNE 		LINE1
+ 
+LINE2INIT:
+		ldi ZL,		low(STRING2_BEG<<1)            ; Point Z register to Line 2
+		ldi ZH,		high(STRING2_BEG<<1)
+ 
+LINE2:
+		LPM mpr,	Z+                                ; Load next character
+		ST X+,		mpr
+ 
+		CPI ZL,		low(STRING2_END<<1)            ; Repeat if Z not at line end
+		BRNE 		LINE2
+ 
+		CPI ZH,		high(STRING2_END<<1)
+		BRNE 		LINE2
+ 
+		; NOTE that there is no RET or RJMP from INIT, this is
+		; because the next instruction executed is the first for
+		; the main program
+ 
+;-----------------------------------------------------------
+; Main Program
+;-----------------------------------------------------------
+MAIN:							; The Main program
+		; Display the strings on the LCD Display
+		rcall	LCDWrite						; An RCALL statement
+ 
+		rjmp	MAIN			; jump back to main and create an infinite
+								; while loop.  Generally, every main program is an
+								; infinite while loop, never let the main program
+								; just run off
+ 
+;***********************************************************
+;*	Stored Program Data
+;***********************************************************
+ 
+;----------------------------------------------------------
+; An example of storing a string, note the preceeding and
+; appending labels, these help to access the data
+;----------------------------------------------------------
+STRING_BEG:
+.DB		"David Merrick   "		; Storing the string in Program Memory
+STRING_END:
+STRING2_BEG:
+.DB		"Hello, World!   "
+STRING2_END:
+ 
+ 
+ 
+;***********************************************************
+;*	Additional Program Includes
+;***********************************************************
+.include "LCDDriver.asm"		; Include the LCD Driver

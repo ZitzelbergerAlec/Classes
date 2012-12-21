@@ -1,0 +1,44 @@
+//Dynamic array implementation
+//Function that removes the key before inserting new one.
+
+void putMap (struct hashMap * ht, KeyType k, ValueType v){
+	int idx;
+	
+	//check to see if map contains key. If so, remove it.
+	if(containsKey(ht, k)){
+		removeKey(ht, k);
+	}
+		
+	idx = stringHash1(k) % ht->tableSize;
+	
+	if(idx < 0){
+		idx += ht->tableSize;
+	}
+	
+	//Iterate through values in the loop to find the correct spot.
+	while(ht->table[idx] != 0){
+		idx++;
+	}
+	
+	ht->table[idx] = v;
+	ht->count++;
+}
+
+//Function that replaces value
+
+void putMap (struct hashMap * ht, KeyType k, ValueType v){
+	if(!containsKey(ht, k)){ //If it doesn't contain the key, find the correct spot
+		int idx = stringHash1(k) % ht->tableSize;
+	
+		if(idx < 0){
+			idx += ht->tableSize;
+		}
+		while(ht->table[idx] != 0)
+			idx++;
+		ht->table[idx] = v;
+		ht->count++;
+	} else {
+		int* value = atMap(&hashTable, word);
+		*value = v;
+	}
+}

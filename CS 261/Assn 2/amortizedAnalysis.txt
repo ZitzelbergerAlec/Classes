@@ -1,0 +1,8 @@
+/* David Merrick
+ * 1/21/12
+ */
+ 
+1. 8 + 8 + 8 + 16 + 16 = 56 cost units.
+2. 8 + 10 + 12 + 14 + 16 + 18 + 20 + 22 + 24 + 26 + 28 + 30 + 32 = 260 cost units.
+3. a) To get poor (O(N^2)) performance, push values onto the stack until capacity is reached, which will cause the array size to double. Then, pop half of the values, causing the array size to shrink by half.
+   b) Shrink when size reaches 1/4 capacity.

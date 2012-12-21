@@ -1,0 +1,13 @@
+default: prog
+
+dynArray.o: dynArray.c dynArray.h 
+	gcc -Wall -std=c99 -c dynArray.c	
+
+prog: dynArray.o
+	gcc -Wall -std=c99 -o prog dynArray.o stackapp.c
+		
+clean:
+	rm dynArray.o
+
+cleanall: clean
+	rm prog

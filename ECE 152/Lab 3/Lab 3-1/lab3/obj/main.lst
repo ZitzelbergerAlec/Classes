@@ -1,0 +1,267 @@
+   1               		.file	"main.c"
+   2               	__SREG__ = 0x3f
+   3               	__SP_H__ = 0x3e
+   4               	__SP_L__ = 0x3d
+   5               	__CCP__  = 0x34
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+   8               		.section	.text.read_adc,"ax",@progbits
+   9               	.global	read_adc
+  11               	read_adc:
+  12               	/* prologue: function */
+  13               	/* frame size = 0 */
+  14 0000 8066      		ori r24,lo8(96)
+  15 0002 8093 7C00 		sts 124,r24
+  16 0006 86EC      		ldi r24,lo8(-58)
+  17 0008 8093 7A00 		sts 122,r24
+  18               	.L2:
+  19 000c 8091 7A00 		lds r24,122
+  20 0010 84FF      		sbrs r24,4
+  21 0012 00C0      		rjmp .L2
+  22 0014 8091 7A00 		lds r24,122
+  23 0018 8061      		ori r24,lo8(16)
+  24 001a 8093 7A00 		sts 122,r24
+  25 001e 8091 7A00 		lds r24,122
+  26 0022 8064      		ori r24,lo8(64)
+  27 0024 8093 7A00 		sts 122,r24
+  28               	.L3:
+  29 0028 8091 7A00 		lds r24,122
+  30 002c 84FF      		sbrs r24,4
+  31 002e 00C0      		rjmp .L3
+  32 0030 8091 7A00 		lds r24,122
+  33 0034 8061      		ori r24,lo8(16)
+  34 0036 8093 7A00 		sts 122,r24
+  35 003a 8091 7900 		lds r24,121
+  36 003e 1092 7A00 		sts 122,__zero_reg__
+  37               	/* epilogue start */
+  38 0042 0895      		ret
+  40               		.section	.text.clearArray,"ax",@progbits
+  41               	.global	clearArray
+  43               	clearArray:
+  44               	/* prologue: function */
+  45               	/* frame size = 0 */
+  46 0000 18B8      		out 40-32,__zero_reg__
+  47 0002 85B1      		in r24,37-32
+  48 0004 806C      		ori r24,lo8(-64)
+  49 0006 85B9      		out 37-32,r24
+  50 0008 85B1      		in r24,37-32
+  51 000a 8F73      		andi r24,lo8(63)
+  52 000c 85B9      		out 37-32,r24
+  53               	/* epilogue start */
+  54 000e 0895      		ret
+  56               		.section	.text.initialize,"ax",@progbits
+  57               	.global	initialize
+  59               	initialize:
+  60               	/* prologue: function */
+  61               	/* frame size = 0 */
+  62 0000 11B8      		out 33-32,__zero_reg__
+  63 0002 87EC      		ldi r24,lo8(-57)
+  64 0004 84B9      		out 36-32,r24
+  65 0006 8FEF      		ldi r24,lo8(-1)
+  66 0008 87B9      		out 39-32,r24
+  67 000a 1AB8      		out 42-32,__zero_reg__
+  68 000c 87E0      		ldi r24,lo8(7)
+  69 000e 8DB9      		out 45-32,r24
+  70 0010 10BA      		out 48-32,__zero_reg__
+  71               	/* epilogue start */
+  72 0012 0895      		ret
+  74               		.section	.text.GetByteUART,"ax",@progbits
+  75               	.global	GetByteUART
+  77               	GetByteUART:
+  78               	/* prologue: function */
+  79               	/* frame size = 0 */
+  80 0000 8091 CE00 		lds r24,206
+  81               	/* epilogue start */
+  82 0004 0895      		ret
+  84               		.section	.text.initializeUART,"ax",@progbits
+  85               	.global	initializeUART
+  87               	initializeUART:
+  88               	/* prologue: function */
+  89               	/* frame size = 0 */
+  90 0000 1092 CD00 		sts 205,__zero_reg__
+  91 0004 8CE0      		ldi r24,lo8(12)
+  92 0006 8093 CC00 		sts 204,r24
+  93 000a 82E0      		ldi r24,lo8(2)
+  94 000c 8093 C800 		sts 200,r24
+  95 0010 1092 C900 		sts 201,__zero_reg__
+  96 0014 88E4      		ldi r24,lo8(72)
+  97 0016 8093 CA00 		sts 202,r24
+  98               	/* epilogue start */
+  99 001a 0895      		ret
+ 101               		.section	.text.sendByteUART,"ax",@progbits
+ 102               	.global	sendByteUART
+ 104               	sendByteUART:
+ 105               	/* prologue: function */
+ 106               	/* frame size = 0 */
+ 107               	/* epilogue start */
+ 108 0000 0895      		ret
+ 110               		.section	.text.sendStringUART,"ax",@progbits
+ 111               	.global	sendStringUART
+ 113               	sendStringUART:
+ 114               	/* prologue: function */
+ 115               	/* frame size = 0 */
+ 116               	/* epilogue start */
+ 117 0000 0895      		ret
+ 119               		.section	.text.initializeTIMER0,"ax",@progbits
+ 120               	.global	initializeTIMER0
+ 122               	initializeTIMER0:
+ 123               	/* prologue: function */
+ 124               	/* frame size = 0 */
+ 125 0000 82E0      		ldi r24,lo8(2)
+ 126 0002 84BD      		out 68-32,r24
+ 127 0004 85E0      		ldi r24,lo8(5)
+ 128 0006 85BD      		out 69-32,r24
+ 129 0008 17BC      		out 71-32,__zero_reg__
+ 130 000a 80E0      		ldi r24,lo8(0)
+ 131               	/* epilogue start */
+ 132 000c 0895      		ret
+ 134               		.section	.text.checkTIMER0,"ax",@progbits
+ 135               	.global	checkTIMER0
+ 137               	checkTIMER0:
+ 138               	/* prologue: function */
+ 139               	/* frame size = 0 */
+ 140 0000 A999      		sbic 53-32,1
+ 141 0002 00C0      		rjmp .L22
+ 142 0004 80E0      		ldi r24,lo8(0)
+ 143 0006 0895      		ret
+ 144               	.L22:
+ 145 0008 A99A      		sbi 53-32,1
+ 146 000a 81E0      		ldi r24,lo8(1)
+ 147 000c 0895      		ret
+ 149               		.section	.text.setTIMER0,"ax",@progbits
+ 150               	.global	setTIMER0
+ 152               	setTIMER0:
+ 153               	/* prologue: function */
+ 154               	/* frame size = 0 */
+ 155 0000 67BD      		out 71-32,r22
+ 156 0002 95B5      		in r25,69-32
+ 157 0004 982B      		or r25,r24
+ 158 0006 95BD      		out 69-32,r25
+ 159 0008 16BC      		out 70-32,__zero_reg__
+ 160 000a 80E0      		ldi r24,lo8(0)
+ 161               	/* epilogue start */
+ 162 000c 0895      		ret
+ 164               		.section	.text.main,"ax",@progbits
+ 165               	.global	main
+ 167               	main:
+ 168               	/* prologue: function */
+ 169               	/* frame size = 0 */
+ 170 0000 11B8      		out 33-32,__zero_reg__
+ 171 0002 87EC      		ldi r24,lo8(-57)
+ 172 0004 84B9      		out 36-32,r24
+ 173 0006 9FEF      		ldi r25,lo8(-1)
+ 174 0008 97B9      		out 39-32,r25
+ 175 000a 1AB8      		out 42-32,__zero_reg__
+ 176 000c 87E0      		ldi r24,lo8(7)
+ 177 000e 8DB9      		out 45-32,r24
+ 178 0010 10BA      		out 48-32,__zero_reg__
+ 179 0012 82E0      		ldi r24,lo8(2)
+ 180 0014 84BD      		out 68-32,r24
+ 181 0016 85E0      		ldi r24,lo8(5)
+ 182 0018 85BD      		out 69-32,r24
+ 183 001a 17BC      		out 71-32,__zero_reg__
+ 184 001c 97BD      		out 71-32,r25
+ 185 001e 85B5      		in r24,69-32
+ 186 0020 8560      		ori r24,lo8(5)
+ 187 0022 85BD      		out 69-32,r24
+ 188 0024 16BC      		out 70-32,__zero_reg__
+ 189 0026 80E4      		ldi r24,lo8(64)
+ 190 0028 85B9      		out 37-32,r24
+ 191 002a 98B9      		out 40-32,r25
+ 192 002c 00C0      		rjmp .L42
+ 193               	.L37:
+ 194 002e 90E0      		ldi r25,lo8(0)
+ 195 0030 8130      		cpi r24,lo8(1)
+ 196 0032 01F0      		breq .L39
+ 197 0034 8130      		cpi r24,lo8(1)
+ 198 0036 00F0      		brlo .L34
+ 199 0038 8230      		cpi r24,lo8(2)
+ 200 003a 01F4      		brne .L41
+ 201 003c 83E0      		ldi r24,lo8(3)
+ 202 003e 00C0      		rjmp .L32
+ 203               	.L34:
+ 204 0040 2091 CE00 		lds r18,206
+ 205 0044 2337      		cpi r18,lo8(115)
+ 206 0046 01F4      		brne .L34
+ 207 0048 91E0      		ldi r25,lo8(1)
+ 208 004a 00C0      		rjmp .L41
+ 209               	.L36:
+ 210 004c 2091 CE00 		lds r18,206
+ 211 0050 A99B      		sbis 53-32,1
+ 212 0052 00C0      		rjmp .L39
+ 213 0054 A99A      		sbi 53-32,1
+ 214 0056 2337      		cpi r18,lo8(115)
+ 215 0058 01F0      		breq .L42
+ 216               	.L35:
+ 217 005a 92E0      		ldi r25,lo8(2)
+ 218 005c 00C0      		rjmp .L41
+ 219               	.L39:
+ 220 005e 2337      		cpi r18,lo8(115)
+ 221 0060 01F4      		brne .L36
+ 222               	.L42:
+ 223 0062 90E0      		ldi r25,lo8(0)
+ 224               	.L41:
+ 225 0064 892F      		mov r24,r25
+ 226               	.L32:
+ 227 0066 0799      		sbic 32-32,7
+ 228 0068 00C0      		rjmp .L37
+ 229 006a 80E0      		ldi r24,lo8(0)
+ 230 006c 90E0      		ldi r25,hi8(0)
+ 231               	/* epilogue start */
+ 232 006e 0895      		ret
+ 234               		.section	.text.initializeFAT,"ax",@progbits
+ 235               	.global	initializeFAT
+ 237               	initializeFAT:
+ 238               	/* prologue: function */
+ 239               	/* frame size = 0 */
+ 240 0000 BC01      		movw r22,r24
+ 241 0002 80E0      		ldi r24,lo8(0)
+ 242 0004 0E94 0000 		call f_mount
+ 243 0008 8823      		tst r24
+ 244 000a 01F0      		breq .L44
+ 245 000c 81E0      		ldi r24,lo8(1)
+ 246 000e 0895      		ret
+ 247               	.L44:
+ 248 0010 80E0      		ldi r24,lo8(0)
+ 249 0012 0E94 0000 		call disk_initialize
+ 250 0016 81FF      		sbrs r24,1
+ 251 0018 00C0      		rjmp .L46
+ 252 001a 82E0      		ldi r24,lo8(2)
+ 253 001c 0895      		ret
+ 254               	.L46:
+ 255 001e 80FF      		sbrs r24,0
+ 256 0020 00C0      		rjmp .L47
+ 257 0022 83E0      		ldi r24,lo8(3)
+ 258 0024 0895      		ret
+ 259               	.L47:
+ 260 0026 82FD      		sbrc r24,2
+ 261 0028 00C0      		rjmp .L48
+ 262 002a 80E0      		ldi r24,lo8(0)
+ 263 002c 0895      		ret
+ 264               	.L48:
+ 265 002e 84E0      		ldi r24,lo8(4)
+ 266 0030 0895      		ret
+DEFINED SYMBOLS
+                            *ABS*:00000000 main.c
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:2      *ABS*:0000003f __SREG__
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:3      *ABS*:0000003e __SP_H__
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:4      *ABS*:0000003d __SP_L__
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:5      *ABS*:00000034 __CCP__
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:6      *ABS*:00000000 __tmp_reg__
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:7      *ABS*:00000001 __zero_reg__
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:11     .text.read_adc:00000000 read_adc
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:43     .text.clearArray:00000000 clearArray
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:59     .text.initialize:00000000 initialize
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:77     .text.GetByteUART:00000000 GetByteUART
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:87     .text.initializeUART:00000000 initializeUART
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:104    .text.sendByteUART:00000000 sendByteUART
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:113    .text.sendStringUART:00000000 sendStringUART
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:122    .text.initializeTIMER0:00000000 initializeTIMER0
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:137    .text.checkTIMER0:00000000 checkTIMER0
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:152    .text.setTIMER0:00000000 setTIMER0
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:167    .text.main:00000000 main
+C:\Users\David\AppData\Local\Temp/ccQjLJVu.s:237    .text.initializeFAT:00000000 initializeFAT
+
+UNDEFINED SYMBOLS
+f_mount
+disk_initialize

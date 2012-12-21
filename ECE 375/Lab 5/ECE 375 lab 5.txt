@@ -1,0 +1,205 @@
+;***********************************************************
+;*
+;*	ECE 375 Lab 5: Simple Interrupts
+;*
+;*	This code causes the Tekbot to move forward until interrupted by the whiskers
+;*
+;*	This was the skeleton file Lab 5 of ECE 375
+;*
+;***********************************************************
+;*
+;*	 Author: David Merrick
+;*	   Date: 2012-10-27
+;*
+;***********************************************************
+ 
+.include "m128def.inc"			; Include definition file
+ 
+;***********************************************************
+;*	Internal Register Definitions and Constants
+;***********************************************************
+.def	mpr = r16				; Multipurpose register 
+.def	waitcnt = r17			; Wait Loop Counter
+.def	ilcnt = r18				; Inner Loop Counter
+.def	olcnt = r19				; Outer Loop Counter
+ 
+.equ	WTime = 100				; Time to wait in wait loop
+.equ	WskrR = 0				; Right Whisker Input Bit
+.equ	WskrL = 1				; Left Whisker Input Bit
+.equ	EngEnR = 4				; Right Engine Enable Bit
+.equ	EngEnL = 7				; Left Engine Enable Bit
+.equ	EngDirR = 5				; Right Engine Direction Bit
+.equ	EngDirL = 6				; Left Engine Direction Bit
+ 
+;These macros are the values to make the TekBot Move.								
+.equ	MovFwd = (1<<EngDirR | 1<<EngDirL) ; Move Forward Command
+.equ	MovBck = $00			           ; Move Backward Command
+.equ	TurnR = (1<<EngDirL)	           ; Turn Right Command
+.equ	TurnL = (1<<EngDirR)	           ; Turn Left Command
+.equ	Halt = (1<<EngEnR | 1<<EngEnL)     ; Halt Command
+ 
+;***********************************************************
+;*	Start of Code Segment
+;***********************************************************
+.cseg							; Beginning of code segment
+ 
+;-----------------------------------------------------------
+; Interrupt Vectors
+;-----------------------------------------------------------
+.org	$0000					; Beginning of IVs
+		rjmp 	INIT			; Reset interrupt
+ 
+; Set up the interrupt vectors for the interrupts, .i.e
+.org	$0004 ; {IRQ1 => pin4, PORTD}
+		rcall	HitRight
+		reti
+ 
+.org	$0006 ; {IRQ2 => pin5, PORTD}
+		rcall	HitLeft
+		reti
+ 
+.org	$0046					; End of Interrupt Vectors
+ 
+;-----------------------------------------------------------
+; Program Initialization
+;-----------------------------------------------------------
+INIT:							
+		;; Initialize Stack ;;
+		; Initialize Stack Pointer
+		ldi		mpr, low(RAMEND)
+		out		SPL, mpr	; Load SPL with low byte of RAMEND
+		ldi		mpr, high(RAMEND)
+		out		SPH, mpr	; Load SPH with high byte of RAMEND
+ 
+		; Initialize Port B for output
+		ldi		mpr, $ff		; Set Port B Directional Register
+		out		DDRB, mpr		; for output
+		ldi		mpr, $00		; Initialize Port B to 0s for output
+		out		PORTB, mpr		; Port B outputs low
+ 
+		; Initialize Port D (buttons) for inputs
+		ldi		mpr, $FF		; Initialize Port D for inputs
+		out		PORTD, mpr		; with Tri-State
+		ldi		mpr, $00		; Set Port D Directional Register
+		out		DDRD, mpr		; for inputs
+
+		; Initialize external interrupts
+		; Set the Interrupt Sense Control to Rising Edge detection
+		; NOTE: must initialize both EICRA and EICRB
+		ldi		mpr,	(0<<ISC10 | 1<<ISC11 | 0<<ISC20 | 1<<ISC21)
+		sts		EICRA,	mpr
+ 
+		ldi		mpr,	$00
+		out		EICRB,	mpr
+ 
+		; Set the External Interrupt Mask
+		ldi		mpr,	(1<<INT1 | 1<<INT2)
+		out		EIMSK,	mpr
+ 
+		; Turn on interrupts
+		sei
+		; NOTE: This must be the last thing to do in the INIT function
+ 
+;-----------------------------------------------------------
+; Main Program
+;-----------------------------------------------------------
+MAIN:							; The Main program
+ 
+		; Move Robot Forward
+		ldi		mpr, MovFwd		; Load Move Foward Command
+		out		PORTB, mpr		; Send command to motors
+ 
+		rjmp	MAIN			; Create an infinite while loop to signify the 
+								; end of the program.
+ 
+;***********************************************************
+;*	Functions and Subroutines
+;***********************************************************
+;----------------------------------------------------------------
+; Sub:	HitRight
+; Desc:	Handles functionality of the TekBot when the right whisker
+;		is triggered.
+;----------------------------------------------------------------
+HitRight:
+		push	mpr				; Save mpr register
+		push	waitcnt			; Save wait register
+		in		mpr, SREG		; Save program state
+		push	mpr				;
+ 
+		; Move Backwards for a second
+		ldi		mpr, MovBck		; Load Move Backwards command
+		out		PORTB, mpr		; Send command to port
+		ldi		waitcnt, WTime	; Wait for 1 second
+		rcall	Wait			; Call wait function
+ 
+		; Turn left for a second
+		ldi		mpr, TurnL		; Load Turn Left Command
+		out		PORTB, mpr		; Send command to port
+		ldi		waitcnt, WTime*2	; Wait for 1 second
+		rcall	Wait			; Call wait function
+ 
+		pop		mpr				; Restore program state
+		out		SREG, mpr		;
+		pop		waitcnt			; Restore wait register
+		pop		mpr				; Restore mpr
+		ret						; Return from subroutine
+ 
+;----------------------------------------------------------------
+; Sub:	HitLeft
+; Desc:	Handles functionality of the TekBot when the left whisker
+;		is triggered.
+;----------------------------------------------------------------
+HitLeft:
+		push	mpr				; Save mpr register
+		push	waitcnt			; Save wait register
+		in		mpr, SREG		; Save program state
+		push	mpr				;
+ 
+		; Move Backwards for a second
+		ldi		mpr, MovBck		; Load Move Backwards command
+		out		PORTB, mpr		; Send command to port
+		ldi		waitcnt, WTime*2	; Wait for 1 second
+		rcall	Wait			; Call wait function
+ 
+		; Turn right for a second
+		ldi		mpr, TurnR		; Load Turn Left Command
+		out		PORTB, mpr		; Send command to port
+		ldi		waitcnt, WTime	; Wait for 1 second
+		rcall	Wait			; Call wait function
+ 
+		pop		mpr				; Restore program state
+		out		SREG, mpr		;
+		pop		waitcnt			; Restore wait register
+		pop		mpr				; Restore mpr
+		ret						; Return from subroutine
+ 
+;----------------------------------------------------------------
+; Sub:	Wait
+; Desc:	A wait loop that is 16 + 159975*waitcnt cycles or roughly 
+;		waitcnt*10ms.  Just initialize wait for the specific amount 
+;		of time in 10ms intervals. Here is the general eqaution
+;		for the number of clock cycles in the wait loop:
+;			((3 * ilcnt + 3) * olcnt + 3) * waitcnt + 13 + call
+;----------------------------------------------------------------
+Wait:	
+	;; Save wait, olcnt, ilcnt registers 
+		push	waitcnt			; Save wait register
+		push	ilcnt			; Save ilcnt register
+		push	olcnt			; Save olcnt register
+ 
+Loop:	
+	ldi		olcnt, 224		; load outer-loop counter register
+OLoop:	
+	ldi		ilcnt, 237		; load inner-loop counter register
+ILoop:	dec		ilcnt			; decrement ilcnt
+		brne	ILoop			; Continue Inner Loop
+		dec		olcnt			; decrement olcnt
+		brne	OLoop			; Continue Outer Loop
+		dec		waitcnt			; Decrement wait 
+		brne	Loop			; Continue Wait loop	
+ 
+ ; Restore wait, olcnt, ilcnt registers
+		pop		olcnt			; Restore olcnt register
+		pop		ilcnt			; Restore ilcnt register
+		pop		waitcnt			; Restore wait register
+		ret						; Return from subroutine

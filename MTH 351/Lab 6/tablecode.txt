@@ -1,0 +1,73 @@
+% Run each of the methods 3 times, find the total, and divide by 3
+% to display the average times.
+
+% a. GEPivot
+tot641=0;
+tot1281=0;
+tot2561=0;
+for i=1:3
+[res64, time64, itnum64] = cubspline(64);
+[res128, time128, itnum128] = cubspline(128);
+[res256, time256, itnum256] = cubspline(256);
+tot641 = tot641 + time64;
+tot1281 = tot1281 + time128;
+tot2561 = tot2561 + time256;
+end
+
+% b. Jacobian
+tot642=0;
+tot1282=0;
+tot2562=0;
+for i=1:3
+
+[res64, time64, itnum64] = cubspline2(64);
+[res128, time128, itnum128] = cubspline2(128);
+[res256, time256, itnum256] = cubspline2(256);
+tot642 = tot642 + time64;
+tot1282 = tot1282 + time128;
+tot2562 = tot2562 + time256;
+end
+
+% c. Gauss-Seidel: ignore timings
+tot643=0;
+tot1283=0;
+tot2563=0;
+for i=1:3
+[res64, time64, itnum64] = cubspline3(64);
+[res128, time128, itnum128] = cubspline3(128);
+[res256, time256, itnum256] = cubspline3(256);
+tot643 = tot643 + time64;
+tot1283 = tot1283 + time128;
+tot2563 = tot2563 + time256;
+end
+
+% d. Conjugate-Gradient
+tot644=0;
+tot1284=0;
+tot2564=0;
+for i=1:3
+[res64, time64, itnum64] = cubspline4(64);
+[res128, time128, itnum128] = cubspline4(128);
+[res256, time256, itnum256] = cubspline4(256);
+tot644 = tot644 + time64;
+tot1284 = tot1284 + time128;
+tot2564 = tot2564 + time256;
+end
+
+% e. Tridiag
+tot645=0;
+tot1285=0;
+tot2565=0;
+for i=1:3
+[res64, time64, itnum64] = cubspline5(64);
+[res128, time128, itnum128] = cubspline5(128);
+[res256, time256, itnum256] = cubspline5(256);
+tot645 = tot645 + time64;
+tot1285 = tot1285 + time128;
+tot2565 = tot2565 + time256;
+end
+
+disp(sprintf('Runtimes for solving tridiagonal systems using \n'))
+disp(sprintf('n\t GEPivot\t Jacobi\t Conjugate-Gradient\t Tridiagonal\n'))
+disp(sprintf('64\t %d\t %d\t %d\t %d\n', tot641/3, tot642/3, tot644/3, tot645/3))
+disp(sprintf('128\t %d\t %d\t %d\t %d\n', tot1281/3, tot1282/3, tot1284/3, tot1285/disp(sprintf('256\t %d\t %d\t %d\t %d\n', tot2561/3, tot2562/3, tot2564/3, tot2565/3)

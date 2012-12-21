@@ -1,0 +1,4 @@
+2	debug this program
+3	wash car
+5	test
+6	newtask

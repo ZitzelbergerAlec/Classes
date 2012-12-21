@@ -1,0 +1,11 @@
+/* David Merrick
+ * 3/4/12
+ */
+
+1. eat, tea.
+2. stringhash2() generates better unique hashes and thus avoids the hash collisions from different words that contain the same letters in stringhash1().
+3. No.
+4. Yes.
+5. Yes.
+6. Yes.
+7. The increased size doesn't have a significant effect on performance.
