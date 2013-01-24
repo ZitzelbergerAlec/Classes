@@ -1,6 +1,5 @@
 #include <stdio.h>
 
-//added this comment
 int append(int numfiles){
 	return(0);
 }
