@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+	  "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title> CS311 - Operating Systems I </title>
+<link rel="stylesheet" type="text/css" href="http://web.engr.oregonstate.edu/~dmcgrath/classes.css" />
+</head>
+<div id="Header"> CS311 - Operating Systems I  &nbsp; &nbsp; &nbsp;	D. Kevin McGrath &nbsp; &nbsp; &nbsp; MWF 08:00 - 08:50, WNGR 153 &nbsp; &nbsp; &nbsp; Winter 2013 </div>
+<center><h2></h2></center>
+<div id="Menu">
+<a href="index.cgi?home=1">Home/Announcements</a> <br />
+<a href="index.cgi?style=1">Style Guide</a> <br />
+<a href="index.cgi?examples=1">Materials from Class</a> <br />
+<a href="index.cgi?assignments=1">Assignments</a> <br />
+<a href="index.cgi?grades=1">Grades</a> <br />
+<a href="index.cgi?schedule=1">Schedule</a> <br />
+<a href="index.cgi?resources=1">Other Resources</a> <br />
+<a href="https://secure.engr.oregonstate.edu:8000/teach.php?type=assignment">Submission</a> <br />
+<a href="index.cgi?file=syllabus">Syllabus</a> <br />
+</div>
+<div id="Content">
+<a href=http://classes.engr.oregonstate.edu/eecs/winter2013/cs311/examples/template.tex>Download file</a>
+<div class="highlight"><pre><span class="k">\documentclass</span><span class="na">[letterpaper,10pt,titlepage]</span><span class="nb">{</span>article<span class="nb">}</span>
+
+<span class="k">\usepackage</span><span class="nb">{</span>graphicx<span class="nb">}</span>                                        
+
+<span class="k">\usepackage</span><span class="nb">{</span>amssymb<span class="nb">}</span>                                         
+<span class="k">\usepackage</span><span class="nb">{</span>amsmath<span class="nb">}</span>                                         
+<span class="k">\usepackage</span><span class="nb">{</span>amsthm<span class="nb">}</span>                                          
+
+<span class="k">\usepackage</span><span class="nb">{</span>alltt<span class="nb">}</span>                                           
+<span class="k">\usepackage</span><span class="nb">{</span>float<span class="nb">}</span>
+<span class="k">\usepackage</span><span class="nb">{</span>color<span class="nb">}</span>
+
+<span class="k">\usepackage</span><span class="nb">{</span>url<span class="nb">}</span>
+
+<span class="k">\usepackage</span><span class="nb">{</span>balance<span class="nb">}</span>
+<span class="k">\usepackage</span><span class="na">[TABBOTCAP, tight]</span><span class="nb">{</span>subfigure<span class="nb">}</span>
+<span class="k">\usepackage</span><span class="nb">{</span>enumitem<span class="nb">}</span>
+
+<span class="k">\usepackage</span><span class="nb">{</span>pstricks, pst-node<span class="nb">}</span>
+
+<span class="k">\usepackage</span><span class="nb">{</span>geometry<span class="nb">}</span>
+<span class="k">\geometry</span><span class="nb">{</span>textheight=10in, textwidth=7.5in<span class="nb">}</span>
+
+<span class="c">%random comment</span>
+
+<span class="k">\newcommand</span><span class="nb">{</span><span class="k">\cred</span><span class="nb">}</span>[1]<span class="nb">{{</span><span class="k">\color</span><span class="nb">{</span>red<span class="nb">}</span>#1<span class="nb">}}</span>
+<span class="k">\newcommand</span><span class="nb">{</span><span class="k">\cblue</span><span class="nb">}</span>[1]<span class="nb">{{</span><span class="k">\color</span><span class="nb">{</span>blue<span class="nb">}</span>#1<span class="nb">}}</span>
+
+<span class="k">\usepackage</span><span class="nb">{</span>hyperref<span class="nb">}</span>
+
+<span class="k">\def\name</span><span class="nb">{</span>D. Kevin McGrath<span class="nb">}</span>
+
+<span class="c">%pull in the necessary preamble matter for pygments output</span>
+<span class="k">\input</span><span class="nb">{</span>pygments.tex<span class="nb">}</span>
+
+<span class="c">%% The following metadata will show up in the PDF properties</span>
+<span class="k">\hypersetup</span><span class="nb">{</span>
+  colorlinks = true,
+  urlcolor = black,
+  pdfauthor = <span class="nb">{</span><span class="k">\name</span><span class="nb">}</span>,
+  pdfkeywords = <span class="nb">{</span>cs311 ``operating systems&#39;&#39; files filesystem I/O<span class="nb">}</span>,
+  pdftitle = <span class="nb">{</span>CS 311 Project 1: UNIX File I/O<span class="nb">}</span>,
+  pdfsubject = <span class="nb">{</span>CS 311 Project 1<span class="nb">}</span>,
+  pdfpagemode = UseNone
+<span class="nb">}</span>
+
+<span class="k">\parindent</span> = 0.0 in
+<span class="k">\parskip</span> = 0.2 in
+
+<span class="k">\begin</span><span class="nb">{</span>document<span class="nb">}</span>
+
+
+<span class="c">%input the pygmentized output of mt19937ar.c, using a (hopefully) unique name</span>
+<span class="c">%this file only exists at compile time. Feel free to change that.</span>
+<span class="c">%\input{__mt.h.tex}</span>
+<span class="k">\end</span><span class="nb">{</span>document<span class="nb">}</span>
+</pre></div>
+
+<hr>
+&nbsp;&nbsp;&nbsp;<a href=mailto:dmcgrath@eecs.oregonstate.edu><i>D. Kevin McGrath</i></a>
+<br>&nbsp;&nbsp;&nbsp;<i>Last modified:  Tue Jan  8 16:35:10 2013</i>
+</div></body>
+</html>

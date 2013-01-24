@@ -1,0 +1,20 @@
+import os
+import sys
+import getopt
+
+term = sys.argv[1]
+course = sys.argv[2]
+if not os.path.exists(os.getcwd() + "/" + term): #Create term directory if it doesn't exist
+	os.makedirs(term)
+
+if not os.path.exists(os.getcwd() + "/" + term + "/" + course): #os.getcwd gets current working directory
+	print("Directory \"" + term + "/" + course + "\" does not exist. Creating it.")
+	os.makedirs(os.getcwd() + "/" + term + "/" + course + "/assignments")
+	os.makedirs(os.getcwd() + "/" + term + "/" + course + "/examples")
+	os.makedirs(os.getcwd() + "/" + term + "/" + course + "/exams")
+	os.makedirs(os.getcwd() + "/" + term + "/" + course + "/lecture_notes")
+	os.makedirs(os.getcwd() + "/" + term + "/" + course + "/submissions")	
+	os.symlink("/usr/local/classes/eecs/" + term + "/" + course + "/public_html", os.getcwd() + "/" + term + "/" + course + "/website")	#symlink(source, link_name)
+	os.symlink("/usr/local/classes/eecs/" + term + "/" + course + "/handin", os.getcwd() + "/" + term + "/" + course + "/handin")	#symlink(source, link_name)
+else:
+	print("Directory \"" + term + "/" + course + "\" already exists!")

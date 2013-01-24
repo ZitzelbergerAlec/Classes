@@ -1,0 +1,12 @@
+\documentclass[letterpaper,10pt,titlepage]{article}
+\usepackage{hyperref} %For adding hyperlinks
+\begin{document}
+\begin{itemize}
+\item Two ways of transferring files from a remote server to a local machine are SSH and FTP.
+\item Revision control systems help to manage changes to documents or code. They are very helpful for tracking who edited a document, reverting documents to previous versions, correcting mistakes, and collaboration.
+\item Piping sends the output of one command to the input of another command. This allows for complex chains of commands. Redirection sends the output of a command into a file or elsewhere. It can also be used to send a file into the input of a command. The difference between piping and redirection is that redirection can work on both input and output while piping can only work on input. Another difference is that redirection only works with sending input and output to and from files, STDERR, and STDOUT, while piping only works with sending output to another command.
+\item The make command determines which parts of a program need to be compiled and issues commands to compile them. It bases this on the makefile. It is useful as a highly-versatile tool for compiling programs.
+\item A makefile consists of targets, prerequisites, and recipes. A target is usually a filename, but can be an action. A prerequisite is the file needed to create the target. This could be one or many files. A recipe is an action for make to carry out. This usually specifies which compiler to use, the files you’ve included, and the output file. Reference: \hyperref[http://www.gnu.org/software/make/manual/make.html#Introduction]{''http://www.gnu.org/software/make/manual/make.html#Introduction''}
+\item file `find . -not -type d`
+\end{itemize}
+\end{document}
