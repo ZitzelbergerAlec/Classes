@@ -1,0 +1,6 @@
+!<arch>
+dummyfile.txt/  1359141401  45255 12274 100660  12        `
+hello world
+dummyfile2.txt/ 1359141415  45255 12274 100660  27        `
+from the second dummy file
+
