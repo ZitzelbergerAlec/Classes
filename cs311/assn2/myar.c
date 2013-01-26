@@ -28,6 +28,11 @@ int append(char **argv, int argc){
 		perror("Can't open archive file");
 		exit(-1);
 	}
+	
+	//write !<arch> at beginning of the file if it's new
+	if(lseek(ar_fd, 0, SEEK_END) == lseek(in_fd, 0, SEEK_BEG)){ //file offset at beginning is same as at end, it's new
+		write(ar_fd, "!<arch>\n", 11);
+	}
 	int i;
 	for(i = 3; i < argc; i++){
 		appendfile(ar_fd, argv[i]);
@@ -78,6 +83,7 @@ int appendfile(int ar_fd, char *filename){
 
 		lseek(in_fd, 0, SEEK_CUR); //Changed this to move forward
 	}
+	write(ar_fd, "extraneous\n", 11);
 	close(in_fd);	
 	return 0;
 	
