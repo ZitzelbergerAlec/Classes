@@ -6,9 +6,18 @@
 #include <stdlib.h> //for exit() function
 #include <string.h>
 #include <unistd.h>
+#include <time.h> //for ctime() function
 #include <ar.h>
 
 #define BLOCKSIZE 1
+
+//Function prototypes
+void help();
+int checkformat(char *filename);
+int append(char **argv, int argc);
+int appendfile(int ar_fd, char *filename);
+int extract(char **argv, int argc);
+int extractfile(char *filename);
 
 void help(){ //prints usage of program
         printf("Usage: myar -key archive filename ...\n");
@@ -45,6 +54,13 @@ int checkformat(char *filename){
 	return(0);
 }
 
+//Debug for append() function
+int dummyfunction(int blah, char *filename){
+         printf("Appending: %s\n", filename);
+         return 0;
+}
+//end debug
+
 int append(char **argv, int argc){
 	//Create the archive file if it doesn't exist
 	//argv[2] is the archive file to use
@@ -68,7 +84,17 @@ int append(char **argv, int argc){
 		write(ar_fd, ARMAG, SARMAG);
 	}
 	int i;
-	for(i = 3; i < argc; i++){
+	//debug 
+	printf("argv[1] = %s\n", argv[1]);
+	printf("argv[2] = %s\n", argv[2]);
+	printf("argv[3] = %s\n", argv[3]);
+	printf("argv[4] = %s\n", argv[4]);
+	printf("argc = %d\n", argc);
+	//debug
+	for(i = 3; i < argc; i++){ //To do: This only works for the first case. Why?
+		printf("i = %d\n", i);
+	 	printf("in loop: argv[4] = %s\n", argv[4]);	
+		//dummyfunction(ar_fd, argv[i]);
 		appendfile(ar_fd, argv[i]);
 	}
 	
@@ -79,13 +105,14 @@ int append(char **argv, int argc){
 	return(0);
 }
 
+
 int appendfile(int ar_fd, char *filename){
 	//The following code was borrowed from an in-class example
 	//but the loop was written backwards where indicated to work properly
 	int in_fd; //File descriptor for file to append
 	char buf[BLOCKSIZE];
 	printf("Appending: %s\n", filename);
-
+	
 	int num_read;
 	int num_written;
 
@@ -98,32 +125,34 @@ int appendfile(int ar_fd, char *filename){
 		perror("Can't open input file");
 		exit(-1);
 	}
-	
 	//Get file stats
 	struct stat sb; //Status buffer
 	//fstat() returns information about a file referred to by an open file descriptor.
 	fstat(ar_fd, &sb);
-	
-	/*	
-	//printf("uid = %ld\n", (long) sb.st_uid); //This works
+		
 	struct ar_hdr fileheader;
-	strcpy(fileheader.ar_name, strcat(filename, "/"));
-	//strcpy(fileheader.ar_date, itoa(ctime(sb.st_mtime))); //File modification time. Is this what he wants?
-	strcpy(fileheader.ar_uid, atoi(sb.st_uid));
-	fileheader.ar_gid  = (char) sb.st_gid;
-	fileheader.ar_mode = (char) sb.st_mode; //But this needs to be in ASCII octal
-	fileheader.ar_size = (char) sb.st_size; //Gives bytes, needs to be in decimal
-	fileheader.ar_fmag = ARFMAG;
+	//To do: initialize all values in fileheader arrays to spaces
+	
+	//For some reason, the following strcpy line is destroying argv. Fix this! 
+	//strcpy(fileheader.ar_name, strcat(filename, "/"));
+	//Alternative:
+	snprintf(fileheader.ar_name, 16, "%s/", filename);
+	snprintf(fileheader.ar_date, 12, "%ld", sb.st_mtime); //Works, but is in right format?
+	snprintf(fileheader.ar_uid, 6, "%ld", (long) sb.st_uid);
+	snprintf(fileheader.ar_gid, 6, "%ld", (long) sb.st_gid);	
+	snprintf(fileheader.ar_size, 10, "%lld", (long long) sb.st_size); //Gives bytes, needs to be in decimal
+	strcpy(fileheader.ar_fmag, ARFMAG);
 	// End get file stats
-	*/
-
 
 	file_size = lseek(in_fd, 0, SEEK_END); //Get the file size using the last byte of the file
 	copied = 0;
 	lseek(in_fd, 0, SEEK_SET);
-	write(ar_fd, filename, strlen(filename)); //Write the filename
-	write(ar_fd, "/", 1);
-	write(ar_fd, ARFMAG, 2); //ARFMAG = "`\n"
+	write(ar_fd, fileheader.ar_name, 16); //Write the filename
+	write(ar_fd, fileheader.ar_date, 12); //Write the filename
+	write(ar_fd, fileheader.ar_uid, 6); //Write the filename
+	write(ar_fd, fileheader.ar_gid, 6); //Write the filename
+	write(ar_fd, fileheader.ar_size, 10); //Write the filename
+	write(ar_fd, fileheader.ar_fmag, 2); //ARFMAG = "`\n"
 	while(copied < file_size){
 		num_read = read(in_fd, buf, BLOCKSIZE);
 		num_written = write(ar_fd, buf, BLOCKSIZE);
