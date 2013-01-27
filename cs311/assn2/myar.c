@@ -1,15 +1,48 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include <errno.h>
+#include <errno.h> //for errno variable
 #include <stdio.h>
-#include <stdlib.h>
+#include <stdlib.h> //for exit() function
+#include <string.h>
 #include <unistd.h>
+#include <ar.h>
 
 #define BLOCKSIZE 1
 
 void help(){ //prints usage of program
         printf("Usage: myar -key archive filename ...\n");
+}
+
+//If file does not exist or is in the wrong format, displays error message
+int checkformat(char *filename){ 
+	printf("Checking format of %s\n", filename);
+	//Check if the file exists
+	//ENOENT is the error returned if file doesn't exist and O_CREAT
+	//was not specified
+	int fd;
+	fd = open(filename, O_RDONLY);
+	if(fd == -1){
+		printf("There was an error\n");
+		if(errno == ENOENT){ //File definitely doesn't exist
+			printf("File does not exist!\n");	
+		}
+		exit(1);
+	} else {
+		//File opened but...
+		//Check if it's in the right format
+		//Spefically, that it starts with !<arch>
+		char buf[SARMAG]; //variable to hold "!<arch>"
+		read(fd, buf, SARMAG); //SARMAG = 8
+		printf("buf = %s\n", buf);
+		//Broken
+		//Why doesn't this work?! Newline character?
+		if(strcmp(buf, ARMAG) != 0){ //ARMAG = "!<arch>\n"
+			printf("Error, archive file is in the wrong format.\n");
+			exit(1);
+		}
+	}
+	return(0);
 }
 
 int append(char **argv, int argc){
@@ -30,8 +63,9 @@ int append(char **argv, int argc){
 	}
 	
 	//write !<arch> at beginning of the file if it's new
-	if(lseek(ar_fd, 0, SEEK_END) == lseek(in_fd, 0, SEEK_BEG)){ //file offset at beginning is same as at end, it's new
-		write(ar_fd, "!<arch>\n", 11);
+	if(lseek(ar_fd, 0, SEEK_SET) == lseek(ar_fd, 0, SEEK_END)){ 
+		//file offset at beginning is same as at end, file exists but is empty
+		write(ar_fd, ARMAG, SARMAG);
 	}
 	int i;
 	for(i = 3; i < argc; i++){
@@ -65,10 +99,31 @@ int appendfile(int ar_fd, char *filename){
 		exit(-1);
 	}
 	
+	//Get file stats
+	struct stat sb; //Status buffer
+	//fstat() returns information about a file referred to by an open file descriptor.
+	fstat(ar_fd, &sb);
+	
+	/*	
+	//printf("uid = %ld\n", (long) sb.st_uid); //This works
+	struct ar_hdr fileheader;
+	strcpy(fileheader.ar_name, strcat(filename, "/"));
+	//strcpy(fileheader.ar_date, itoa(ctime(sb.st_mtime))); //File modification time. Is this what he wants?
+	strcpy(fileheader.ar_uid, atoi(sb.st_uid));
+	fileheader.ar_gid  = (char) sb.st_gid;
+	fileheader.ar_mode = (char) sb.st_mode; //But this needs to be in ASCII octal
+	fileheader.ar_size = (char) sb.st_size; //Gives bytes, needs to be in decimal
+	fileheader.ar_fmag = ARFMAG;
+	// End get file stats
+	*/
+
+
 	file_size = lseek(in_fd, 0, SEEK_END); //Get the file size using the last byte of the file
 	copied = 0;
 	lseek(in_fd, 0, SEEK_SET);
-	
+	write(ar_fd, filename, strlen(filename)); //Write the filename
+	write(ar_fd, "/", 1);
+	write(ar_fd, ARFMAG, 2); //ARFMAG = "`\n"
 	while(copied < file_size){
 		num_read = read(in_fd, buf, BLOCKSIZE);
 		num_written = write(ar_fd, buf, BLOCKSIZE);
@@ -83,15 +138,13 @@ int appendfile(int ar_fd, char *filename){
 
 		lseek(in_fd, 0, SEEK_CUR); //Changed this to move forward
 	}
-	write(ar_fd, "extraneous\n", 11);
 	close(in_fd);	
 	return 0;
-	
 }
 
 
 int extract(char **argv, int argc){
-	//printf("Extracting from archive: %s\n", filename);
+	checkformat(argv[2]);
 	if(argc < 4){
 		printf("Please name files to extract\n");
 		help();
@@ -111,6 +164,22 @@ int extractfile(char *filename){
 	return(0);
 }
 
+int printconcise(char **argv, int argc){
+	return(0);
+}
+
+int printverbose(char **argv, int argc){
+	return(0);
+}
+
+int deletefiles(char **argv, int argc){
+	return(0);
+}
+
+int appendcurrdirr(char **argv){
+	return(0);
+}
+
 int main(int argc, char* argv[]){
 	//Order of arguments:
 	//myar key afile name ...
@@ -125,15 +194,17 @@ int main(int argc, char* argv[]){
 		append(argv, argc);
 	} else if(!strcmp(c,"-x")){ //extract named files
 		extract(argv, argc);	
-	} else if(!strcmp(c,"-v")){ //print a concise table of contents of the archive
-                printf("-v\n");
-        } else if(!strcmp(c,"-d")){ //print a verbose table of contents of the archive
-                printf("-d\n");
-        } else if(!strcmp(c,"-A")){ //delete named files from archive
-                printf("-A\n");
-        } else if(!strcmp(c,"-w")){ //quickly append all ``regular'' files in the current directory. (except the archive itself)
-                printf("-w\n");
-        } else if(!strcmp(c,"-h")){ //Extra credit: for a given timeout, add all modified files to the archive. (except the archive itself)
+	} else if(!strcmp(c,"-t")){ //print a concise table of contents of the archive
+                printconcise(argv, argc);
+        } else if(!strcmp(c,"-v")){ //print a verbose table of contents of the archive
+                printverbose(argv, argc);
+        } else if(!strcmp(c,"-d")){ //delete named files from archive
+                deletefiles(argv, argc);
+        } else if(!strcmp(c,"-A")){ //quickly append all ``regular'' files in the current directory. (except the archive itself)
+                appendcurrdirr(argv);
+	} else if(!strcmp(c,"-w")){  //Extra credit: for a given timeout, add all modified files to the archive. (except the archive itself)
+		return(0);
+        } else if(!strcmp(c,"-h")){ //Display usage
                 help();
         }  else {
 		help();
