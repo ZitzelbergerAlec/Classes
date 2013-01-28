@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
@@ -55,11 +56,9 @@ int checkformat(char *filename){
 		}
 		exit(1);
 	} else {
-		//File opened but...
-		//Check if it's in the right format
-		//Spefically, that it starts with !<arch>
+		//File opened but...check if it's in the right format
 		char buf[SARMAG]; //variable to hold "!<arch>"
-		//read(fd, buf, SARMAG); //SARMAG = 8
+		read(fd, buf, SARMAG); //SARMAG = 8
 		//To do: Broken
 		//Why doesn't this work?! Newline character?
 		/*
@@ -71,6 +70,20 @@ int checkformat(char *filename){
 	}
 	close(fd);
 	return(0);
+}
+
+struct ar_hdr *get_nextheader(int fd){
+	//Assuming that we're starting at the beginning of a line containing a 
+	//header
+	struct ar_hdr *phdr = (struct ar_hdr *) malloc(sizeof(struct ar_hdr));
+	read(fd, phdr->ar_name, 16);	
+	read(fd, phdr->ar_date, 12);	
+	read(fd, phdr->ar_uid, 6);	
+	read(fd, phdr->ar_gid, 6);	
+	read(fd, phdr->ar_mode, 8);	
+	read(fd, phdr->ar_size, 10);	
+	read(fd, phdr->ar_fmag, 2);	
+	return phdr;
 }
 
 int append(char **argv, int argc){
@@ -92,12 +105,12 @@ int append(char **argv, int argc){
 	
 	//write !<arch> at beginning of the file if it's new
 	if(lseek(ar_fd, 0, SEEK_SET) == lseek(ar_fd, 0, SEEK_END)){ 
-		//file offset at beginning is same as at end, file exists but is empty
+		//file offset at beg is same as at end, file exists but is empty
 		write(ar_fd, ARMAG, SARMAG);
 	}
 	
 	int i;	
-	for(i = 3; i < argc; i++){ //To do: This only works for the first case. Why?
+	for(i = 3; i < argc; i++){
 		appendfile(ar_fd, argv[i]);
 	}
 	
@@ -197,37 +210,12 @@ int printconcise(char **argv, int argc){
 	checkformat(argv[2]);
 	//The lines with archive headers are 60 characters long
 	//The 59th and 60th character is ARFMAG
-	char buf[BLOCKSIZE];
-	int ar_fd; //file descriptor for archive
-	ar_fd = open(argv[2], O_RDONLY);	
-	
-	int num_read; 
-	off_t file_size;
-	file_size = lseek(ar_fd, 0, SEEK_END); //Get the file size using the last byte of the file
-	char comparestring[2];
-	
-
-	//To do: need to read file line by line, but only the first 60 characters
-	
-	int numlines;
-	num_read = 0;
-	numlines = 0;
-
-	//to do: find a way to determine number of lines written.
-
-	while(num_read < file_size){
-		/*
-		num_read = read(in_fd, buf, 60);
-		snprintf(comparestring, 2, "%c%c", buf[58], buf[59]);
-		if(strcmp(comparestring, ARFMAG)){
-		*/
-		read(ar_fd, buf, BLOCKSIZE);
-		num_read++;
-		printf("Buf = %s\n", buf);
-		if(strcmp(buf, "\n") == 0){
-			numlines++;
-		}
-	}
+	int ar_fd;
+	ar_fd = open(argv[2], O_RDONLY);
+	lseek(ar_fd, SARMAG, SEEK_SET); //move file offset to first header
+	struct ar_hdr *header;
+	header = get_nextheader(ar_fd);
+	printf("header name = %s\n", header->ar_name);
 	return(0);
 }
 
