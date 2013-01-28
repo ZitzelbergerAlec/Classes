@@ -18,14 +18,31 @@ int append(char **argv, int argc);
 int appendfile(int ar_fd, char *filename);
 int extract(char **argv, int argc);
 int extractfile(char *filename);
+int printconcise(char **argv, int argc);
+int printverbose(char **argv, int argc);
+int deletefiles(char **argv, int argc);
+int appendcurrdirr(char **argv);
+int validatename(char *filename);
 
 void help(){ //prints usage of program
         printf("Usage: myar -key archive filename ...\n");
 }
 
+int validatename(char *filename){
+	//Make sure length of filename is < 16 chars. Program only supports that 
+	//in struct in header
+	if(strlen(filename) > 16){
+		printf("Error: filename must be less than 16 characters long");
+	        return(-1);
+	}
+	return(0);
+}
+
+
 //If file does not exist or is in the wrong format, displays error message
 int checkformat(char *filename){ 
 	printf("Checking format of %s\n", filename);
+	
 	//Check if the file exists
 	//ENOENT is the error returned if file doesn't exist and O_CREAT
 	//was not specified
@@ -42,24 +59,19 @@ int checkformat(char *filename){
 		//Check if it's in the right format
 		//Spefically, that it starts with !<arch>
 		char buf[SARMAG]; //variable to hold "!<arch>"
-		read(fd, buf, SARMAG); //SARMAG = 8
-		printf("buf = %s\n", buf);
-		//Broken
+		//read(fd, buf, SARMAG); //SARMAG = 8
+		//To do: Broken
 		//Why doesn't this work?! Newline character?
+		/*
 		if(strcmp(buf, ARMAG) != 0){ //ARMAG = "!<arch>\n"
 			printf("Error, archive file is in the wrong format.\n");
 			exit(1);
 		}
+		*/
 	}
+	close(fd);
 	return(0);
 }
-
-//Debug for append() function
-int dummyfunction(int blah, char *filename){
-         printf("Appending: %s\n", filename);
-         return 0;
-}
-//end debug
 
 int append(char **argv, int argc){
 	//Create the archive file if it doesn't exist
@@ -83,18 +95,9 @@ int append(char **argv, int argc){
 		//file offset at beginning is same as at end, file exists but is empty
 		write(ar_fd, ARMAG, SARMAG);
 	}
-	int i;
-	//debug 
-	printf("argv[1] = %s\n", argv[1]);
-	printf("argv[2] = %s\n", argv[2]);
-	printf("argv[3] = %s\n", argv[3]);
-	printf("argv[4] = %s\n", argv[4]);
-	printf("argc = %d\n", argc);
-	//debug
+	
+	int i;	
 	for(i = 3; i < argc; i++){ //To do: This only works for the first case. Why?
-		printf("i = %d\n", i);
-	 	printf("in loop: argv[4] = %s\n", argv[4]);	
-		//dummyfunction(ar_fd, argv[i]);
 		appendfile(ar_fd, argv[i]);
 	}
 	
@@ -107,8 +110,8 @@ int append(char **argv, int argc){
 
 
 int appendfile(int ar_fd, char *filename){
-	//The following code was borrowed from an in-class example
-	//but the loop was written backwards where indicated to work properly
+	if(validatename(filename) == -1) //invalid name
+		return(-1);
 	int in_fd; //File descriptor for file to append
 	char buf[BLOCKSIZE];
 	printf("Appending: %s\n", filename);
@@ -132,15 +135,12 @@ int appendfile(int ar_fd, char *filename){
 		
 	struct ar_hdr fileheader;
 	//To do: initialize all values in fileheader arrays to spaces
-	
-	//For some reason, the following strcpy line is destroying argv. Fix this! 
-	//strcpy(fileheader.ar_name, strcat(filename, "/"));
-	//Alternative:
-	snprintf(fileheader.ar_name, 16, "%s/", filename);
-	snprintf(fileheader.ar_date, 12, "%ld", sb.st_mtime); //Works, but is in right format?
-	snprintf(fileheader.ar_uid, 6, "%ld", (long) sb.st_uid);
-	snprintf(fileheader.ar_gid, 6, "%ld", (long) sb.st_gid);	
-	snprintf(fileheader.ar_size, 10, "%lld", (long long) sb.st_size); //Gives bytes, needs to be in decimal
+  	
+	snprintf(fileheader.ar_name, 16, "%-16s/", filename); //%-16s pads the string to the right with 16 spaces
+	snprintf(fileheader.ar_date, 12, "% -12ld", sb.st_mtime); //Works, but is in right format?
+	snprintf(fileheader.ar_uid, 6, "% -6ld", (long) sb.st_uid); //Pads a long with spaces
+	snprintf(fileheader.ar_gid, 6, "% -6ld", (long) sb.st_gid);	
+	snprintf(fileheader.ar_size, 10, "% -10lld", (long long) sb.st_size); //Gives bytes, needs to be in decimal
 	strcpy(fileheader.ar_fmag, ARFMAG);
 	// End get file stats
 
@@ -162,9 +162,7 @@ int appendfile(int ar_fd, char *filename){
 			//unlink(output);
 			exit(-1);
 		}
-
 		copied += num_written;
-
 		lseek(in_fd, 0, SEEK_CUR); //Changed this to move forward
 	}
 	close(in_fd);	
@@ -189,11 +187,47 @@ int extract(char **argv, int argc){
 }
 
 int extractfile(char *filename){
+	if(validatename(filename) == -1) //invalid name
+                 return(-1);
 	printf("Extracting: %s\n", filename);
 	return(0);
 }
 
 int printconcise(char **argv, int argc){
+	checkformat(argv[2]);
+	//The lines with archive headers are 60 characters long
+	//The 59th and 60th character is ARFMAG
+	char buf[BLOCKSIZE];
+	int ar_fd; //file descriptor for archive
+	ar_fd = open(argv[2], O_RDONLY);	
+	
+	int num_read; 
+	off_t file_size;
+	file_size = lseek(ar_fd, 0, SEEK_END); //Get the file size using the last byte of the file
+	char comparestring[2];
+	
+
+	//To do: need to read file line by line, but only the first 60 characters
+	
+	int numlines;
+	num_read = 0;
+	numlines = 0;
+
+	//to do: find a way to determine number of lines written.
+
+	while(num_read < file_size){
+		/*
+		num_read = read(in_fd, buf, 60);
+		snprintf(comparestring, 2, "%c%c", buf[58], buf[59]);
+		if(strcmp(comparestring, ARFMAG)){
+		*/
+		read(ar_fd, buf, BLOCKSIZE);
+		num_read++;
+		printf("Buf = %s\n", buf);
+		if(strcmp(buf, "\n") == 0){
+			numlines++;
+		}
+	}
 	return(0);
 }
 
@@ -201,7 +235,13 @@ int printverbose(char **argv, int argc){
 	return(0);
 }
 
-int deletefiles(char **argv, int argc){
+int delete(char **argv, int argc){
+	return(0);
+}
+
+int deletefile(int ar_fd, char *filename){
+	if(validatename(filename) == -1) //invalid name
+                 return(-1);
 	return(0);
 }
 
@@ -213,8 +253,7 @@ int main(int argc, char* argv[]){
 	//Order of arguments:
 	//myar key afile name ...
 	// where key is "-q" etc
-	if(argc < 2){
-		help();
+	if(argc < 3){	
 		return 0;
 	}
 	char *c;
@@ -228,7 +267,7 @@ int main(int argc, char* argv[]){
         } else if(!strcmp(c,"-v")){ //print a verbose table of contents of the archive
                 printverbose(argv, argc);
         } else if(!strcmp(c,"-d")){ //delete named files from archive
-                deletefiles(argv, argc);
+                delete(argv, argc);
         } else if(!strcmp(c,"-A")){ //quickly append all ``regular'' files in the current directory. (except the archive itself)
                 appendcurrdirr(argv);
 	} else if(!strcmp(c,"-w")){  //Extra credit: for a given timeout, add all modified files to the archive. (except the archive itself)
