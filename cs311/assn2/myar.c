@@ -196,17 +196,18 @@ int appendfile(int ar_fd, char *filename){
 	}
 	//Get file stats
 	struct stat sb; //Status buffer
-	//fstat() returns information about a file referred to by an open file descriptor.
-	fstat(ar_fd, &sb);
-		
+	fstat(ar_fd, &sb);	
 	struct ar_hdr fileheader;
-	//To do: initialize all values in fileheader arrays to spaces
   	
-	snprintf(fileheader.ar_name, 16, "%-16s/", filename); //%-16s pads the string to the right with 16 spaces
+	//To do: the following line isn't appending "/" to filename
+	char str[16];
+	strcpy(str, filename);
+	strcat(str, "/");	
+	snprintf(fileheader.ar_name, 16, "%-16s", str); //%-16s pads the string to the right with 16 spaces
 	snprintf(fileheader.ar_date, 12, "% -12ld", sb.st_mtime); //Works, but is in right format?
-	snprintf(fileheader.ar_uid, 6, "% -6ld", (long) sb.st_uid); //Pads a long with spaces
-	snprintf(fileheader.ar_gid, 6, "% -6ld", (long) sb.st_gid);	
-	snprintf(fileheader.ar_size, 10, "% -10lld", (long long) sb.st_size); //Gives bytes, needs to be in decimal
+	snprintf(fileheader.ar_uid, 7, "% -5ld", (long) sb.st_uid); //Pads a long with spaces
+	snprintf(fileheader.ar_gid, 7, "% -5ld", (long) sb.st_gid);	
+	snprintf(fileheader.ar_size, 11, "% -10lld", (long long) sb.st_size); //Gives bytes, needs to be in decimal
 	strcpy(fileheader.ar_fmag, ARFMAG);
 	// End get file stats
 
