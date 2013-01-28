@@ -25,6 +25,21 @@ int deletefiles(char **argv, int argc);
 int appendcurrdirr(char **argv);
 int validatename(char *filename);
 
+
+//borrowed from http://stackoverflow.com/questions/122616/how-do-i-trim-leading-trailing-whitespace-in-a-standard-way
+void trimwhitespace(char *str){
+	char *end;
+	// Trim leading space
+   	while(*str == ' ') str++; 
+	
+	// Trim trailing space
+        end = str + strlen(str) - 1;
+        while(end > str && (*end == ' ')) end--;
+  
+	// Write new null terminator
+	*(end+1) = 0;
+}
+
 void help(){ //prints usage of program
         printf("Usage: myar -key archive filename ...\n");
 }
@@ -32,13 +47,12 @@ void help(){ //prints usage of program
 int validatename(char *filename){
 	//Make sure length of filename is < 16 chars. Program only supports that 
 	//in struct in header
-	if(strlen(filename) > 16){
-		printf("Error: filename must be less than 16 characters long");
+	if(strlen(filename) > 15){
+		printf("Error: filename must be less than 15 characters long");
 	        return(-1);
 	}
 	return(0);
 }
-
 
 //If file does not exist or is in the wrong format, displays error message
 int checkformat(char *filename){ 
@@ -76,6 +90,10 @@ struct ar_hdr *get_nextheader(int fd){
 	//Assuming that we're starting at the beginning of a line containing a 
 	//header
 	struct ar_hdr *phdr = (struct ar_hdr *) malloc(sizeof(struct ar_hdr));
+	
+	//to do:
+	//Vinay says can probably just do this like read(fd, ptr, sizeof(struct ar_hdr));
+	//try this
 	read(fd, phdr->ar_name, 16);	
 	read(fd, phdr->ar_date, 12);	
 	read(fd, phdr->ar_uid, 6);	
@@ -83,7 +101,43 @@ struct ar_hdr *get_nextheader(int fd){
 	read(fd, phdr->ar_mode, 8);	
 	read(fd, phdr->ar_size, 10);	
 	read(fd, phdr->ar_fmag, 2);	
-	return phdr;
+	//Set NULL terminator character on all the strings
+	int i;
+	for(i=0; i<16; i++){
+		if(phdr->ar_name[i] == '/')
+			break;
+	}
+	phdr->ar_name[i]  = '\0';
+	phdr->ar_date[11] = '\0';
+	phdr->ar_uid[5]   = '\0';
+	phdr->ar_gid[5]   = '\0';
+	phdr->ar_mode[7]  = '\0';
+	phdr->ar_size[9]  = '\0';
+	
+	//Trim whitespace
+	trimwhitespace(phdr->ar_date);	
+	trimwhitespace(phdr->ar_uid);
+	trimwhitespace(phdr->ar_gid);
+	trimwhitespace(phdr->ar_mode);	
+	return(phdr);
+}
+
+//returns 1 if there is a next header, 0 if not
+//For iterating through headers in conjunction with get_nextheader
+//Offset is the offset of the next header, as determined by the current header's
+//filesize
+//To do: untested function. Test it!.
+int is_nextheader(int fd, int offset){
+	//preserve current file offset
+	int cur_pos = lseek(fd, 0L, SEEK_CUR);
+	int file_size = lseek(fd, 0, SEEK_END);
+	int returnval = 1; //default return value
+	if(cur_pos + offset >= (file_size - 1)){ //to do: Something's wrong here
+		returnval = 0;
+	}
+	//return to previous file offset
+	lseek(fd, cur_pos, SEEK_SET);
+	return returnval;
 }
 
 int append(char **argv, int argc){
@@ -120,7 +174,6 @@ int append(char **argv, int argc){
 	}
 	return(0);
 }
-
 
 int appendfile(int ar_fd, char *filename){
 	if(validatename(filename) == -1) //invalid name
@@ -182,7 +235,6 @@ int appendfile(int ar_fd, char *filename){
 	return 0;
 }
 
-
 int extract(char **argv, int argc){
 	checkformat(argv[2]);
 	if(argc < 4){
@@ -208,18 +260,57 @@ int extractfile(char *filename){
 
 int printconcise(char **argv, int argc){
 	checkformat(argv[2]);
-	//The lines with archive headers are 60 characters long
-	//The 59th and 60th character is ARFMAG
 	int ar_fd;
 	ar_fd = open(argv[2], O_RDONLY);
 	lseek(ar_fd, SARMAG, SEEK_SET); //move file offset to first header
 	struct ar_hdr *header;
+	int offset;
+	//get the first header and offset
 	header = get_nextheader(ar_fd);
-	printf("header name = %s\n", header->ar_name);
+	printf("Files in archive:\n");
+	printf("%s\n", header->ar_name);
+	offset = atoi(header->ar_size);
+	while(1){
+		if(is_nextheader(ar_fd, offset)){
+			lseek(ar_fd, atoi(header->ar_size), SEEK_CUR);
+			header = get_nextheader(ar_fd);
+			printf("%s\n", header->ar_name);
+			offset = atoi(header->ar_size);
+		} else {
+			break;
+		}	
+	}
+	close(ar_fd);
 	return(0);
 }
 
 int printverbose(char **argv, int argc){
+	checkformat(argv[2]);
+	int ar_fd;
+	ar_fd = open(argv[2], O_RDONLY);
+	lseek(ar_fd, SARMAG, SEEK_SET); //move file offset to first header
+	struct ar_hdr *header;
+	int offset;
+         //get the first header and offset
+        header = get_nextheader(ar_fd);
+        printf("Files in archive:\n");
+        printf("%s, %s, %s, %s, %s, %s\n", header->ar_name,
+        header->ar_date, header->ar_uid, header->ar_gid,
+        header->ar_mode, header->ar_size);
+	offset = atoi(header->ar_size);
+        while(1){
+                if(is_nextheader(ar_fd, offset)){ 
+                       	lseek(ar_fd, atoi(header->ar_size), SEEK_CUR);
+                       	header = get_nextheader(ar_fd);
+                       	printf("%s, %s, %s, %s, %s, %s\n", header->ar_name, 
+			header->ar_date, header->ar_uid, header->ar_gid, 
+			header->ar_mode, header->ar_size);
+                        offset = atoi(header->ar_size);
+                } else {
+                       	break;
+                }       
+       	}       
+        close(ar_fd);	
 	return(0);
 }
 
@@ -264,7 +355,6 @@ int main(int argc, char* argv[]){
                 help();
         }  else {
 		help();
-	}
-	
+	}	
 	return(0);
 }
