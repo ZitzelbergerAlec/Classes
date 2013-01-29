@@ -18,7 +18,7 @@ int checkformat(char *filename);
 int append(char **argv, int argc);
 int appendfile(int ar_fd, char *filename);
 int extract(char **argv, int argc);
-int extractfile(char *filename);
+int extractfile(int ar_fd, char *filename);
 int printconcise(char **argv, int argc);
 int printverbose(char **argv, int argc);
 int deletefiles(char **argv, int argc);
@@ -56,31 +56,22 @@ int validatename(char *filename){
 
 //If file does not exist or is in the wrong format, displays error message
 int checkformat(char *filename){ 
-	printf("Checking format of %s\n", filename);
-	
-	//Check if the file exists
-	//ENOENT is the error returned if file doesn't exist and O_CREAT
-	//was not specified
 	int fd;
 	fd = open(filename, O_RDONLY);
 	if(fd == -1){
 		printf("There was an error\n");
-		if(errno == ENOENT){ //File definitely doesn't exist
+		if(errno == ENOENT){ //File doesn't exist
 			printf("File does not exist!\n");	
 		}
 		exit(1);
-	} else {
-		//File opened but...check if it's in the right format
-		char buf[SARMAG]; //variable to hold "!<arch>"
+	} else { //File opened but check if it's in the right format
+		char buf[SARMAG+1]; //variable to hold "!<arch>"
 		read(fd, buf, SARMAG); //SARMAG = 8
-		//To do: Broken
-		//Why doesn't this work?! Newline character?
-		/*
+		buf[SARMAG] = '\0';
 		if(strcmp(buf, ARMAG) != 0){ //ARMAG = "!<arch>\n"
 			printf("Error, archive file is in the wrong format.\n");
 			exit(1);
 		}
-		*/
 	}
 	close(fd);
 	return(0);
@@ -90,17 +81,7 @@ struct ar_hdr *get_nextheader(int fd){
 	//Assuming that we're starting at the beginning of a line containing a 
 	//header
 	struct ar_hdr *phdr = (struct ar_hdr *) malloc(sizeof(struct ar_hdr));
-	
-	//to do:
-	//Vinay says can probably just do this like read(fd, ptr, sizeof(struct ar_hdr));
-	//try this
-	read(fd, phdr->ar_name, 16);	
-	read(fd, phdr->ar_date, 12);	
-	read(fd, phdr->ar_uid, 6);	
-	read(fd, phdr->ar_gid, 6);	
-	read(fd, phdr->ar_mode, 8);	
-	read(fd, phdr->ar_size, 10);	
-	read(fd, phdr->ar_fmag, 2);	
+	read(fd, phdr, sizeof(struct ar_hdr));
 	//Set NULL terminator character on all the strings
 	int i;
 	for(i=0; i<16; i++){
@@ -122,7 +103,7 @@ struct ar_hdr *get_nextheader(int fd){
 	return(phdr);
 }
 
-//returns 1 if there is a next header, 0 if not
+//Returns 1 if there is a next header, 0 if not
 //For iterating through headers in conjunction with get_nextheader
 //Offset is the offset of the next header, as determined by the current header's
 //filesize
@@ -142,11 +123,7 @@ int is_nextheader(int fd, int offset){
 
 int append(char **argv, int argc){
 	//Create the archive file if it doesn't exist
-	//argv[2] is the archive file to use
 	int openFlags, ar_fd;
-	// O_CREAT: Create file if it doesn’t already exist.
-	// O_WRONLY: Write only.
-	// O_APPEND: Writes only to the end of the file.
 	openFlags = O_CREAT | O_WRONLY | O_APPEND;
 	
 	//Use permissions 666
@@ -243,19 +220,45 @@ int extract(char **argv, int argc){
 		help();
 		return(-1); //indicating error
 	}
-	printf("Extracting...\n");
-	//Archive file to use is argv[2]	
+	int ar_fd; //file descriptor for archive
 	int i;
 	for(i=3; i < argc; i++){
-		extractfile(argv[i]);
+		extractfile(ar_fd, argv[i]);
 	}
+	close(ar_fd);
 	return(0);
 }
 
-int extractfile(char *filename){
+int extractfile(int ar_fd, char *filename){
+	//To do: this isn't working. Ininite loop somewhere.
 	if(validatename(filename) == -1) //invalid name
                  return(-1);
 	printf("Extracting: %s\n", filename);
+	
+	struct ar_hdr *header;
+	int offset;
+	//get the first header and offset
+	header = get_nextheader(ar_fd);
+	printf("Header = %s\n", header->ar_name);
+	if(!strcmp(header->ar_name,filename)){
+		printf("Found %s\n", filename);
+		return(0);
+	}	
+	offset = atoi(header->ar_size);
+	while(1){
+		if(is_nextheader(ar_fd, offset)){	
+			lseek(ar_fd, atoi(header->ar_size), SEEK_CUR);
+			header = get_nextheader(ar_fd);
+			if(!strcmp(header->ar_name,filename)){
+				printf("Found %s\n", filename);
+				return(0);
+			}
+			offset = atoi(header->ar_size);
+		} else {
+			break;
+		}
+	}
+	printf("Sorry, did not find %s\n", filename);
 	return(0);
 }
 
