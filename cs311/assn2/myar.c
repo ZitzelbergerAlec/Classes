@@ -25,7 +25,6 @@ int deletefiles(char **argv, int argc);
 int appendcurrdirr(char **argv);
 int validatename(char *filename);
 
-
 //borrowed from http://stackoverflow.com/questions/122616/how-do-i-trim-leading-trailing-whitespace-in-a-standard-way
 void trimwhitespace(char *str){
 	char *end;
@@ -232,7 +231,6 @@ int extract(char **argv, int argc){
 }
 
 int extractfile(int ar_fd, char *filename){
-	//To do: this isn't working. Ininite loop somewhere.
 	if(validatename(filename) == -1) //invalid name
                  return(-1);
 	printf("Extracting: %s\n", filename);
@@ -321,13 +319,59 @@ int printverbose(char **argv, int argc){
 	return(0);
 }
 
-int delete(char **argv, int argc){
+//This function takes a function as a parameter. Used for deleting, extracting
+//files, etc.
+int findfile(int ar_fd, char *filename, int (*doSomething)(struct ar_hdr *)){
+	if(validatename(filename) == -1) //invalid name
+                 return(-1);
+	int offset;	
+	struct ar_hdr *header;
+	//get the first header and offset
+	lseek(ar_fd, SARMAG, SEEK_SET); //move file offset to first header
+	header = get_nextheader(ar_fd);
+	printf("Header = %s\n", header->ar_name);
+	if(!strcmp(header->ar_name,filename)){
+		printf("Found %s\n", filename);
+		return(0);
+	}	
+	offset = atoi(header->ar_size);
+	while(1){
+		if(is_nextheader(ar_fd, offset)){	
+			lseek(ar_fd, atoi(header->ar_size), SEEK_CUR);
+			header = get_nextheader(ar_fd);
+			if(!strcmp(header->ar_name,filename)){
+				doSomething(header);
+				return(0);
+			}
+			offset = atoi(header->ar_size);
+		} else {
+			break;
+		}
+	}
+	printf("Sorry, did not find %s\n", filename);
 	return(0);
 }
 
-int deletefile(int ar_fd, char *filename){
-	if(validatename(filename) == -1) //invalid name
-                 return(-1);
+int deletefile(struct ar_hdr *header){
+	printf("In deletefile. Header name = %s\n", header->ar_name);	
+	return(0);
+}
+
+int delete(char **argv, int argc){
+	//To do: Right now is same as extract().
+	checkformat(argv[2]);
+	if(argc < 4){
+		printf("Please name files to extract\n");
+		help();
+		return(-1); //indicating error
+	}
+	int ar_fd; //file descriptor for archive
+	int i;
+	ar_fd = open(argv[2], O_RDONLY);
+	for(i=3; i < argc; i++){
+		findfile(ar_fd, argv[i], &deletefile);
+	}
+	close(ar_fd);
 	return(0);
 }
 
@@ -343,6 +387,7 @@ int main(int argc, char* argv[]){
 	//myar key afile name ...
 	// where key is "-q" etc
 	if(argc < 3){	
+		help();
 		return 0;
 	}
 	char *c;
@@ -351,15 +396,21 @@ int main(int argc, char* argv[]){
 		append(argv, argc);
 	} else if(!strcmp(c,"-x")){ //extract named files
 		extract(argv, argc);	
-	} else if(!strcmp(c,"-t")){ //print a concise table of contents of the archive
+	} else if(!strcmp(c,"-t")){ 
+		//print a concise table of contents of the archive
                 printconcise(argv, argc);
-        } else if(!strcmp(c,"-v")){ //print a verbose table of contents of the archive
+        } else if(!strcmp(c,"-v")){ 
+		//print a verbose table of contents of the archive
                 printverbose(argv, argc);
         } else if(!strcmp(c,"-d")){ //delete named files from archive
                 delete(argv, argc);
-        } else if(!strcmp(c,"-A")){ //quickly append all ``regular'' files in the current directory. (except the archive itself)
+        } else if(!strcmp(c,"-A")){ 
+		//quickly append all ``regular'' files in the current directory.
+		//(except the archive itself)
                 appendcurrdirr(argv);
-	} else if(!strcmp(c,"-w")){  //Extra credit: for a given timeout, add all modified files to the archive. (except the archive itself)
+	} else if(!strcmp(c,"-w")){  
+		//Extra credit: for a given timeout, add all modified 
+		//files to the archive. (except the archive itself)
 		return(0);
         } else if(!strcmp(c,"-h")){ //Display usage
                 help();
