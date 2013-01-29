@@ -82,6 +82,7 @@ struct ar_hdr *get_nextheader(int fd){
 	//header
 	struct ar_hdr *phdr = (struct ar_hdr *) malloc(sizeof(struct ar_hdr));
 	read(fd, phdr, sizeof(struct ar_hdr));
+	
 	//Set NULL terminator character on all the strings
 	int i;
 	for(i=0; i<16; i++){
@@ -222,6 +223,7 @@ int extract(char **argv, int argc){
 	}
 	int ar_fd; //file descriptor for archive
 	int i;
+	ar_fd = open(argv[2], O_RDONLY);
 	for(i=3; i < argc; i++){
 		extractfile(ar_fd, argv[i]);
 	}
@@ -238,6 +240,7 @@ int extractfile(int ar_fd, char *filename){
 	struct ar_hdr *header;
 	int offset;
 	//get the first header and offset
+	lseek(ar_fd, SARMAG, SEEK_SET); //move file offset to first header
 	header = get_nextheader(ar_fd);
 	printf("Header = %s\n", header->ar_name);
 	if(!strcmp(header->ar_name,filename)){
@@ -332,6 +335,9 @@ int appendcurrdirr(char **argv){
 	return(0);
 }
 
+//To do: Does this need to check for multiple flags?
+//To do: to make functions more robust, have them take in an archive filename 
+//instead of argv.
 int main(int argc, char* argv[]){
 	//Order of arguments:
 	//myar key afile name ...
