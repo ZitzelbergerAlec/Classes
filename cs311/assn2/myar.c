@@ -263,61 +263,56 @@ int extractfile(int ar_fd, char *filename){
 	return(0);
 }
 
-int printconcise(char **argv, int argc){
-	checkformat(argv[2]);
-	int ar_fd;
-	ar_fd = open(argv[2], O_RDONLY);
+
+void printheaders(int ar_fd, void (*printfunction)(struct ar_hdr *)){
 	lseek(ar_fd, SARMAG, SEEK_SET); //move file offset to first header
 	struct ar_hdr *header;
 	int offset;
 	//get the first header and offset
 	header = get_nextheader(ar_fd);
 	printf("Files in archive:\n");
-	printf("%s\n", header->ar_name);
+	printfunction(header);
 	offset = atoi(header->ar_size);
 	while(1){
 		if(is_nextheader(ar_fd, offset)){
 			lseek(ar_fd, atoi(header->ar_size), SEEK_CUR);
 			header = get_nextheader(ar_fd);
-			printf("%s\n", header->ar_name);
+			printfunction(header);
 			offset = atoi(header->ar_size);
 		} else {
 			break;
 		}	
 	}
+}
+
+void printconciseheader(struct ar_hdr *header){
+			printf("%s\n", header->ar_name);
+}
+
+int printconcise(char **argv, int argc){
+	checkformat(argv[2]);
+	int ar_fd;
+	ar_fd = open(argv[2], O_RDONLY);	
+	printheaders(ar_fd, &printconciseheader);
 	close(ar_fd);
 	return(0);
+}
+
+void printverboseheader(struct ar_hdr *header){
+                       	printf("%s, %s, %s, %s, %s, %s\n", header->ar_name, 
+			header->ar_date, header->ar_uid, header->ar_gid, 
+			header->ar_mode, header->ar_size);
 }
 
 int printverbose(char **argv, int argc){
 	checkformat(argv[2]);
 	int ar_fd;
 	ar_fd = open(argv[2], O_RDONLY);
-	lseek(ar_fd, SARMAG, SEEK_SET); //move file offset to first header
-	struct ar_hdr *header;
-	int offset;
-         //get the first header and offset
-        header = get_nextheader(ar_fd);
-        printf("Files in archive:\n");
-        printf("%s, %s, %s, %s, %s, %s\n", header->ar_name,
-        header->ar_date, header->ar_uid, header->ar_gid,
-        header->ar_mode, header->ar_size);
-	offset = atoi(header->ar_size);
-        while(1){
-                if(is_nextheader(ar_fd, offset)){ 
-                       	lseek(ar_fd, atoi(header->ar_size), SEEK_CUR);
-                       	header = get_nextheader(ar_fd);
-                       	printf("%s, %s, %s, %s, %s, %s\n", header->ar_name, 
-			header->ar_date, header->ar_uid, header->ar_gid, 
-			header->ar_mode, header->ar_size);
-                        offset = atoi(header->ar_size);
-                } else {
-                       	break;
-                }       
-       	}       
-        close(ar_fd);	
+        printheaders(ar_fd, &printverboseheader);
+	close(ar_fd);	
 	return(0);
 }
+
 
 //This function takes a function as a parameter. Used for deleting, extracting
 //files, etc.
