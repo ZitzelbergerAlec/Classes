@@ -363,72 +363,65 @@ int deletefile(int ar_fd, struct ar_hdr *header){
 }
 
 int delete(char **argv, int argc){
-	/*
 	//To do: finish this function. Same as findfile now.
 	//The way this will work:
 	//Open a temporary archive file for writing.
 	//Get a header, loop through argv. If it finds a match, get the next
 	//header. If not, write the file to the new archive. Then get next
 	//header. 
-	int offset, temp_fd, openFlags;
+	int ar_fd, offset, temp_fd, openFlags, restorepos;
 	openFlags = O_CREAT | O_WRONLY;
 	temp_fd = open("temp_archive", openFlags, 0666);
-	struct ar_hdr *header;
 	
 	//prepare to copy
-	char buf[BLOCKSIZE];	
-	int num_read;
-	int num_written;
+	//char buf[BLOCKSIZE];	
+	//int num_read;
+	//int num_written;
 
-	off_t file_size;
-	off_t copied;
+	//off_t copied;	
 	
-	int offset, restorepos;
-
-	offset = 0;
-	
-	//Write header to new file
+	//Write ARMAG to new file
 	write(temp_fd, ARMAG, SARMAG);
+	ar_fd = open(argv[2], O_RDONLY);	
 	
 	//get first header
-	lseek(ar_fd, SARMAG, SEEK_SET); //move file offset to first header
-	restore_pos = lseek(ar_fd, 0L, SEEK_CUR); //Get restore position
+	lseek(ar_fd, SARMAG, SEEK_SET);
+	//restorepos = lseek(ar_fd, 0L, SEEK_CUR); //Get restore position
 	struct ar_hdr *header;
-	int offset;
+	
 	//get the first header and offset
 	header = get_nextheader(ar_fd);
+	int i;
 	for(i=3;i<argc;i++){ //loop through argv arguments. If find a match, skip writing header to temp file
 		if(strcmp(header->ar_name,argv[i])){
-			write(temp_fd, header, );
-
+			write(temp_fd, header->ar_name, 16);
 		}	
 	}
-	
-	while(offset < file_size){
-		restore_pos = lseek(ar_fd, 0L, SEEK_CUR);
-		num_read = read(in_fd, buf, BLOCKSIZE);
-		for(i=3;i<argc;i++){ //loop through argv arguments. If find a match, skip writing header to temp file
-			if(!strcmp(header->ar_name,argv[i])){
-				printf("Found %s\n", filename);
-			}	
-		}
-		num_written = write(ar_fd, buf, BLOCKSIZE);
-
-		if (num_read != num_written){
-			perror("Error writing file");
-			exit(-1);
+	int match = 0;
+	offset = atoi(header->ar_size);
+	while(1){
+		if(is_nextheader(ar_fd, offset)){
+			offset = atoi(header->ar_size);
+			lseek(ar_fd, offset, SEEK_CUR);
+			header = get_nextheader(ar_fd);
+			for(i=3;i<argc;i++){ //loop through argv arguments. If find a match, skip writing header to temp file
+				if(!strcmp(header->ar_name,argv[i])){ //if found a match, skip next step
+					match = 1; //found a match
+					break;
+				}
+			}
+			if(match){	
+				match = 0; //reset match
+				continue;
+			}
+			write(temp_fd, header->ar_name, 16);	
+		} else {
+			break;
 		}							
-		copied += num_written;
-		lseek(in_fd, 0, SEEK_CUR); //Changed this to move forward
 	}
-	
-
-	
 	close(temp_fd);
 	close(ar_fd);
-	*/
 	return(0);
-
 }
 
 int appendcurrdirr(char **argv){
