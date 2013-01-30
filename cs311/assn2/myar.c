@@ -173,19 +173,19 @@ int appendfile(int ar_fd, char *filename){
 		exit(-1);
 	}
 	//Get file stats
-	//To do: This isn't formatting shit correctly
+	//To do: This isn't formatting shit correctly. Puts a goddamn ^@ in front of everything.
 	struct stat sb; //Status buffer
-	fstat(ar_fd, &sb);	
+	fstat(in_fd, &sb);	
 	struct ar_hdr fileheader;	
 	char str[16];
 	strcpy(str, filename);
 	strcat(str, "/");	
 	snprintf(fileheader.ar_name, 16, "%-16s", str); //%-16s pads the string to the right with 16 spaces
-	snprintf(fileheader.ar_date, 12, "% -12ld", sb.st_mtime); //Works, but is in right format?
-	snprintf(fileheader.ar_uid, 7, "% -5ld", (long) sb.st_uid); //Pads a long with spaces
-	snprintf(fileheader.ar_gid, 7, "% -5ld", (long) sb.st_gid);	
-	snprintf(fileheader.ar_mode, 8, "% -6lo", (unsigned long) sb.st_mode);	
-	snprintf(fileheader.ar_size, 11, "% -10lld", (long long) sb.st_size); //Gives bytes, needs to be in decimal
+	snprintf(fileheader.ar_date, 12, "%-12ld", sb.st_mtime); //Works, but is in right format?
+	snprintf(fileheader.ar_uid,   7, "%-7ld", (long) sb.st_uid); //Pads a long with spaces
+	snprintf(fileheader.ar_gid,   7, "%-7ld", (long) sb.st_gid);	
+	snprintf(fileheader.ar_mode,  8, "%-7lo", (unsigned long) sb.st_mode);	
+	snprintf(fileheader.ar_size, 11, "%-11lld", (long long) sb.st_size); //Gives bytes, needs to be in decimal
 	strcpy(fileheader.ar_fmag, ARFMAG);
 	// End get file stats
 
@@ -194,11 +194,11 @@ int appendfile(int ar_fd, char *filename){
 	lseek(in_fd, 0, SEEK_SET);
 	write(ar_fd, fileheader.ar_name, 16); //Write the filename
 	write(ar_fd, fileheader.ar_date, 12); //Write the filename
-	write(ar_fd, fileheader.ar_uid, 6); //Write the filename
-	write(ar_fd, fileheader.ar_gid, 6); //Write the filename
-	write(ar_fd, fileheader.ar_mode, 8); //Write the filename
+	write(ar_fd, fileheader.ar_uid,   6); //Write the filename
+	write(ar_fd, fileheader.ar_gid,   6); //Write the filename
+	write(ar_fd, fileheader.ar_mode,  8); //Write the filename
 	write(ar_fd, fileheader.ar_size, 10); //Write the filename
-	write(ar_fd, fileheader.ar_fmag, 2); //ARFMAG = "`\n"
+	write(ar_fd, fileheader.ar_fmag,  2); //ARFMAG = "`\n"
 	while(copied < file_size){
 		num_read = read(in_fd, buf, BLOCKSIZE);
 		num_written = write(ar_fd, buf, BLOCKSIZE);
@@ -240,7 +240,6 @@ int extractfile(int ar_fd, struct ar_hdr *header){
 	char buf[BLOCKSIZE];
 	int openFlags, outFile;
 	openFlags = O_CREAT | O_WRONLY;
-	//to do:
 	//convert char header->ar_mode to long
 	unsigned long ulmode;
 	ulmode = strtoul(header->ar_mode, NULL, 0);
@@ -263,6 +262,12 @@ int extractfile(int ar_fd, struct ar_hdr *header){
 		copied += num_written;
 		lseek(ar_fd, 0, SEEK_CUR);
 	}
+	//To do:
+	//Change ownership of outFile to match what's in the archive
+	long uid, gid;
+	uid = strtol(header->ar_uid, NULL, 0);
+	gid = strtol(header->ar_gid, NULL, 0);	
+	chown(header->ar_name, uid, gid);
 	close(outFile);
 	
 	//restore file offset of ar_fd
