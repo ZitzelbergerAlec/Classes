@@ -180,12 +180,9 @@ int appendfile(int ar_fd, char *filename){
 	char str[16];
 	strcpy(str, filename);
 	strcat(str, "/");	
-	snprintf(fileheader.ar_name, 16, "%-16s", str); //%-16s pads the string to the right with 16 spaces
-	snprintf(fileheader.ar_date, 12, "%-12ld", sb.st_mtime); //Works, but is in right format?
-	snprintf(fileheader.ar_uid,   7, "%-7ld", (long) sb.st_uid); //Pads a long with spaces
-	snprintf(fileheader.ar_gid,   7, "%-7ld", (long) sb.st_gid);	
-	snprintf(fileheader.ar_mode,  8, "%-7lo", (unsigned long) sb.st_mode);	
-	snprintf(fileheader.ar_size, 11, "%-11lld", (long long) sb.st_size); //Gives bytes, needs to be in decimal
+	snprintf(fileheader.ar_name, 60, "%-16s%-12ld%-7ld%-7ld%-7lo%-11lld", str,
+	sb.st_mtime, (long) sb.st_uid, (long) sb.st_gid, (unsigned long) sb.st_mode,
+	(long long) sb.st_size); 
 	strcpy(fileheader.ar_fmag, ARFMAG);
 	// End get file stats
 
@@ -366,6 +363,7 @@ int deletefile(int ar_fd, struct ar_hdr *header){
 }
 
 int delete(char **argv, int argc){
+	/*
 	//To do: finish this function. Same as findfile now.
 	//The way this will work:
 	//Open a temporary archive file for writing.
@@ -428,6 +426,7 @@ int delete(char **argv, int argc){
 	
 	close(temp_fd);
 	close(ar_fd);
+	*/
 	return(0);
 
 }
