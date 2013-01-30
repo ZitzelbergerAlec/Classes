@@ -366,21 +366,70 @@ int deletefile(int ar_fd, struct ar_hdr *header){
 }
 
 int delete(char **argv, int argc){
-	//To do: Right now is same as extract().
-	checkformat(argv[2]);
-	if(argc < 4){
-		printf("Please name files to extract\n");
-		help();
-		return(-1); //indicating error
+	//To do: finish this function. Same as findfile now.
+	//The way this will work:
+	//Open a temporary archive file for writing.
+	//Get a header, loop through argv. If it finds a match, get the next
+	//header. If not, write the file to the new archive. Then get next
+	//header. 
+	int offset, temp_fd, openFlags;
+	openFlags = O_CREAT | O_WRONLY;
+	temp_fd = open("temp_archive", openFlags, 0666);
+	struct ar_hdr *header;
+	
+	//prepare to copy
+	char buf[BLOCKSIZE];	
+	int num_read;
+	int num_written;
+
+	off_t file_size;
+	off_t copied;
+	
+	int offset, restorepos;
+
+	offset = 0;
+	
+	//Write header to new file
+	write(temp_fd, ARMAG, SARMAG);
+	
+	//get first header
+	lseek(ar_fd, SARMAG, SEEK_SET); //move file offset to first header
+	restore_pos = lseek(ar_fd, 0L, SEEK_CUR); //Get restore position
+	struct ar_hdr *header;
+	int offset;
+	//get the first header and offset
+	header = get_nextheader(ar_fd);
+	for(i=3;i<argc;i++){ //loop through argv arguments. If find a match, skip writing header to temp file
+		if(strcmp(header->ar_name,argv[i])){
+			write(temp_fd, header, );
+
+		}	
 	}
-	int ar_fd; //file descriptor for archive
-	int i;
-	ar_fd = open(argv[2], O_RDONLY);
-	for(i=3; i < argc; i++){
-		findfile(ar_fd, argv[i], &deletefile);
+	
+	while(offset < file_size){
+		restore_pos = lseek(ar_fd, 0L, SEEK_CUR);
+		num_read = read(in_fd, buf, BLOCKSIZE);
+		for(i=3;i<argc;i++){ //loop through argv arguments. If find a match, skip writing header to temp file
+			if(!strcmp(header->ar_name,argv[i])){
+				printf("Found %s\n", filename);
+			}	
+		}
+		num_written = write(ar_fd, buf, BLOCKSIZE);
+
+		if (num_read != num_written){
+			perror("Error writing file");
+			exit(-1);
+		}							
+		copied += num_written;
+		lseek(in_fd, 0, SEEK_CUR); //Changed this to move forward
 	}
+	
+
+	
+	close(temp_fd);
 	close(ar_fd);
 	return(0);
+
 }
 
 int appendcurrdirr(char **argv){
