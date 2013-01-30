@@ -18,12 +18,13 @@ int checkformat(char *filename);
 int append(char **argv, int argc);
 int appendfile(int ar_fd, char *filename);
 int extract(char **argv, int argc);
-int extractfile(int ar_fd, char *filename);
 int printconcise(char **argv, int argc);
 int printverbose(char **argv, int argc);
 int deletefiles(char **argv, int argc);
 int appendcurrdirr(char **argv);
 int validatename(char *filename);
+int findfile(int ar_fd, char *filename, int (*doSomething)(int ar_fd, struct ar_hdr *));
+int extractfile(int ar_fd, struct ar_hdr *header);
 
 //borrowed from http://stackoverflow.com/questions/122616/how-do-i-trim-leading-trailing-whitespace-in-a-standard-way
 void trimwhitespace(char *str){
@@ -172,11 +173,10 @@ int appendfile(int ar_fd, char *filename){
 		exit(-1);
 	}
 	//Get file stats
+	//To do: This isn't formatting shit correctly
 	struct stat sb; //Status buffer
 	fstat(ar_fd, &sb);	
-	struct ar_hdr fileheader;
-  	
-	//To do: the following line isn't appending "/" to filename
+	struct ar_hdr fileheader;	
 	char str[16];
 	strcpy(str, filename);
 	strcat(str, "/");	
@@ -184,6 +184,7 @@ int appendfile(int ar_fd, char *filename){
 	snprintf(fileheader.ar_date, 12, "% -12ld", sb.st_mtime); //Works, but is in right format?
 	snprintf(fileheader.ar_uid, 7, "% -5ld", (long) sb.st_uid); //Pads a long with spaces
 	snprintf(fileheader.ar_gid, 7, "% -5ld", (long) sb.st_gid);	
+	snprintf(fileheader.ar_mode, 8, "% -6lo", (unsigned long) sb.st_mode);	
 	snprintf(fileheader.ar_size, 11, "% -10lld", (long long) sb.st_size); //Gives bytes, needs to be in decimal
 	strcpy(fileheader.ar_fmag, ARFMAG);
 	// End get file stats
@@ -195,6 +196,7 @@ int appendfile(int ar_fd, char *filename){
 	write(ar_fd, fileheader.ar_date, 12); //Write the filename
 	write(ar_fd, fileheader.ar_uid, 6); //Write the filename
 	write(ar_fd, fileheader.ar_gid, 6); //Write the filename
+	write(ar_fd, fileheader.ar_mode, 8); //Write the filename
 	write(ar_fd, fileheader.ar_size, 10); //Write the filename
 	write(ar_fd, fileheader.ar_fmag, 2); //ARFMAG = "`\n"
 	while(copied < file_size){
@@ -224,42 +226,47 @@ int extract(char **argv, int argc){
 	int i;
 	ar_fd = open(argv[2], O_RDONLY);
 	for(i=3; i < argc; i++){
-		extractfile(ar_fd, argv[i]);
+		findfile(ar_fd, argv[i], &extractfile);
 	}
 	close(ar_fd);
 	return(0);
 }
 
-int extractfile(int ar_fd, char *filename){
-	if(validatename(filename) == -1) //invalid name
-                 return(-1);
-	printf("Extracting: %s\n", filename);
+int extractfile(int ar_fd, struct ar_hdr *header){
+	//Preserve current file offset in archive
+	//get_nextheader() depends on this
+	int restore_pos = lseek(ar_fd, 0L, SEEK_CUR);
+	printf("Extracting: %s\n", header->ar_name);
+	char buf[BLOCKSIZE];
+	int openFlags, outFile;
+	openFlags = O_CREAT | O_WRONLY;
+	//to do:
+	//convert char header->ar_mode to long
+	unsigned long ulmode;
+	ulmode = strtoul(header->ar_mode, NULL, 0);
+	printf("ulmode = %lu\n", ulmode);	
+	outFile = open(header->ar_name, openFlags, ulmode);
 	
-	struct ar_hdr *header;
-	int offset;
-	//get the first header and offset
-	lseek(ar_fd, SARMAG, SEEK_SET); //move file offset to first header
-	header = get_nextheader(ar_fd);
-	printf("Header = %s\n", header->ar_name);
-	if(!strcmp(header->ar_name,filename)){
-		printf("Found %s\n", filename);
-		return(0);
-	}	
-	offset = atoi(header->ar_size);
-	while(1){
-		if(is_nextheader(ar_fd, offset)){	
-			lseek(ar_fd, atoi(header->ar_size), SEEK_CUR);
-			header = get_nextheader(ar_fd);
-			if(!strcmp(header->ar_name,filename)){
-				printf("Found %s\n", filename);
-				return(0);
-			}
-			offset = atoi(header->ar_size);
-		} else {
-			break;
+	int num_read;
+	int num_written;
+	off_t copied;
+	copied = 0;	
+	while(copied < atoi(header->ar_size)){
+		num_read = read(ar_fd, buf, BLOCKSIZE);
+		num_written = write(outFile, buf, BLOCKSIZE);
+
+		if(num_read != num_written){
+			perror("Error writing file");
+			//unlink(output);
+			exit(-1);
 		}
+		copied += num_written;
+		lseek(ar_fd, 0, SEEK_CUR);
 	}
-	printf("Sorry, did not find %s\n", filename);
+	close(outFile);
+	
+	//restore file offset of ar_fd
+	lseek(ar_fd, restore_pos, SEEK_SET);
 	return(0);
 }
 
@@ -316,7 +323,7 @@ int printverbose(char **argv, int argc){
 
 //This function takes a function as a parameter. Used for deleting, extracting
 //files, etc.
-int findfile(int ar_fd, char *filename, int (*doSomething)(struct ar_hdr *)){
+int findfile(int ar_fd, char *filename, int (*doSomething)(int ar_fd, struct ar_hdr *)){
 	if(validatename(filename) == -1) //invalid name
                  return(-1);
 	int offset;	
@@ -327,6 +334,7 @@ int findfile(int ar_fd, char *filename, int (*doSomething)(struct ar_hdr *)){
 	printf("Header = %s\n", header->ar_name);
 	if(!strcmp(header->ar_name,filename)){
 		printf("Found %s\n", filename);
+		doSomething(ar_fd, header);
 		return(0);
 	}	
 	offset = atoi(header->ar_size);
@@ -335,7 +343,7 @@ int findfile(int ar_fd, char *filename, int (*doSomething)(struct ar_hdr *)){
 			lseek(ar_fd, atoi(header->ar_size), SEEK_CUR);
 			header = get_nextheader(ar_fd);
 			if(!strcmp(header->ar_name,filename)){
-				doSomething(header);
+				doSomething(ar_fd, header);
 				return(0);
 			}
 			offset = atoi(header->ar_size);
@@ -347,7 +355,7 @@ int findfile(int ar_fd, char *filename, int (*doSomething)(struct ar_hdr *)){
 	return(0);
 }
 
-int deletefile(struct ar_hdr *header){
+int deletefile(int ar_fd, struct ar_hdr *header){
 	printf("In deletefile. Header name = %s\n", header->ar_name);	
 	return(0);
 }
