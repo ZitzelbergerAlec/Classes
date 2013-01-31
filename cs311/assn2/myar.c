@@ -240,7 +240,6 @@ int extractfile(int ar_fd, struct ar_hdr *header){
 	//convert char header->ar_mode to long
 	unsigned long ulmode;
 	ulmode = strtoul(header->ar_mode, NULL, 0);
-	printf("ulmode = %lu\n", ulmode);	
 	outFile = open(header->ar_name, openFlags, ulmode);
 	
 	int num_read;
@@ -259,8 +258,6 @@ int extractfile(int ar_fd, struct ar_hdr *header){
 		copied += num_written;
 		lseek(ar_fd, 0, SEEK_CUR);
 	}
-	//To do:
-	//Change ownership of outFile to match what's in the archive
 	long uid, gid;
 	uid = strtol(header->ar_uid, NULL, 0);
 	gid = strtol(header->ar_gid, NULL, 0);	
@@ -318,7 +315,6 @@ int printverbose(char **argv, int argc){
 	return(0);
 }
 
-
 //This function takes a function as a parameter. Used for deleting, extracting
 //files, etc.
 int findfile(int ar_fd, char *filename, int (*doSomething)(int ar_fd, struct ar_hdr *)){
@@ -326,22 +322,13 @@ int findfile(int ar_fd, char *filename, int (*doSomething)(int ar_fd, struct ar_
                  return(-1);
 	int offset;	
 	struct ar_hdr *header;
-	//to do: make this smaller. Don't need the first header. Just need offset of 0.
-	//get the first header and offset
 	lseek(ar_fd, SARMAG, SEEK_SET); //move file offset to first header
-	header = get_nextheader(ar_fd);
-	printf("Header = %s\n", header->ar_name);
-	if(!strcmp(header->ar_name,filename)){
-		printf("Found %s\n", filename);
-		doSomething(ar_fd, header);
-		return(0);
-	}	
-	offset = atoi(header->ar_size);
+	offset = 0;
 	while(1){
 		if(is_nextheader(ar_fd, offset)){	
-			lseek(ar_fd, atoi(header->ar_size), SEEK_CUR);
+			lseek(ar_fd, offset, SEEK_CUR);
 			header = get_nextheader(ar_fd);
-			if(!strcmp(header->ar_name,filename)){
+			if(!strcmp(header->ar_name,filename)){ //found a match
 				doSomething(ar_fd, header);
 				return(0);
 			}
