@@ -377,20 +377,20 @@ int delete(char **argv, int argc){
 	int i;
 	while(1){
 		if(is_nextheader(ar_fd, offset)){
+			lseek(ar_fd, offset, SEEK_CUR);
 			header = get_nextheader(ar_fd);
-			offset = atoi(header->ar_size);
 			for(i=3;i<argc;i++){ //loop through argv arguments. If find a match, skip writing header to temp file
 				if(!strcmp(header->ar_name,argv[i])){ //if found a match, skip next step
 					match = 1; //found a match
 					break;
 				}
-			}	
+			}
+			offset = atoi(header->ar_size);	
 			if(!match){	
-				//write(temp_fd, header->ar_name, 16);
-				printf("no match for %s. ar->name = %s\n", argv[i], header->ar_name);	
+				write(temp_fd, header->ar_name, 16);
 			} else {
-				printf("match for %s. ar->name = %s\n", argv[i], header->ar_name);	
 				match = 0; //reset match
+				continue;
 			}
 			/*while(num_written < offset){ //copy the file
 				num_read = read(ar_fd, buf, BLOCKSIZE);
