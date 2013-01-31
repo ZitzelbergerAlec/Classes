@@ -15,6 +15,7 @@
 //Function prototypes
 void help();
 int checkformat(char *filename);
+void writeheader(int dest_fd, struct ar_hdr *fileheader);
 int append(char **argv, int argc);
 int appendfile(int ar_fd, char *filename);
 int extract(char **argv, int argc);
@@ -189,13 +190,7 @@ int appendfile(int ar_fd, char *filename){
 	file_size = lseek(in_fd, 0, SEEK_END); //Get the file size using the last byte of the file
 	copied = 0;
 	lseek(in_fd, 0, SEEK_SET);
-	write(ar_fd, fileheader.ar_name, 16); //Write the filename
-	write(ar_fd, fileheader.ar_date, 12); //Write the filename
-	write(ar_fd, fileheader.ar_uid,   6); //Write the filename
-	write(ar_fd, fileheader.ar_gid,   6); //Write the filename
-	write(ar_fd, fileheader.ar_mode,  8); //Write the filename
-	write(ar_fd, fileheader.ar_size, 10); //Write the filename
-	write(ar_fd, fileheader.ar_fmag,  2); //ARFMAG = "`\n"
+	writeheader(ar_fd, &fileheader);
 	while(copied < file_size){
 		num_read = read(in_fd, buf, BLOCKSIZE);
 		num_written = write(ar_fd, buf, BLOCKSIZE);
@@ -211,6 +206,30 @@ int appendfile(int ar_fd, char *filename){
 	close(in_fd);	
 	return 0;
 }
+
+
+struct ar_hdr *reconstructheader(struct ar_hdr *badheader){ //takes an unformatted ar_hdr and formats it
+	struct ar_hdr *goodheader = malloc(sizeof(struct ar_hdr)); 
+	char str[16];
+	strcpy(str, badheader->ar_name);
+	strcat(str, "/");
+	snprintf(goodheader->ar_name, 60, "%-16s%-12s%-7s%-7s%-7s%-11s", str,
+	badheader->ar_date, badheader->ar_uid, badheader->ar_gid, badheader->ar_mode,
+	badheader->ar_size);
+	strcpy(goodheader->ar_fmag, ARFMAG);
+	return goodheader;
+}
+
+void writeheader(int dest_fd, struct ar_hdr *fileheader){
+	write(dest_fd, fileheader->ar_name, 16); 
+	write(dest_fd, fileheader->ar_date, 12);
+	write(dest_fd, fileheader->ar_uid,   6);
+	write(dest_fd, fileheader->ar_gid,   6);
+	write(dest_fd, fileheader->ar_mode,  8);
+	write(dest_fd, fileheader->ar_size, 10);
+	write(dest_fd, fileheader->ar_fmag,  2); //ARFMAG = "`\n"
+}
+
 
 int extract(char **argv, int argc){
 	checkformat(argv[2]);
@@ -387,23 +406,25 @@ int delete(char **argv, int argc){
 			}
 			offset = atoi(header->ar_size);	
 			if(!match){	
-				write(temp_fd, header->ar_name, 16);
+				struct ar_hdr *goodheader = reconstructheader(header);
+				writeheader(temp_fd, goodheader);
 			} else {
 				match = 0; //reset match
 				continue;
 			}
-			/*while(num_written < offset){ //copy the file
+			while(num_written < offset){ //copy the file
 				num_read = read(ar_fd, buf, BLOCKSIZE);
 				num_written += write(temp_fd, buf, BLOCKSIZE);	
 			}
 			offset = 0; //because we just moved the file descriptor through the previous offset
-			*/
 		} else {
 			break;
 		}							
 	}
-	close(temp_fd);
 	close(ar_fd);
+	unlink(argv[2]); //delete current archive
+	rename("temp_archive", argv[2]);
+	close(temp_fd);
 	return(0);
 }
 
