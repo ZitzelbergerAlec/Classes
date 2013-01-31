@@ -114,7 +114,7 @@ int is_nextheader(int fd, int offset){
 	int cur_pos = lseek(fd, 0L, SEEK_CUR);
 	int file_size = lseek(fd, 0, SEEK_END);
 	int returnval = 1; //default return value
-	if(cur_pos + offset >= (file_size - 1)){ //to do: Something's wrong here
+	if(cur_pos + offset >= (file_size - 1)){
 		returnval = 0;
 	}
 	//return to previous file offset
@@ -277,14 +277,10 @@ void printheaders(int ar_fd, void (*printfunction)(struct ar_hdr *)){
 	lseek(ar_fd, SARMAG, SEEK_SET); //move file offset to first header
 	struct ar_hdr *header;
 	int offset;
-	//get the first header and offset
-	header = get_nextheader(ar_fd);
-	printf("Files in archive:\n");
-	printfunction(header);
-	offset = atoi(header->ar_size);
+	offset = 0; //because we're at the first header
 	while(1){
-		if(is_nextheader(ar_fd, offset)){
-			lseek(ar_fd, atoi(header->ar_size), SEEK_CUR);
+		if(is_nextheader(ar_fd, offset)){	
+			lseek(ar_fd, offset, SEEK_CUR);
 			header = get_nextheader(ar_fd);
 			printfunction(header);
 			offset = atoi(header->ar_size);
@@ -330,6 +326,7 @@ int findfile(int ar_fd, char *filename, int (*doSomething)(int ar_fd, struct ar_
                  return(-1);
 	int offset;	
 	struct ar_hdr *header;
+	//to do: make this smaller. Don't need the first header. Just need offset of 0.
 	//get the first header and offset
 	lseek(ar_fd, SARMAG, SEEK_SET); //move file offset to first header
 	header = get_nextheader(ar_fd);
@@ -369,16 +366,15 @@ int delete(char **argv, int argc){
 	//Get a header, loop through argv. If it finds a match, get the next
 	//header. If not, write the file to the new archive. Then get next
 	//header. 
-	int ar_fd, offset, temp_fd, openFlags, restorepos;
+	int ar_fd, temp_fd, openFlags, restorepos;
 	openFlags = O_CREAT | O_WRONLY;
 	temp_fd = open("temp_archive", openFlags, 0666);
 	
 	//prepare to copy
-	//char buf[BLOCKSIZE];	
-	//int num_read;
-	//int num_written;
-
-	//off_t copied;	
+	char buf[BLOCKSIZE];	
+	int num_read;
+	int num_written;
+	off_t copied;	
 	
 	//Write ARMAG to new file
 	write(temp_fd, ARMAG, SARMAG);
@@ -389,32 +385,32 @@ int delete(char **argv, int argc){
 	//restorepos = lseek(ar_fd, 0L, SEEK_CUR); //Get restore position
 	struct ar_hdr *header;
 	
-	//get the first header and offset
-	header = get_nextheader(ar_fd);
-	int i;
-	for(i=3;i<argc;i++){ //loop through argv arguments. If find a match, skip writing header to temp file
-		if(strcmp(header->ar_name,argv[i])){
-			write(temp_fd, header->ar_name, 16);
-		}	
-	}
+	int offset = 0;
 	int match = 0;
-	offset = atoi(header->ar_size);
+	int i;
 	while(1){
 		if(is_nextheader(ar_fd, offset)){
-			offset = atoi(header->ar_size);
-			lseek(ar_fd, offset, SEEK_CUR);
 			header = get_nextheader(ar_fd);
+			offset = atoi(header->ar_size);
 			for(i=3;i<argc;i++){ //loop through argv arguments. If find a match, skip writing header to temp file
 				if(!strcmp(header->ar_name,argv[i])){ //if found a match, skip next step
 					match = 1; //found a match
 					break;
 				}
-			}
-			if(match){	
+			}	
+			if(!match){	
+				//write(temp_fd, header->ar_name, 16);
+				printf("no match for %s. ar->name = %s\n", argv[i], header->ar_name);	
+			} else {
+				printf("match for %s. ar->name = %s\n", argv[i], header->ar_name);	
 				match = 0; //reset match
-				continue;
 			}
-			write(temp_fd, header->ar_name, 16);	
+			/*while(num_written < offset){ //copy the file
+				num_read = read(ar_fd, buf, BLOCKSIZE);
+				num_written += write(temp_fd, buf, BLOCKSIZE);	
+			}
+			offset = 0; //because we just moved the file descriptor through the previous offset
+			*/
 		} else {
 			break;
 		}							
