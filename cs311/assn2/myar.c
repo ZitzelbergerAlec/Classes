@@ -21,7 +21,6 @@ int appendfile(int ar_fd, char *filename);
 int extract(char **argv, int argc);
 int printconcise(char **argv, int argc);
 int printverbose(char **argv, int argc);
-int deletefile(int ar_fd, char *filename, char *ar_fname);
 int appendcurrdirr(char **argv);
 int validatename(char *filename);
 int findfile(int ar_fd, char *filename, int (*doSomething)(int ar_fd, struct ar_hdr *));
@@ -419,61 +418,6 @@ int delete(char **argv, int argc){
 	close(ar_fd);
 	unlink(argv[2]); //delete current archive
 	rename("temp_archive", argv[2]);
-	close(temp_fd);
-	return(0);
-}
-
-int deletefile(int ar_fd, char *filename, char *ar_fname){
-	//This function deletes a single file from an archive given the name of
-	//the file, the archive file descriptor, and the filename of the archive
-	int temp_fd, openFlags, restorepos;
-	openFlags = O_CREAT | O_WRONLY;
-	temp_fd = open("temp_archive", openFlags, 0666);
-	
-	//prepare to copy
-	char buf[BLOCKSIZE];	
-	int num_read;
-	int num_written;
-	off_t copied;	
-	
-	//Write ARMAG to new file
-	write(temp_fd, ARMAG, SARMAG);
-	
-	//get first header
-	lseek(ar_fd, SARMAG, SEEK_SET);
-	//restorepos = lseek(ar_fd, 0L, SEEK_CUR); //Get restore position
-	struct ar_hdr *header;
-	
-	int offset = 0;
-	int match = 0;
-	int i;
-	while(1){
-		if(is_nextheader(ar_fd, offset)){
-			lseek(ar_fd, offset, SEEK_CUR);
-			header = get_nextheader(ar_fd);
-			if(!strcmp(header->ar_name,filename)){ //if found a match, skip next step
-				match = 1; //found a match
-				break;
-			}
-			offset = atoi(header->ar_size);	
-			if(!match){	
-				struct ar_hdr *goodheader = reconstructheader(header);
-				writeheader(temp_fd, goodheader);
-			} else {
-				continue;
-			}
-			while(num_written < offset){ //copy the file
-				num_read = read(ar_fd, buf, BLOCKSIZE);
-				num_written += write(temp_fd, buf, BLOCKSIZE);	
-			}
-			offset = 0; //because we just moved the file descriptor through the previous offset
-		} else {
-			break;
-		}							
-	}
-	close(ar_fd);
-	unlink(ar_fname); //delete current archive
-	rename("temp_archive", ar_fname);
 	close(temp_fd);
 	return(0);
 }
