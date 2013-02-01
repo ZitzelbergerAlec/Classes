@@ -37,22 +37,22 @@ void close_archive(int ar_fd);
 //borrowed from the book, page 296
 //Converts octal permissions to a string
 //To do: test this function!
-char *filePermStr(mode_t perm, int flags){ //If flag is set, prints special permissions.
+char *filePermStr(mode_t perm){ //If flag is set, prints special permissions.
 	int str_size = sizeof("rwxrwxrwx");
 	char *str = (char *) malloc(sizeof(char) * str_size);
 	snprintf(str, str_size, "%c%c%c%c%c%c%c%c%c",
-	(perm & S_IRUSR) ? 'r' : '-', (perm & S_IWUSR) ? 'w' : '-',
-	(perm & S_IXUSR) ?
-		(((perm & S_ISUID) && (flags & FP_SPECIAL)) ? 's' : 'x') :
-		(((perm & S_ISUID) && (flags & FP_SPECIAL)) ? 'S' : '-'),
-	(perm & S_IRGRP) ? 'r' : '-', (perm & S_IWGRP) ? 'w' : '-',
-	(perm & S_IXGRP) ?
-		(((perm & S_ISGID) && (flags & FP_SPECIAL)) ? 's' : 'x') :
-		(((perm & S_ISGID) && (flags & FP_SPECIAL)) ? 'S' : '-'),
-	(perm & S_IROTH) ? 'r' : '-', (perm & S_IWOTH) ? 'w' : '-',
-	(perm & S_IXOTH) ?
-		(((perm & S_ISVTX) && (flags & FP_SPECIAL)) ? 't' : 'x') :
-		(((perm & S_ISVTX) && (flags & FP_SPECIAL)) ? 'T' : '-'));
+		//User permissions
+		(perm & S_IRUSR) ? 'r' : '-', 
+		(perm & S_IWUSR) ? 'w' : '-',
+		(perm & S_IXUSR) ? 'x' : '-',
+		//Group permissions
+		(perm & S_IRGRP) ? 'r' : '-', 
+		(perm & S_IWGRP) ? 'w' : '-',
+		(perm & S_IXGRP) ? 'x' : '-',
+		//Other permissions
+		(perm & S_IROTH) ? 'r' : '-', 
+		(perm & S_IWOTH) ? 'w' : '-',
+		(perm & S_IXOTH) ? 'x' : '-');
 	return str;
 }
 
@@ -370,15 +370,7 @@ int printconcise(char **argv, int argc){
 }
 
 void printverboseheader(struct ar_hdr *header){
-	//To do: this is really hack-ish but it works
-	char str[4];
-	str[0] = header->ar_mode[3];
-	str[1] = header->ar_mode[4];
-	str[2] = header->ar_mode[5];
-	str[3] = '\0';	
-	char *permsString = filePermStr(640, 0);
-	printf("String header mode = %s\n", header->ar_mode);
-	printf("header mode = %ld\n",    strtoul(header->ar_mode, NULL, 0));
+	char *permsString = filePermStr(strtoul(header->ar_mode, NULL, 8));
 	char buf[1000];
 	time_t seconds; 
 	seconds = (time_t) strtol(header->ar_date, NULL, 0);
