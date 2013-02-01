@@ -39,7 +39,7 @@ void close_archive(int ar_fd);
 //To do: test this function!
 char *filePermStr(mode_t perm, int flags){ //If flag is set, prints special permissions.
 	int str_size = sizeof("rwxrwxrwx");
-	char *str = (char *)malloc(sizeof(char) * str_size);
+	char *str = (char *) malloc(sizeof(char) * str_size);
 	snprintf(str, str_size, "%c%c%c%c%c%c%c%c%c",
 	(perm & S_IRUSR) ? 'r' : '-', (perm & S_IWUSR) ? 'w' : '-',
 	(perm & S_IXUSR) ?
@@ -60,7 +60,7 @@ char *filePermStr(mode_t perm, int flags){ //If flag is set, prints special perm
 void trimwhitespace(char *str){
 	char *end;
 	// Trim leading space
-   	while(*str == ' ') str++; 
+   	while(*str == ' ') str++; //trim newlines also 
 	
 	// Trim trailing space
         end = str + strlen(str) - 1;
@@ -243,7 +243,6 @@ int appendfile(int ar_fd, char *filename){
 	return 0;
 }
 
-
 struct ar_hdr *reconstructheader(struct ar_hdr *badheader){ //takes an unformatted ar_hdr and formats it
 	struct ar_hdr *goodheader = malloc(sizeof(struct ar_hdr)); 
 	char str[16];
@@ -265,7 +264,6 @@ void writeheader(int dest_fd, struct ar_hdr *fileheader){
 	write(dest_fd, fileheader->ar_size, 10);
 	write(dest_fd, fileheader->ar_fmag,  2); //ARFMAG = "`\n"
 }
-
 
 int extract(char **argv, int argc){
 	checkformat(argv[2]);
@@ -330,8 +328,22 @@ void printheaders(int ar_fd, void (*printfunction)(struct ar_hdr *)){
 	struct ar_hdr *header;
 	int offset;
 	offset = 0; //because we're at the first header
+	//test
+	char buf[BLOCKSIZE];
+	///test
+	//To do: bug is in here. This needs to be able to ignore 1 newline character in an archive.
+	//But comparison isn't working. Why not?
 	while(1){
 		if(is_nextheader(ar_fd, offset)){	
+			//test
+			read(ar_fd, buf, BLOCKSIZE);
+			printf("buf[0] = %c\n", buf[0]);
+			if(buf[0] == '\n' || buf[0] == '\r'){
+				printf("Found a newline");
+			} else {
+				lseek(ar_fd, -1, SEEK_CUR);
+			}
+			///test
 			lseek(ar_fd, offset, SEEK_CUR);
 			header = get_nextheader(ar_fd);
 			printfunction(header);
@@ -358,13 +370,13 @@ int printconcise(char **argv, int argc){
 }
 
 void printverboseheader(struct ar_hdr *header){
-	//char *permsString = filePermStr(strtol(header->ar_mode, NULL, 0), 0);
-	//debug:
-	char *permsString = filePermStr(0460, 0);
-	//to do: the above works! So maybe trim string down to last 3 elements, do atoi, then put it 
-	//in filePermsStr?
-	//debug
-	
+	//To do: this is really hack-ish but it works
+	char str[4];
+	str[0] = header->ar_mode[3];
+	str[1] = header->ar_mode[4];
+	str[2] = header->ar_mode[5];
+	str[3] = '\0';	
+	char *permsString = filePermStr(640, 0);
 	printf("String header mode = %s\n", header->ar_mode);
 	printf("header mode = %ld\n",    strtoul(header->ar_mode, NULL, 0));
 	char buf[1000];
