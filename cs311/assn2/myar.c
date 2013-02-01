@@ -37,7 +37,7 @@ void close_archive(int ar_fd);
 //borrowed from the book, page 296
 //Converts octal permissions to a string
 //To do: test this function!
-char *filePermStr(mode_t perm, int flags){
+char *filePermStr(mode_t perm, int flags){ //If flag is set, prints special permissions.
 	int str_size = sizeof("rwxrwxrwx");
 	char *str = (char *)malloc(sizeof(char) * str_size);
 	snprintf(str, str_size, "%c%c%c%c%c%c%c%c%c",
@@ -217,7 +217,7 @@ int appendfile(int ar_fd, char *filename){
 	char str[16];
 	strcpy(str, filename);
 	strcat(str, "/");	
-	snprintf(fileheader.ar_name, 60, "%-16s%-12ld%-7ld%-7ld%-7lo%-11lld", str,
+	snprintf(fileheader.ar_name, 60, "%-16s%-12ld%-6ld%-6ld%-8lo%-10lld", str,
 	sb.st_mtime, (long) sb.st_uid, (long) sb.st_gid, (unsigned long) sb.st_mode,
 	(long long) sb.st_size); 
 	strcpy(fileheader.ar_fmag, ARFMAG);
@@ -356,9 +356,14 @@ int printconcise(char **argv, int argc){
 }
 
 void printverboseheader(struct ar_hdr *header){
-                       	printf("%s, %s, %s, %s, %s, %s\n", header->ar_name, 
-			header->ar_date, header->ar_uid, header->ar_gid, 
-			header->ar_mode, header->ar_size);
+	char *permsString = filePermStr(strtol(header->ar_mode, NULL, 0), 0);
+	char buf[1000];
+	time_t seconds; 
+	seconds = (time_t) strtol(header->ar_date, NULL, 0);
+	struct tm *mytime = localtime(&seconds);
+	strftime(buf, 1000, "%b %d %H:%M %Y", mytime);
+	printf("%s %s/%s     %s%s %s\n", permsString, header->ar_uid, 
+	header->ar_gid, header->ar_size, buf, header->ar_name);
 }
 
 int printverbose(char **argv, int argc){
