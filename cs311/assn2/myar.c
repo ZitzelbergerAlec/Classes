@@ -8,9 +8,14 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h> //for ctime() function
+#include <dirent.h> //for DIR constant, used in reading directories
 #include <ar.h>
 
 #define BLOCKSIZE 1
+#define FP_SPECIAL 1 //for filePermStr() to work
+#ifndef S_ISVTX
+#define S_ISVTX  0001000
+#endif
 
 //Function prototypes
 void help();
@@ -25,6 +30,31 @@ int appendcurrdirr(char **argv);
 int validatename(char *filename);
 int findfile(int ar_fd, char *filename, int (*doSomething)(int ar_fd, struct ar_hdr *));
 int extractfile(int ar_fd, struct ar_hdr *header);
+char *filePermStr(mode_t perm, int flags);
+void init_archive(int ar_fd);
+void close_archive(int ar_fd);
+
+//borrowed from the book, page 296
+//Converts octal permissions to a string
+//To do: test this function!
+char *filePermStr(mode_t perm, int flags){
+	int str_size = sizeof("rwxrwxrwx");
+	char *str = (char *)malloc(sizeof(char) * str_size);
+	snprintf(str, str_size, "%c%c%c%c%c%c%c%c%c",
+	(perm & S_IRUSR) ? 'r' : '-', (perm & S_IWUSR) ? 'w' : '-',
+	(perm & S_IXUSR) ?
+		(((perm & S_ISUID) && (flags & FP_SPECIAL)) ? 's' : 'x') :
+		(((perm & S_ISUID) && (flags & FP_SPECIAL)) ? 'S' : '-'),
+	(perm & S_IRGRP) ? 'r' : '-', (perm & S_IWGRP) ? 'w' : '-',
+	(perm & S_IXGRP) ?
+		(((perm & S_ISGID) && (flags & FP_SPECIAL)) ? 's' : 'x') :
+		(((perm & S_ISGID) && (flags & FP_SPECIAL)) ? 'S' : '-'),
+	(perm & S_IROTH) ? 'r' : '-', (perm & S_IWOTH) ? 'w' : '-',
+	(perm & S_IXOTH) ?
+		(((perm & S_ISVTX) && (flags & FP_SPECIAL)) ? 't' : 'x') :
+		(((perm & S_ISVTX) && (flags & FP_SPECIAL)) ? 'T' : '-'));
+	return str;
+}
 
 //borrowed from http://stackoverflow.com/questions/122616/how-do-i-trim-leading-trailing-whitespace-in-a-standard-way
 void trimwhitespace(char *str){
@@ -42,13 +72,20 @@ void trimwhitespace(char *str){
 
 void help(){ //prints usage of program
         printf("Usage: myar -key archive filename ...\n");
+	printf("commands:\n");
+	printf("-q	 quickly append named files to archive\n");
+	printf("-x	 extract named files\n");
+	printf("-t	 print a concise table of contents of the archive\n");
+	printf("-v	print a verbose table of contents of the archive\n");
+	printf("-d	delete named files from archive\n");
+	printf("-A	 quickly append all \"regular\" files in the current directory (except the archive itself)\n");
 }
 
 int validatename(char *filename){
 	//Make sure length of filename is < 16 chars. Program only supports that 
 	//in struct in header
 	if(strlen(filename) > 15){
-		printf("Error: filename must be less than 15 characters long");
+		printf("Error: filename must be less than 15 characters long.\n");
 	        return(-1);
 	}
 	return(0);
@@ -134,23 +171,23 @@ int append(char **argv, int argc){
 		perror("Can't open archive file");
 		exit(-1);
 	}
-	
-	//write !<arch> at beginning of the file if it's new
-	if(lseek(ar_fd, 0, SEEK_SET) == lseek(ar_fd, 0, SEEK_END)){ 
-		//file offset at beg is same as at end, file exists but is empty
-		write(ar_fd, ARMAG, SARMAG);
-	}
+
+	//Initialize archive
+	init_archive(ar_fd);
 	
 	int i;	
 	for(i = 3; i < argc; i++){
 		appendfile(ar_fd, argv[i]);
 	}
-	
-	if (close(ar_fd) == -1){ //File is now closed
+	close_archive(ar_fd);
+	return(0);
+}
+
+void close_archive(int ar_fd){
+	if(close(ar_fd) == -1){ //File is now closed
 		//errExit("close"); //this is undefined...?
 		printf("error closing file");
 	}
-	return(0);
 }
 
 int appendfile(int ar_fd, char *filename){
@@ -276,6 +313,7 @@ int extractfile(int ar_fd, struct ar_hdr *header){
 		copied += num_written;
 		lseek(ar_fd, 0, SEEK_CUR);
 	}
+	//To do: change modification time
 	long uid, gid;
 	uid = strtol(header->ar_uid, NULL, 0);
 	gid = strtol(header->ar_gid, NULL, 0);	
@@ -286,7 +324,6 @@ int extractfile(int ar_fd, struct ar_hdr *header){
 	lseek(ar_fd, restore_pos, SEEK_SET);
 	return(0);
 }
-
 
 void printheaders(int ar_fd, void (*printfunction)(struct ar_hdr *)){
 	lseek(ar_fd, SARMAG, SEEK_SET); //move file offset to first header
@@ -415,14 +452,46 @@ int delete(char **argv, int argc){
 			break;
 		}							
 	}
-	close(ar_fd);
+	close_archive(ar_fd);
 	unlink(argv[2]); //delete current archive
 	rename("temp_archive", argv[2]);
 	close(temp_fd);
 	return(0);
 }
 
+void init_archive(int ar_fd){
+	//write !<arch> at beginning of the file if it's new
+	if(lseek(ar_fd, 0, SEEK_SET) == lseek(ar_fd, 0, SEEK_END)){ 
+		//file offset at beg is same as at end, file exists but is empty
+		write(ar_fd, ARMAG, SARMAG);
+	}
+}
+
+
 int appendcurrdirr(char **argv){
+	//Get list of files in current directory
+	char cwd[1024];
+	DIR *dirp;
+	struct dirent *dp;
+	struct stat sb; //Status buffer
+	int openFlags, ar_fd;
+	openFlags = O_CREAT | O_WRONLY | O_APPEND;
+	ar_fd = open(argv[2], openFlags, 0666);	
+	init_archive(ar_fd);
+	dirp = opendir("."); //open current working directory
+	while(1){
+		dp = readdir(dirp);
+		if(dp == NULL)
+			break;
+		stat(dp->d_name, &sb);
+		//Skip if file is regular, is the name of the archive, name of 
+		//source code, or is name of program
+		if (!S_ISREG(sb.st_mode) || !strcmp(argv[2], dp->d_name) || 
+		!strcmp(argv[0], dp->d_name) || !strcmp("myar.c", dp->d_name))
+			continue; //file is not regular
+		appendfile(ar_fd, dp->d_name);
+	}
+	close_archive(ar_fd);
 	return(0);
 }
 
