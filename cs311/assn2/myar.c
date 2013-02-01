@@ -336,6 +336,8 @@ void printheaders(int ar_fd, void (*printfunction)(struct ar_hdr *)){
 			header = get_nextheader(ar_fd);
 			printfunction(header);
 			offset = atoi(header->ar_size);
+			//To do: if read and buffer contains a newline or space,
+			//keep going
 		} else {
 			break;
 		}	
@@ -356,7 +358,15 @@ int printconcise(char **argv, int argc){
 }
 
 void printverboseheader(struct ar_hdr *header){
-	char *permsString = filePermStr(strtol(header->ar_mode, NULL, 0), 0);
+	//char *permsString = filePermStr(strtol(header->ar_mode, NULL, 0), 0);
+	//debug:
+	char *permsString = filePermStr(0460, 0);
+	//to do: the above works! So maybe trim string down to last 3 elements, do atoi, then put it 
+	//in filePermsStr?
+	//debug
+	
+	printf("String header mode = %s\n", header->ar_mode);
+	printf("header mode = %ld\n",    strtoul(header->ar_mode, NULL, 0));
 	char buf[1000];
 	time_t seconds; 
 	seconds = (time_t) strtol(header->ar_date, NULL, 0);
