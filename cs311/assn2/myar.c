@@ -372,7 +372,7 @@ int extractfile(int ar_fd, struct ar_hdr *header){
 		copied += num_written;
 		lseek(ar_fd, 0, SEEK_CUR); //move forward one
 	}
-	//Change modification time (borrowed from the book, page 288)
+	//Change modification and access time (borrowed from the book, page 288)
 	time_t seconds; 
 	seconds = (time_t) strtol(header->ar_date, NULL, 0);
 	struct stat sb;
@@ -380,7 +380,7 @@ int extractfile(int ar_fd, struct ar_hdr *header){
 
 	if (stat(header->ar_name, &sb) == -1)
 		exit(-1);
-	utb.actime = sb.st_atime; //Leave access time unchanged
+	utb.actime = seconds;
 	utb.modtime = seconds;
 	if (utime(header->ar_name, &utb) == -1)
 		exit(-1);	
@@ -505,7 +505,8 @@ int delete(char **argv, int argc){
 	int curpos = lseek(ar_fd, 0L, SEEK_CUR);
 	while(1){
 		if(is_nextheader(ar_fd, offset)){
-			//I don't know why, but this function only works if the following line is here...
+			//I don't know why this even has an effect, because it only returns the current offset position, 
+			//but this function only works if the following line is here...
 			curpos = lseek(ar_fd, 0L, SEEK_CUR);	
 			lseek(ar_fd, offset, SEEK_CUR);
 			header = get_nextheader(ar_fd);
@@ -527,7 +528,7 @@ int delete(char **argv, int argc){
 			while(num_written < offset){ //copy the file
 				num_read = read(ar_fd, buf, BLOCKSIZE);
 				num_written += write(temp_fd, buf, BLOCKSIZE);
-				//...and the following line is here
+				//...and it only works if the following line is here
 				curpos = lseek(ar_fd, 0L, SEEK_CUR);	
 			}
 			offset = 0; //because we just moved the file descriptor through the previous offset
