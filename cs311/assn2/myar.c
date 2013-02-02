@@ -13,10 +13,6 @@
 #include <ar.h>
 
 #define BLOCKSIZE 1
-#define FP_SPECIAL 1 //for filePermStr() to work
-#ifndef S_ISVTX
-#define S_ISVTX  0001000
-#endif
 
 //Function prototypes
 int 	append(char **argv, int argc);
