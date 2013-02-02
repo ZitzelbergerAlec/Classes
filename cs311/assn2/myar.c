@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <time.h> //for ctime() function
 #include <dirent.h> //for DIR constant, used in reading directories
+#include <utime.h> //For utime() function to change file m_time
 #include <ar.h>
 
 #define BLOCKSIZE 1
@@ -18,26 +19,73 @@
 #endif
 
 //Function prototypes
-void help();
-int checkformat(char *filename);
-void writeheader(int dest_fd, struct ar_hdr *fileheader);
-int append(char **argv, int argc);
-int appendfile(int ar_fd, char *filename);
-int extract(char **argv, int argc);
-int printconcise(char **argv, int argc);
-int printverbose(char **argv, int argc);
-int appendcurrdirr(char **argv);
-int validatename(char *filename);
-int findfile(int ar_fd, char *filename, int (*doSomething)(int ar_fd, struct ar_hdr *));
-int extractfile(int ar_fd, struct ar_hdr *header);
-char *filePermStr(mode_t perm, int flags);
-void init_archive(int ar_fd);
-void close_archive(int ar_fd);
+int 	append(char **argv, int argc);
+int 	appendcurrdirr(char **argv);
+int 	appendfile(int ar_fd, char *filename);
+int 	checkformat(char *filename);
+void 	close_archive(int ar_fd);
+int 	delete(char **argv, int argc);
+int 	extract(char **argv, int argc);
+int 	extractfile(int ar_fd, struct ar_hdr *header);
+char 	*filePermStr(mode_t perm);
+int 	findfile(int ar_fd, char *filename, int (*doSomething)(int ar_fd, struct ar_hdr *));
+struct 	ar_hdr *get_nextheader(int fd);
+void 	help();
+void 	init_archive(int ar_fd);
+int 	is_nextheader(int fd, int offset);
+int 	isRegularFile(char *filename);
+int 	printconcise(char **argv, int argc);
+void 	printconciseheader(struct ar_hdr *header);
+void 	printheaders(int ar_fd, void (*printfunction)(struct ar_hdr *));
+int 	printverbose(char **argv, int argc);
+void 	printverboseheader(struct ar_hdr *header);
+void 	PukeAndExit(char *errormessage);
+struct 	ar_hdr *reconstructheader(struct ar_hdr *badheader);
+void 	trimwhitespace(char *str);
+int 	validatename(char *filename);
+void 	writeheader(int dest_fd, struct ar_hdr *fileheader);
 
-//borrowed from the book, page 296
+int main(int argc, char* argv[]){
+	//Order of arguments:
+	//myar key afile name ...
+	// where key is "-q" etc
+	if(argc < 3){	
+		help();
+		return 0;
+	}
+	char *c;
+	c = argv[1];
+	if(!strcmp(c,"-q")){ //quickly append named files to archive
+		append(argv, argc);
+	} else if(!strcmp(c,"-x")){ //extract named files
+		extract(argv, argc);	
+	} else if(!strcmp(c,"-t")){ 
+		//print a concise table of contents of the archive
+                printconcise(argv, argc);
+        } else if(!strcmp(c,"-v")){ 
+		//print a verbose table of contents of the archive
+                printverbose(argv, argc);
+        } else if(!strcmp(c,"-d")){ //delete named files from archive
+                delete(argv, argc);
+        } else if(!strcmp(c,"-A")){ 
+		//quickly append all ``regular'' files in the current directory.
+		//(except the archive itself)
+                appendcurrdirr(argv);
+	} else if(!strcmp(c,"-w")){  
+		//Extra credit: for a given timeout, add all modified 
+		//files to the archive. (except the archive itself)
+		return(0);
+        } else if(!strcmp(c,"-h")){ //Display usage
+                help();
+        }  else {
+		help();
+	}	
+	return(0);
+}
+
+//Borrowed from the book, page 296
 //Converts octal permissions to a string
-//To do: test this function!
-char *filePermStr(mode_t perm){ //If flag is set, prints special permissions.
+char *filePermStr(mode_t perm){ 
 	int str_size = sizeof("rwxrwxrwx");
 	char *str = (char *) malloc(sizeof(char) * str_size);
 	snprintf(str, str_size, "%c%c%c%c%c%c%c%c%c",
@@ -90,6 +138,17 @@ int validatename(char *filename){
 	}
 	return(0);
 }
+
+int isRegularFile(char *filename){
+	struct stat sb; //Status buffer
+	int returnval = 1; //Default return value
+	stat(filename, &sb);
+	if(!S_ISREG(sb.st_mode)){
+		returnval = 0;
+	}
+	return returnval;
+}
+
 
 //If file does not exist or is in the wrong format, displays error message
 int checkformat(char *filename){ 
@@ -145,7 +204,6 @@ struct ar_hdr *get_nextheader(int fd){
 //For iterating through headers in conjunction with get_nextheader
 //Offset is the offset of the next header, as determined by the current header's
 //filesize
-//To do: untested function. Test it!.
 int is_nextheader(int fd, int offset){
 	//preserve current file offset
 	int cur_pos = lseek(fd, 0L, SEEK_CUR);
@@ -166,7 +224,7 @@ int append(char **argv, int argc){
 	
 	//Use permissions 666
 	ar_fd = open(argv[2], openFlags, 0666);	
-	//Puke and exit
+	//"Puke and exit"
 	if(ar_fd == -1){
 		perror("Can't open archive file");
 		exit(-1);
@@ -184,15 +242,25 @@ int append(char **argv, int argc){
 }
 
 void close_archive(int ar_fd){
-	if(close(ar_fd) == -1){ //File is now closed
-		//errExit("close"); //this is undefined...?
+	if(close(ar_fd) == -1){
 		printf("error closing file");
+		exit(-1);
 	}
 }
+
+void PukeAndExit(char *errormessage){
+	perror(errormessage);
+	exit(-1);
+}
+
 
 int appendfile(int ar_fd, char *filename){
 	if(validatename(filename) == -1) //invalid name
 		return(-1);
+	if(!isRegularFile(filename)){ //Not a regular file
+		printf("Error: %s is not a regular file\n", filename);
+		return(-1);
+	}
 	int in_fd; //File descriptor for file to append
 	char buf[BLOCKSIZE];
 	printf("Appending: %s\n", filename);
@@ -204,13 +272,11 @@ int appendfile(int ar_fd, char *filename){
 	off_t copied;
 
 	in_fd = open(filename, O_RDONLY);
-	//puke and exit
+	
 	if(in_fd == -1){
-		perror("Can't open input file");
-		exit(-1);
+		PukeAndExit("Can't open input file");
 	}
 	//Get file stats
-	//To do: This isn't formatting shit correctly. Puts a goddamn ^@ in front of everything.
 	struct stat sb; //Status buffer
 	fstat(in_fd, &sb);	
 	struct ar_hdr fileheader;	
@@ -221,7 +287,6 @@ int appendfile(int ar_fd, char *filename){
 	sb.st_mtime, (long) sb.st_uid, (long) sb.st_gid, (unsigned long) sb.st_mode,
 	(long long) sb.st_size); 
 	strcpy(fileheader.ar_fmag, ARFMAG);
-	// End get file stats
 
 	file_size = lseek(in_fd, 0, SEEK_END); //Get the file size using the last byte of the file
 	copied = 0;
@@ -233,7 +298,6 @@ int appendfile(int ar_fd, char *filename){
 
 		if (num_read != num_written){
 			perror("Error writing file");
-			//unlink(output);
 			exit(-1);
 		}
 		copied += num_written;
@@ -304,18 +368,29 @@ int extractfile(int ar_fd, struct ar_hdr *header){
 		num_written = write(outFile, buf, BLOCKSIZE);
 
 		if(num_read != num_written){
-			perror("Error writing file");
-			//unlink(output);
-			exit(-1);
+			PukeAndExit("Error writing file");
 		}
 		copied += num_written;
-		lseek(ar_fd, 0, SEEK_CUR);
+		lseek(ar_fd, 0, SEEK_CUR); //move forward one
 	}
-	//To do: change modification time
+	//Change modification time (borrowed from the book, page 288)
+	time_t seconds; 
+	seconds = (time_t) strtol(header->ar_date, NULL, 0);
+	struct stat sb;
+	struct utimbuf utb;
+
+	if (stat(header->ar_name, &sb) == -1)
+		exit(-1);
+	utb.actime = sb.st_atime; //Leave access time unchanged
+	utb.modtime = seconds;
+	if (utime(header->ar_name, &utb) == -1)
+		exit(-1);	
 	long uid, gid;
 	uid = strtol(header->ar_uid, NULL, 0);
 	gid = strtol(header->ar_gid, NULL, 0);	
 	chown(header->ar_name, uid, gid);
+	//Change permissions
+	chmod(header->ar_name, strtoul(header->ar_mode, NULL, 8));
 	close(outFile);
 	
 	//restore file offset of ar_fd
@@ -328,28 +403,14 @@ void printheaders(int ar_fd, void (*printfunction)(struct ar_hdr *)){
 	struct ar_hdr *header;
 	int offset;
 	offset = 0; //because we're at the first header
-	//test
 	char buf[BLOCKSIZE];
-	///test
-	//To do: bug is in here. This needs to be able to ignore 1 newline character in an archive.
-	//But comparison isn't working. Why not?
 	while(1){
 		if(is_nextheader(ar_fd, offset)){	
-			//test
-			read(ar_fd, buf, BLOCKSIZE);
-			printf("buf[0] = %c\n", buf[0]);
-			if(buf[0] == '\n' || buf[0] == '\r'){
-				printf("Found a newline");
-			} else {
-				lseek(ar_fd, -1, SEEK_CUR);
-			}
-			///test
 			lseek(ar_fd, offset, SEEK_CUR);
 			header = get_nextheader(ar_fd);
 			printfunction(header);
 			offset = atoi(header->ar_size);
-			//To do: if read and buffer contains a newline or space,
-			//keep going
+			offset += offset % 2; //If file offset is odd, we need to add one
 		} else {
 			break;
 		}	
@@ -407,6 +468,7 @@ int findfile(int ar_fd, char *filename, int (*doSomething)(int ar_fd, struct ar_
 				return(0);
 			}
 			offset = atoi(header->ar_size);
+			offset += offset % 2; //If file offset is odd, we need to add one
 		} else {
 			break;
 		}
@@ -416,11 +478,9 @@ int findfile(int ar_fd, char *filename, int (*doSomething)(int ar_fd, struct ar_
 }
 
 int delete(char **argv, int argc){
-	//To do: finish this function. Same as findfile now.
-	//The way this will work:
-	//Open a temporary archive file for writing.
-	//Get a header, loop through argv. If it finds a match, get the next
-	//header. If not, write the file to the new archive. Then get next
+	//Opens a temporary archive file for writing.
+	//Gets a header, loops through argv. If it finds a match, gets the next
+	//header. If not, writes the file to the new archive. Then gets next
 	//header. 
 	int ar_fd, temp_fd, openFlags, restorepos;
 	openFlags = O_CREAT | O_WRONLY;
@@ -438,7 +498,6 @@ int delete(char **argv, int argc){
 	
 	//get first header
 	lseek(ar_fd, SARMAG, SEEK_SET);
-	//restorepos = lseek(ar_fd, 0L, SEEK_CUR); //Get restore position
 	struct ar_hdr *header;
 	
 	int offset = 0;
@@ -455,6 +514,7 @@ int delete(char **argv, int argc){
 				}
 			}
 			offset = atoi(header->ar_size);	
+			offset += offset % 2; //If file offset is odd, we need to add one
 			if(!match){	
 				struct ar_hdr *goodheader = reconstructheader(header);
 				writeheader(temp_fd, goodheader);
@@ -479,13 +539,12 @@ int delete(char **argv, int argc){
 }
 
 void init_archive(int ar_fd){
-	//write !<arch> at beginning of the file if it's new
+	//write ARMAG at beginning of the file if it's new
 	if(lseek(ar_fd, 0, SEEK_SET) == lseek(ar_fd, 0, SEEK_END)){ 
 		//file offset at beg is same as at end, file exists but is empty
 		write(ar_fd, ARMAG, SARMAG);
 	}
 }
-
 
 int appendcurrdirr(char **argv){
 	//Get list of files in current directory
@@ -511,46 +570,5 @@ int appendcurrdirr(char **argv){
 		appendfile(ar_fd, dp->d_name);
 	}
 	close_archive(ar_fd);
-	return(0);
-}
-
-//To do: Does this need to check for multiple flags?
-//To do: to make functions more robust, have them take in an archive filename 
-//instead of argv.
-int main(int argc, char* argv[]){
-	//Order of arguments:
-	//myar key afile name ...
-	// where key is "-q" etc
-	if(argc < 3){	
-		help();
-		return 0;
-	}
-	char *c;
-	c = argv[1];
-	if(!strcmp(c,"-q")){ //quickly append named files to archive
-		append(argv, argc);
-	} else if(!strcmp(c,"-x")){ //extract named files
-		extract(argv, argc);	
-	} else if(!strcmp(c,"-t")){ 
-		//print a concise table of contents of the archive
-                printconcise(argv, argc);
-        } else if(!strcmp(c,"-v")){ 
-		//print a verbose table of contents of the archive
-                printverbose(argv, argc);
-        } else if(!strcmp(c,"-d")){ //delete named files from archive
-                delete(argv, argc);
-        } else if(!strcmp(c,"-A")){ 
-		//quickly append all ``regular'' files in the current directory.
-		//(except the archive itself)
-                appendcurrdirr(argv);
-	} else if(!strcmp(c,"-w")){  
-		//Extra credit: for a given timeout, add all modified 
-		//files to the archive. (except the archive itself)
-		return(0);
-        } else if(!strcmp(c,"-h")){ //Display usage
-                help();
-        }  else {
-		help();
-	}	
 	return(0);
 }
