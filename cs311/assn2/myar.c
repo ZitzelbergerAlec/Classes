@@ -502,8 +502,11 @@ int delete(char **argv, int argc){
 	int offset = 0;
 	int match = 0;
 	int i;
+	int curpos = lseek(ar_fd, 0L, SEEK_CUR);
 	while(1){
 		if(is_nextheader(ar_fd, offset)){
+			//I don't know why, but this function only works if the following line is here...
+			curpos = lseek(ar_fd, 0L, SEEK_CUR);	
 			lseek(ar_fd, offset, SEEK_CUR);
 			header = get_nextheader(ar_fd);
 			for(i=3;i<argc;i++){ //loop through argv arguments. If find a match, skip writing header to temp file
@@ -523,7 +526,9 @@ int delete(char **argv, int argc){
 			}
 			while(num_written < offset){ //copy the file
 				num_read = read(ar_fd, buf, BLOCKSIZE);
-				num_written += write(temp_fd, buf, BLOCKSIZE);	
+				num_written += write(temp_fd, buf, BLOCKSIZE);
+				//...and the following line is here
+				curpos = lseek(ar_fd, 0L, SEEK_CUR);	
 			}
 			offset = 0; //because we just moved the file descriptor through the previous offset
 		} else {
