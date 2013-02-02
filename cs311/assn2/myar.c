@@ -253,7 +253,6 @@ void PukeAndExit(char *errormessage){
 	exit(-1);
 }
 
-
 int appendfile(int ar_fd, char *filename){
 	if(validatename(filename) == -1) //invalid name
 		return(-1);
