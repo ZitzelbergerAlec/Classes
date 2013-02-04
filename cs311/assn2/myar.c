@@ -1,16 +1,16 @@
+#include <ar.h>
 #include <assert.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <fcntl.h>
+#include <dirent.h> //for DIR constant, used in reading directories
 #include <errno.h> //for errno variable
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h> //for exit() function
 #include <string.h>
-#include <unistd.h>
 #include <time.h> //for ctime() function
-#include <dirent.h> //for DIR constant, used in reading directories
+#include <sys/types.h>
+#include <unistd.h>
 #include <utime.h> //For utime() function to change file m_time
-#include <ar.h>
 
 #define BLOCKSIZE 1
 
@@ -29,6 +29,7 @@ char 	*filePermStr(mode_t perm);
 int 	findfile(int ar_fd, char *filename, int (*doSomething)(int ar_fd, struct ar_hdr *));
 off_t	get_filesize(int fd);
 struct 	ar_hdr *get_nextheader(int fd, int offset);
+time_t 	headerToTime(struct ar_hdr *header);
 void 	help();
 void 	init_archive(int ar_fd);
 int 	is_nextheader(int fd, int offset);
@@ -40,6 +41,7 @@ int 	printverbose(char **argv, int argc);
 void 	printverboseheader(struct ar_hdr *header);
 void 	PukeAndExit(char *errormessage);
 struct 	ar_hdr *reconstructheader(struct ar_hdr *badheader);
+int 	special_append(char **argv, int argc);
 void 	trimwhitespace(char *str);
 int 	validatename(char *filename);
 void 	writeheader(int dest_fd, struct ar_hdr *fileheader);
@@ -55,7 +57,7 @@ int main(int argc, char* argv[]){
 	char *c;
 	c = argv[1];
 	if(!strcmp(c,"-q")){ //quickly append named files to archive
-		append(argv, argc);
+		special_append(argv, argc);
 	} else if(!strcmp(c,"-x")){ //extract named files
 		extract(argv, argc);	
 	} else if(!strcmp(c,"-t")){ 
@@ -236,8 +238,6 @@ int append(char **argv, int argc){
 	return(0);
 }
 
-
-/*
 int special_append(char **argv, int argc){
 	//Anytime a file exists in the archive,
 	//remove the old copy if they are not the same
@@ -246,7 +246,16 @@ int special_append(char **argv, int argc){
 	//First, if archive exists, open it for reading
 	//If it doesn't exist, open it and just append all the files in
 	//the regular way and return.
-	int ar_fd, temp_fd, openFlags, restorepos;
+	int ar_fd, temp_fd, openFlags;
+	ar_fd = open(argv[2], O_RDONLY);
+	if(ar_fd == -1){
+		if(errno == ENOENT){ //File doesn't exist
+			append(argv, argc); //Call regular append function
+			return(0);
+		}
+	} else {
+		close(ar_fd);
+	}
 	openFlags = O_CREAT | O_WRONLY;
 	temp_fd = open("temp_archive", openFlags, 0666);
 	checkopen(temp_fd);
@@ -277,14 +286,36 @@ int special_append(char **argv, int argc){
 			if(match){	
 				match = 0; //Reset match
 				cmp_fd = open(argv[i], O_RDONLY);
+				checkopen(cmp_fd);
 				//Compare the files based on modification time, etc
-				
+				struct stat sb2; //Status buffer
+				fstat(cmp_fd, &sb2);	
+				if((sb2.st_size == offset) && (sb2.st_mtime == headerToTime(header))){
+					//Files are the same, copy the one we have
+					printf("%s already exists in the archive, skipping.\n", argv[i]);
+					struct ar_hdr *goodheader = reconstructheader(header);
+					writeheader(temp_fd, goodheader);
+					copyFile(ar_fd, temp_fd, offset);
+					offset = 0; //because we just moved the file descriptor through the previous offset
+				} else {
+					appendfile(temp_fd, argv[i]);
+				}
+				argv[i] = 0; //Mark ones we've aleady appended
+			} else {
+				struct ar_hdr *goodheader = reconstructheader(header);
+				writeheader(temp_fd, goodheader);
+				copyFile(ar_fd, temp_fd, offset);
+				offset = 0; //because we just moved the file descriptor through the previous offset
 			}
-			copyFile(ar_fd, temp_fd, offset);
-			offset = 0; //because we just moved the file descriptor through the previous offset
 		} else {
 			break;
 		}							
+	}
+	//Append ones not already in archive
+	for(i=3; i<argc; i++){
+		if(argv[i] != 0){
+			appendfile(temp_fd, argv[i]);
+		}
 	}
 	close_archive(ar_fd);
 	unlink(argv[2]); //delete current archive
@@ -292,7 +323,6 @@ int special_append(char **argv, int argc){
 	close_archive(temp_fd);
 	return(0);
 }
-*/
 
 void close_archive(int ar_fd){
 	if(close(ar_fd) == -1){
@@ -446,6 +476,11 @@ int extractfile(int ar_fd, struct ar_hdr *header){
 	return(0);
 }
 
+time_t headerToTime(struct ar_hdr *header){
+	//takes a header date and returns a time
+	return (time_t) strtol(header->ar_date, NULL, 0);
+}
+
 void printheaders(int ar_fd, void (*printfunction)(struct ar_hdr *)){
 	lseek(ar_fd, SARMAG, SEEK_SET); //move file offset to first header
 	struct ar_hdr *header;
@@ -530,7 +565,7 @@ int delete(char **argv, int argc){
 	//header. If not, writes the file to the new archive. Then gets next
 	//header. 
 	checkformat(argv[2]);
-	int ar_fd, temp_fd, openFlags, restorepos;
+	int ar_fd, temp_fd, openFlags;
 	openFlags = O_CREAT | O_WRONLY;
 	temp_fd = open("temp_archive", openFlags, 0666);
 	checkopen(temp_fd);
