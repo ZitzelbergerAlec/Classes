@@ -1,4 +1,5 @@
 #include <ar.h>
+#include <assert.h>
 #include <dirent.h> //for DIR constant, used in reading directories
 #include <errno.h> //for errno variable
 #include <fcntl.h>
@@ -252,19 +253,18 @@ int special_append(char **argv, int argc){
 		if(errno == ENOENT){ //File doesn't exist
 			append(argv, argc); //Call regular append function
 			return(0);
+		} else {
+			PukeAndExit("Error opening archive.");
 		}
-	} else {
-		close(ar_fd);
-	}
+	} 
 	openFlags = O_CREAT | O_WRONLY;
 	temp_fd = open("temp_archive", openFlags, 0666);
 	checkopen(temp_fd);
 	
 	//Write ARMAG to new file
 	write(temp_fd, ARMAG, SARMAG);
-	ar_fd = open(argv[2], O_RDONLY);
-	checkopen(ar_fd);
-	//get first header
+	
+	//get first header in original archive
 	lseek(ar_fd, SARMAG, SEEK_SET);
 	struct ar_hdr *header;
 	
