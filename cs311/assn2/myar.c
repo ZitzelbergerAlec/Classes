@@ -236,6 +236,64 @@ int append(char **argv, int argc){
 	return(0);
 }
 
+
+/*
+int special_append(char **argv, int argc){
+	//Anytime a file exists in the archive,
+	//remove the old copy if they are not the same
+	//Otherwise, don't add the new file
+	
+	//First, if archive exists, open it for reading
+	//If it doesn't exist, open it and just append all the files in
+	//the regular way and return.
+	int ar_fd, temp_fd, openFlags, restorepos;
+	openFlags = O_CREAT | O_WRONLY;
+	temp_fd = open("temp_archive", openFlags, 0666);
+	checkopen(temp_fd);
+	
+	//Write ARMAG to new file
+	write(temp_fd, ARMAG, SARMAG);
+	ar_fd = open(argv[2], O_RDONLY);
+	checkopen(ar_fd);
+	//get first header
+	lseek(ar_fd, SARMAG, SEEK_SET);
+	struct ar_hdr *header;
+	
+	int offset = 0;
+	int match = 0;
+	int i;
+	int cmp_fd; //file descriptor if we find a file in archive that matches name
+	while(1){
+		if(is_nextheader(ar_fd, offset)){
+			header = get_nextheader(ar_fd, offset);
+			for(i=3;i<argc;i++){ //loop through argv arguments. If find a match, skip writing header to temp file
+				if(!strcmp(header->ar_name,argv[i])){ //if found a match, skip next step
+					match = 1; //found a match
+					break;
+				}
+			}
+			offset = atoi(header->ar_size);	
+			offset += offset % 2; //If file offset is odd, we need to add one
+			if(match){	
+				match = 0; //Reset match
+				cmp_fd = open(argv[i], O_RDONLY);
+				//Compare the files based on modification time, etc
+				
+			}
+			copyFile(ar_fd, temp_fd, offset);
+			offset = 0; //because we just moved the file descriptor through the previous offset
+		} else {
+			break;
+		}							
+	}
+	close_archive(ar_fd);
+	unlink(argv[2]); //delete current archive
+	rename("temp_archive", argv[2]);
+	close_archive(temp_fd);
+	return(0);
+}
+*/
+
 void close_archive(int ar_fd){
 	if(close(ar_fd) == -1){
 		PukeAndExit("Error closing file\n");
