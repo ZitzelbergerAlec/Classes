@@ -292,7 +292,6 @@ void copyFile(int in_fd, int out_fd, int offset){
 	off_t copied = 0;
 	int num_read = 0;
 	int num_written = 0;
-	int curpos = lseek(in_fd, 0L, SEEK_CUR);	
 	while(copied < offset){
 		num_read = read(in_fd, buf, BLOCKSIZE);
 		num_written = write(out_fd, buf, BLOCKSIZE);
@@ -301,7 +300,6 @@ void copyFile(int in_fd, int out_fd, int offset){
 			PukeAndExit("Error writing file");
 		}
 		copied += num_written;
-		curpos = lseek(in_fd, 0L, SEEK_CUR);		
 		lseek(in_fd, 0, SEEK_CUR); //Changed this to move forward
 	}
 }
@@ -311,7 +309,7 @@ struct ar_hdr *reconstructheader(struct ar_hdr *badheader){ //takes an unformatt
 	char str[16];
 	strcpy(str, badheader->ar_name);
 	strcat(str, "/");
-	snprintf(goodheader->ar_name, 60, "%-16s%-12s%-7s%-7s%-7s%-11s", str,
+	snprintf(goodheader->ar_name, 60, "%-16s%-12s%-6s%-6s%-8s%-10s", str,
 	badheader->ar_date, badheader->ar_uid, badheader->ar_gid, badheader->ar_mode,
 	badheader->ar_size);
 	strcpy(goodheader->ar_fmag, ARFMAG);
@@ -473,6 +471,7 @@ int delete(char **argv, int argc){
 	//Gets a header, loops through argv. If it finds a match, gets the next
 	//header. If not, writes the file to the new archive. Then gets next
 	//header. 
+	checkformat(argv[2]);
 	int ar_fd, temp_fd, openFlags, restorepos;
 	openFlags = O_CREAT | O_WRONLY;
 	temp_fd = open("temp_archive", openFlags, 0666);
@@ -489,12 +488,8 @@ int delete(char **argv, int argc){
 	int offset = 0;
 	int match = 0;
 	int i;
-	int curpos = lseek(ar_fd, 0L, SEEK_CUR);
 	while(1){
 		if(is_nextheader(ar_fd, offset)){
-			//I don't know why this even has an effect, because it only returns the current offset position, 
-			//but this function only works if the following line is here...
-			curpos = lseek(ar_fd, 0L, SEEK_CUR);	
 			header = get_nextheader(ar_fd, offset);
 			for(i=3;i<argc;i++){ //loop through argv arguments. If find a match, skip writing header to temp file
 				if(!strcmp(header->ar_name,argv[i])){ //if found a match, skip next step
@@ -520,7 +515,7 @@ int delete(char **argv, int argc){
 	close_archive(ar_fd);
 	unlink(argv[2]); //delete current archive
 	rename("temp_archive", argv[2]);
-	close(temp_fd);
+	close_archive(temp_fd);
 	return(0);
 }
 
