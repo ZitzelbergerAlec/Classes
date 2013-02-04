@@ -1,5 +1,4 @@
 #include <ar.h>
-#include <assert.h>
 #include <dirent.h> //for DIR constant, used in reading directories
 #include <errno.h> //for errno variable
 #include <fcntl.h>
