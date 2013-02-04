@@ -29,6 +29,7 @@ char 	*filePermStr(mode_t perm);
 int 	findfile(int ar_fd, char *filename, int (*doSomething)(int ar_fd, struct ar_hdr *));
 off_t	get_filesize(int fd);
 struct 	ar_hdr *get_nextheader(int fd, int offset);
+int 	get_offset(struct ar_hdr *header);
 time_t 	headerToTime(struct ar_hdr *header);
 void 	help();
 void 	init_archive(int ar_fd);
@@ -281,8 +282,7 @@ int special_append(char **argv, int argc){
 					break;
 				}
 			}
-			offset = atoi(header->ar_size);	
-			offset += offset % 2; //If file offset is odd, we need to add one
+			offset = get_offset(header);
 			if(match){	
 				match = 0; //Reset match
 				cmp_fd = open(argv[i], O_RDONLY);
@@ -452,15 +452,12 @@ int extractfile(int ar_fd, struct ar_hdr *header){
 	checkopen(outFile);
 	copyFile(ar_fd, outFile, atoi(header->ar_size));
 	//Change modification and access time (borrowed from the book, page 288)
-	time_t seconds; 
-	seconds = (time_t) strtol(header->ar_date, NULL, 0);
 	struct stat sb;
 	struct utimbuf utb;
 
 	if (stat(header->ar_name, &sb) == -1)
 		exit(-1);
-	utb.actime = seconds;
-	utb.modtime = seconds;
+	utb.actime = utb.modtime = headerToTime(header);
 	if (utime(header->ar_name, &utb) == -1)
 		exit(-1);	
 	long uid, gid;
@@ -491,8 +488,7 @@ void printheaders(int ar_fd, void (*printfunction)(struct ar_hdr *)){
 		if(is_nextheader(ar_fd, offset)){	
 			header = get_nextheader(ar_fd, offset);
 			printfunction(header);
-			offset = atoi(header->ar_size);
-			offset += offset % 2; //If file offset is odd, we need to add one
+			offset = get_offset(header);
 		} else {
 			break;
 		}	
@@ -549,14 +545,21 @@ int findfile(int ar_fd, char *filename, int (*doSomething)(int ar_fd, struct ar_
 				doSomething(ar_fd, header);
 				return(0);
 			}
-			offset = atoi(header->ar_size);
-			offset += offset % 2; //If file offset is odd, we need to add one
+			offset = get_offset(header);
 		} else {
 			break;
 		}
 	}
 	printf("Sorry, did not find %s\n", filename);
 	return(0);
+}
+
+int get_offset(struct ar_hdr *header){
+	//Gets next file offset
+	int offset;
+	offset = atoi(header->ar_size);	
+	offset += offset % 2; //If file offset is odd, we need to add one
+	return offset;
 }
 
 int delete(char **argv, int argc){
@@ -590,8 +593,7 @@ int delete(char **argv, int argc){
 					break;
 				}
 			}
-			offset = atoi(header->ar_size);	
-			offset += offset % 2; //If file offset is odd, we need to add one
+			offset = get_offset(header);
 			if(!match){	
 				struct ar_hdr *goodheader = reconstructheader(header);
 				writeheader(temp_fd, goodheader);
