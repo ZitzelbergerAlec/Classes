@@ -19,13 +19,16 @@ int 	append(char **argv, int argc);
 int 	appendcurrdirr(char **argv);
 int 	appendfile(int ar_fd, char *filename);
 int 	checkformat(char *filename);
+int 	checkopen(int fd);
 void 	close_archive(int ar_fd);
+void 	copyFile(int in_fd, int out_fd, int offset);
 int 	delete(char **argv, int argc);
 int 	extract(char **argv, int argc);
 int 	extractfile(int ar_fd, struct ar_hdr *header);
 char 	*filePermStr(mode_t perm);
 int 	findfile(int ar_fd, char *filename, int (*doSomething)(int ar_fd, struct ar_hdr *));
-struct 	ar_hdr *get_nextheader(int fd);
+off_t	get_filesize(int fd);
+struct 	ar_hdr *get_nextheader(int fd, int offset);
 void 	help();
 void 	init_archive(int ar_fd);
 int 	is_nextheader(int fd, int offset);
@@ -70,10 +73,11 @@ int main(int argc, char* argv[]){
 	} else if(!strcmp(c,"-w")){  
 		//Extra credit: for a given timeout, add all modified 
 		//files to the archive. (except the archive itself)
+		printf("Sorry, this option is currently not supported.\n");
 		return(0);
-        } else if(!strcmp(c,"-h")){ //Display usage
+    } else if(!strcmp(c,"-h")){ //Display usage
                 help();
-        }  else {
+    }  else {
 		help();
 	}	
 	return(0);
@@ -115,7 +119,7 @@ void trimwhitespace(char *str){
 }
 
 void help(){ //prints usage of program
-        printf("Usage: myar -key archive filename ...\n");
+    printf("Usage: myar -key archive filename ...\n");
 	printf("commands:\n");
 	printf("-q	 quickly append named files to archive\n");
 	printf("-x	 extract named files\n");
@@ -145,13 +149,12 @@ int isRegularFile(char *filename){
 	return returnval;
 }
 
-
 //If file does not exist or is in the wrong format, displays error message
 int checkformat(char *filename){ 
 	int fd;
 	fd = open(filename, O_RDONLY);
 	if(fd == -1){
-		printf("There was an error\n");
+		printf("Error opening file\n");
 		if(errno == ENOENT){ //File doesn't exist
 			printf("File does not exist!\n");	
 		}
@@ -161,17 +164,17 @@ int checkformat(char *filename){
 		read(fd, buf, SARMAG); //SARMAG = 8
 		buf[SARMAG] = '\0';
 		if(strcmp(buf, ARMAG) != 0){ //ARMAG = "!<arch>\n"
-			printf("Error, archive file is in the wrong format.\n");
-			exit(1);
+			PukeAndExit("Error, archive file is in the wrong format.\n");
 		}
 	}
 	close(fd);
 	return(0);
 }
 
-struct ar_hdr *get_nextheader(int fd){
+struct ar_hdr *get_nextheader(int fd, int offset){
 	//Assuming that we're starting at the beginning of a line containing a 
 	//header
+	lseek(fd, offset, SEEK_CUR);
 	struct ar_hdr *phdr = (struct ar_hdr *) malloc(sizeof(struct ar_hdr));
 	read(fd, phdr, sizeof(struct ar_hdr));
 	
@@ -220,11 +223,7 @@ int append(char **argv, int argc){
 	
 	//Use permissions 666
 	ar_fd = open(argv[2], openFlags, 0666);	
-	//"Puke and exit"
-	if(ar_fd == -1){
-		perror("Can't open archive file");
-		exit(-1);
-	}
+	checkopen(ar_fd);
 
 	//Initialize archive
 	init_archive(ar_fd);
@@ -239,8 +238,7 @@ int append(char **argv, int argc){
 
 void close_archive(int ar_fd){
 	if(close(ar_fd) == -1){
-		printf("error closing file");
-		exit(-1);
+		PukeAndExit("Error closing file\n");
 	}
 }
 
@@ -248,6 +246,16 @@ void PukeAndExit(char *errormessage){
 	perror(errormessage);
 	exit(-1);
 }
+
+off_t get_filesize(int fd){
+	off_t file_size;
+	int curpos;
+	curpos = lseek(fd, 0L, SEEK_CUR); //Save current position
+	file_size = lseek(fd, 0, SEEK_END); //Get the file size using the last byte of the file
+	lseek(fd, curpos, SEEK_SET); //Restore current position
+	return file_size;
+}
+
 
 int appendfile(int ar_fd, char *filename){
 	if(validatename(filename) == -1) //invalid name
@@ -257,20 +265,9 @@ int appendfile(int ar_fd, char *filename){
 		return(-1);
 	}
 	int in_fd; //File descriptor for file to append
-	char buf[BLOCKSIZE];
 	printf("Appending: %s\n", filename);
-	
-	int num_read;
-	int num_written;
-
-	off_t file_size;
-	off_t copied;
-
 	in_fd = open(filename, O_RDONLY);
-	
-	if(in_fd == -1){
-		PukeAndExit("Can't open input file");
-	}
+	checkopen(in_fd);
 	//Get file stats
 	struct stat sb; //Status buffer
 	fstat(in_fd, &sb);	
@@ -282,24 +279,31 @@ int appendfile(int ar_fd, char *filename){
 	sb.st_mtime, (long) sb.st_uid, (long) sb.st_gid, (unsigned long) sb.st_mode,
 	(long long) sb.st_size); 
 	strcpy(fileheader.ar_fmag, ARFMAG);
-
-	file_size = lseek(in_fd, 0, SEEK_END); //Get the file size using the last byte of the file
-	copied = 0;
 	lseek(in_fd, 0, SEEK_SET);
 	writeheader(ar_fd, &fileheader);
-	while(copied < file_size){
-		num_read = read(in_fd, buf, BLOCKSIZE);
-		num_written = write(ar_fd, buf, BLOCKSIZE);
-
-		if (num_read != num_written){
-			perror("Error writing file");
-			exit(-1);
-		}
-		copied += num_written;
-		lseek(in_fd, 0, SEEK_CUR); //Changed this to move forward
-	}
+	copyFile(in_fd, ar_fd, get_filesize(in_fd));
 	close(in_fd);	
 	return 0;
+}
+
+void copyFile(int in_fd, int out_fd, int offset){ 
+	//Copies the contents of in_fd to out_fd for amount of offset 
+	char buf[BLOCKSIZE];
+	off_t copied = 0;
+	int num_read = 0;
+	int num_written = 0;
+	int curpos = lseek(in_fd, 0L, SEEK_CUR);	
+	while(copied < offset){
+		num_read = read(in_fd, buf, BLOCKSIZE);
+		num_written = write(out_fd, buf, BLOCKSIZE);
+
+		if (num_read != num_written){
+			PukeAndExit("Error writing file");
+		}
+		copied += num_written;
+		curpos = lseek(in_fd, 0L, SEEK_CUR);		
+		lseek(in_fd, 0, SEEK_CUR); //Changed this to move forward
+	}
 }
 
 struct ar_hdr *reconstructheader(struct ar_hdr *badheader){ //takes an unformatted ar_hdr and formats it
@@ -324,6 +328,13 @@ void writeheader(int dest_fd, struct ar_hdr *fileheader){
 	write(dest_fd, fileheader->ar_fmag,  2); //ARFMAG = "`\n"
 }
 
+int checkopen(int fd){ //Makes sure a file opened correctly
+	if (fd == -1){
+		PukeAndExit("Error opening file.\n");
+	}
+	return(0);
+}
+
 int extract(char **argv, int argc){
 	checkformat(argv[2]);
 	if(argc < 4){
@@ -346,28 +357,14 @@ int extractfile(int ar_fd, struct ar_hdr *header){
 	//get_nextheader() depends on this
 	int restore_pos = lseek(ar_fd, 0L, SEEK_CUR);
 	printf("Extracting: %s\n", header->ar_name);
-	char buf[BLOCKSIZE];
 	int openFlags, outFile;
 	openFlags = O_CREAT | O_WRONLY;
 	//convert char header->ar_mode to long
 	unsigned long ulmode;
 	ulmode = strtoul(header->ar_mode, NULL, 0);
 	outFile = open(header->ar_name, openFlags, ulmode);
-	
-	int num_read;
-	int num_written;
-	off_t copied;
-	copied = 0;	
-	while(copied < atoi(header->ar_size)){
-		num_read = read(ar_fd, buf, BLOCKSIZE);
-		num_written = write(outFile, buf, BLOCKSIZE);
-
-		if(num_read != num_written){
-			PukeAndExit("Error writing file");
-		}
-		copied += num_written;
-		lseek(ar_fd, 0, SEEK_CUR); //move forward one
-	}
+	checkopen(outFile);
+	copyFile(ar_fd, outFile, atoi(header->ar_size));
 	//Change modification and access time (borrowed from the book, page 288)
 	time_t seconds; 
 	seconds = (time_t) strtol(header->ar_date, NULL, 0);
@@ -401,8 +398,7 @@ void printheaders(int ar_fd, void (*printfunction)(struct ar_hdr *)){
 	char buf[BLOCKSIZE];
 	while(1){
 		if(is_nextheader(ar_fd, offset)){	
-			lseek(ar_fd, offset, SEEK_CUR);
-			header = get_nextheader(ar_fd);
+			header = get_nextheader(ar_fd, offset);
 			printfunction(header);
 			offset = atoi(header->ar_size);
 			offset += offset % 2; //If file offset is odd, we need to add one
@@ -420,6 +416,7 @@ int printconcise(char **argv, int argc){
 	checkformat(argv[2]);
 	int ar_fd;
 	ar_fd = open(argv[2], O_RDONLY);	
+	checkopen(ar_fd);
 	printheaders(ar_fd, &printconciseheader);
 	close(ar_fd);
 	return(0);
@@ -456,8 +453,7 @@ int findfile(int ar_fd, char *filename, int (*doSomething)(int ar_fd, struct ar_
 	offset = 0;
 	while(1){
 		if(is_nextheader(ar_fd, offset)){	
-			lseek(ar_fd, offset, SEEK_CUR);
-			header = get_nextheader(ar_fd);
+			header = get_nextheader(ar_fd, offset);
 			if(!strcmp(header->ar_name,filename)){ //found a match
 				doSomething(ar_fd, header);
 				return(0);
@@ -480,17 +476,12 @@ int delete(char **argv, int argc){
 	int ar_fd, temp_fd, openFlags, restorepos;
 	openFlags = O_CREAT | O_WRONLY;
 	temp_fd = open("temp_archive", openFlags, 0666);
-	
-	//prepare to copy
-	char buf[BLOCKSIZE];	
-	int num_read;
-	int num_written;
-	off_t copied;	
+	checkopen(temp_fd);
 	
 	//Write ARMAG to new file
 	write(temp_fd, ARMAG, SARMAG);
 	ar_fd = open(argv[2], O_RDONLY);	
-	
+	checkopen(ar_fd);
 	//get first header
 	lseek(ar_fd, SARMAG, SEEK_SET);
 	struct ar_hdr *header;
@@ -504,8 +495,7 @@ int delete(char **argv, int argc){
 			//I don't know why this even has an effect, because it only returns the current offset position, 
 			//but this function only works if the following line is here...
 			curpos = lseek(ar_fd, 0L, SEEK_CUR);	
-			lseek(ar_fd, offset, SEEK_CUR);
-			header = get_nextheader(ar_fd);
+			header = get_nextheader(ar_fd, offset);
 			for(i=3;i<argc;i++){ //loop through argv arguments. If find a match, skip writing header to temp file
 				if(!strcmp(header->ar_name,argv[i])){ //if found a match, skip next step
 					match = 1; //found a match
@@ -521,12 +511,7 @@ int delete(char **argv, int argc){
 				match = 0; //reset match
 				continue;
 			}
-			while(num_written < offset){ //copy the file
-				num_read = read(ar_fd, buf, BLOCKSIZE);
-				num_written += write(temp_fd, buf, BLOCKSIZE);
-				//...and it only works if the following line is here
-				curpos = lseek(ar_fd, 0L, SEEK_CUR);	
-			}
+			copyFile(ar_fd, temp_fd, offset);
 			offset = 0; //because we just moved the file descriptor through the previous offset
 		} else {
 			break;
@@ -556,6 +541,7 @@ int appendcurrdirr(char **argv){
 	int openFlags, ar_fd;
 	openFlags = O_CREAT | O_WRONLY | O_APPEND;
 	ar_fd = open(argv[2], openFlags, 0666);	
+	checkopen(ar_fd);
 	init_archive(ar_fd);
 	dirp = opendir("."); //open current working directory
 	while(1){
