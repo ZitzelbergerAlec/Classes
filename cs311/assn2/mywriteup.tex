@@ -1,0 +1,175 @@
+\documentclass[letterpaper,10pt,titlepage]{article}
+
+\usepackage{amsmath}                                         
+\usepackage{amsthm}
+
+\usepackage{alltt}                                           
+\usepackage{float}
+\usepackage{color}
+
+\usepackage{balance}
+\usepackage[TABBOTCAP, tight]{subfigure}
+\usepackage{enumitem}
+
+\usepackage{pstricks, pst-node}
+
+\usepackage{geometry}
+\geometry{textheight=10in, textwidth=7.5in}
+
+%random comment
+
+\newcommand{\cred}[1]{{\color{red}#1}}
+\newcommand{\cblue}[1]{{\color{blue}#1}}
+
+\usepackage{hyperref}
+
+\def\name{David Merrick}
+
+
+%% The following metadata will show up in the PDF properties
+\hypersetup{
+  colorlinks = true,
+  urlcolor = black,
+  pdfauthor = {\name},
+  pdfkeywords = {cs311 ``operating systems'' files filesystem I/O},
+  pdftitle = {CS 311 Project 1: UNIX File I/O},
+  pdfsubject = {CS 311 Project 1},
+  pdfpagemode = UseNone
+}
+
+\parindent = 0.0 in
+\parskip = 0.2 in
+
+\begin{document}
+David Merrick
+
+CS 311
+
+2 February, 2013
+
+\begin{center}
+{\LARGE Writeup for Assignment 2}
+\end{center}
+
+\begin{enumerate}
+\item \emph{A design for your system, as well as places your implementation deviated from this design.}
+I tried to make my system as modular as possible, splitting everything I could into different specialized functions, in order to save time programming, avoid writing the same code over again, and to meet my arbitrary goal of getting my code under 600 lines. Unfortunately, my knowledge of C is not yet at the level where I could fully implement this, and I definitely deviated from this design in places. For instance, the code for delete(), append(), and extract() is very similar, and perhaps could have been written as one function that could behave differently depending on what it was called to do. This could possibly be done with function pointers. I did manage to keep my code under 600 lines until I did the extra credit to have append() check to see if the file exists in the archive first. I did stick to my design with my printheaders() function that took a function pointer, which formatted the output, as an argument, in order to have the printconcise() and printverbose() functions be as efficient as possible. I did abstract the task of moving through files using an iterator made up of two functions, if\_isnextheader() and get\_nextheader.
+
+\item \emph{Work Log:}
+
+2013-02-04 12:31:26 -0800, Tweaked special\_append() function.
+
+2013-02-04 12:26:56 -0800, Removed assert.h header
+
+2013-02-04 12:26:00 -0800, Made a couple tweaks. Added get\_nextoffset function to abstract getting next file offset.
+
+2013-02-04 12:13:50 -0800, Got extra credit special\_append function working.
+
+2013-02-04 11:13:16 -0800, Added special\_append function for extra credit. Currently commented out.
+
+2013-02-04 09:58:01 -0800, Made some updates, fixed formatting bug in delete() function.
+
+2013-02-03 18:17:49 -0800, Split stuff up into more functions for better abstraction, still need to fix delete()\; it has some kind of formatting bug that I just discovered.
+
+2013-02-01 23:14:20 -0800, More tweaks.
+
+2013-02-01 23:09:02 -0800, Made some final tweaks to meet his specifications. In particular changing the file access time when extracting.
+
+2013-02-01 22:41:21 -0800, Accidentally fixed delete() while debugging. Added curpos variable that is set to lseek to current position. Which shouldn't do anything. But does. It works now
+
+2013-02-01 19:15:20 -0800, Still trying to fix bug with delete() function. Might have to revert to earlier version
+
+2013-02-01 18:12:46 -0800, Everything is mostly working. Added all function prototypes at top in alphabetical order. Delete has a bug though.
+
+2013-02-01 14:02:13 -0800, Fixed permissions bug! changed strtoul(header.ar\_mode, NULL, 0) to strtoul(header.ar\_mode, NULL, 8)
+
+2013-02-01 13:36:33 -0800, Still debugging printheaders function. Need it to ignore a single newline character.
+
+2013-02-01 12:03:48 -0800, Added code to debug permissions issue and some to-do comments on the printheader function to fix formatting.
+
+2013-02-01 11:41:26 -0800, printverbose is working with correct time values. However, permissions are wrong and formatting is weird.
+
+2013-02-01 10:18:58 -0800, Added -A functionality to append all files in current directory. Tested and works.
+
+2013-01-31 11:30:04 -0800, Took out deletefile, realized didn't need it. Extract doesn't actually need to delete files from archive.
+
+2013-01-30 20:29:58 -0800, Wrote deletefile() function that will delete a single file. Useful for extract(). Needs to be tested.
+
+2013-01-30 20:13:20 -0800, Finished delete() function.
+
+2013-01-30 16:59:19 -0800, Fixed bug in delete. Now just need it to write all of header to file, write file contents, delete original archive, rename temp to original
+
+2013-01-30 16:49:41 -0800, Rewrote findfile to be smaller/help with finding bug in delete. Still bug in delete.
+
+2013-01-30 16:43:36 -0800, Rewrote printheaders function to be smaller. Delete has a bug.
+
+2013-01-30 11:08:36 -0800, Got basic functionality of delete() working. Right now just prints filename to new archive.
+
+2013-01-30 09:23:13 -0800, Fixed weird output in append().
+
+2013-01-29 23:13:12 -0800, Started working on delete but didn't finish. Didn't even try compiling code but it likely won't. Will finish tomorrow.
+
+2013-01-29 18:07:07 -0800, Tried to fix formatting bug in appendfile. No success. But added uid and gid to extractfile.
+
+2013-01-29 17:15:26 -0800, Extractfile is mostly working. Now just need to delete from archive file that was just extracted.
+
+2013-01-29 15:32:44 -0800, Updated printconcise and printverbose functions to use function pointers
+
+2013-01-29 15:08:11 -0800, Tried a function pointer in delete() and it worked! Rewrite code now to be way more efficient
+
+2013-01-29 14:28:44 -0800, Fixed bug in extractfile(). Was not opening file first.
+
+2013-01-28 17:19:32 -0800, Added extract functionality. Fixed bug in testing array format. Was a null terminator issue
+
+2013-01-28 13:53:30 -0800, Updated append() function, got \/ added to filename successfully, fixed uid and gid weirdness.
+
+2013-01-28 13:04:00 -0800, printconcise and printverbose are now working
+
+2013-01-28 11:04:20 -0800, get\_nextheader function is working
+
+2013-01-27 18:13:09 -0800, Finished append() functionality.
+
+2013-01-27 15:22:07 -0800, Fixed weird strcpy() bug that erased my argv. Used snprintf() for the fix. Ask about this bug at some point.
+
+2013-01-27 14:02:30 -0800, Added header files for example code and example stat function
+
+2013-01-26 19:28:55 -0800, Added file stats in append option, function to check if file exists and is in the right format.
+
+2013-01-25 16:10:03 -0800, Not sure if this works yet, but added check for new file so can do arch header
+
+2013-01-25 15:42:41 -0800, This file was output by ar and contains formatting to use
+
+2013-01-25 13:33:33 -0800, Added the header file ar.h for formatting the archive
+
+2013-01-25 11:33:55 -0800, Successfully opens and appends text from files to archive file.
+
+2013-01-25 09:37:45 -0800, Rewrote switch-case to a bunch of if statements, completed skeleton code for extract/help/append functions.
+
+2013-01-24 16:53:37 -0800, Swapped getopt for manually parsing argv to better meet specifications. Warning: code currently does not compile.
+
+2013-01-24 15:46:20 -0800, Added skeleton functions for append and extract
+
+2013-01-24 14:33:13 -0800, Removed comment from myar.c
+
+2013-01-24 14:26:44 -0800, Added a comment to assn2
+
+2013-01-24 14:16:05 -0800, Adding CS 311 folder to repo
+
+\item \emph{Challenges:}
+Three main challenges come to mind with this program. First, I had never used any kind of revision control system prior to this assignment. I now will never go back to not using one, and wonder where revision control has been all my life. I chose GitHub, and had a friend show me how to clone a repository, add files to it, commit changes, and push back to the repository. The learning curve was a little steep at first but I picked it up quickly with my friend’s help. The second challenge was that I decided that I was going to forsake the bad habit of debugging with printf statements and dive into using gdb. This was much easier said than done, but after a week of reading, experimenting, and having another friend help me, I picked it up. Like I am now with revision control, I will never go back to the non-gdb ways of the past. It was incredibly helpful in debugging segmentation faults and saved me so much time and frustration with other bugs once I knew how to use it. The third challenge was function pointers. I had seen a friend use a function pointer in a program once and knew that I would have to make use of this technique to get my code under 600 lines. So I learned how to use them, and it actually wasn’t as difficult as I thought it would be.
+
+\item \begin{enumerate}
+	\item \emph{What do you think the main point of this assignment is?} The main point of this assignment was not file I/O. That was maybe 25\% of the point of this assignment. The main point was to use C at a much higher level than any of us have done before. The file I/O part was actually easy; the C syntax was where I had the most trouble.
+
+	\item \emph{How did you ensure your solution was correct?}
+I ensured my solution was correct by testing each part of it and comparing the actual result with what was expected. I tested the append() function with filenames that were too long and with directories. I tested delete() extensively with even- and odd-sized files. I tested extract() by comparing the modification times, access times, permissions, UID, GID to the original files and to the archive. I tested the printverbose() and printconcise() options by comparing their output to the output produced by the actual ar utility.
+
+	\item \emph{What did you learn?}
+I learned how to use revision control, the G debugger (gdb), and function pointers. I learned how to work with files and directories--how to open, close, delete, rename, change permissions, change timestamps, and extract metadata. I learned how to work with time, how to obtain it and format it in a human readable string. I learned how to test a program more thoroughly.
+	\end{enumerate}
+\end{enumerate}
+
+%input the pygmentized output of mt19937ar.c, using a (hopefully) unique name
+%this file only exists at compile time. Feel free to change that.
+%\input{__mt.h.tex}
+\end{document}
