@@ -247,6 +247,11 @@ int special_append(char **argv, int argc){
 	//First, if archive exists, open it for reading
 	//If it doesn't exist, open it and just append all the files in
 	//the regular way and return.
+	if(argc < 4){
+		printf("Please enter list of files to append.\n");
+		help();
+		return(-1);
+	}
 	int ar_fd, temp_fd, openFlags;
 	ar_fd = open(argv[2], O_RDONLY);
 	if(ar_fd == -1){
@@ -257,7 +262,7 @@ int special_append(char **argv, int argc){
 			PukeAndExit("Error opening archive.");
 		}
 	} 
-	openFlags = O_CREAT | O_WRONLY;
+	openFlags = O_CREAT | O_WRONLY ;
 	temp_fd = open("temp_archive", openFlags, 0666);
 	checkopen(temp_fd);
 	
@@ -276,9 +281,11 @@ int special_append(char **argv, int argc){
 		if(is_nextheader(ar_fd, offset)){
 			header = get_nextheader(ar_fd, offset);
 			for(i=3;i<argc;i++){ //loop through argv arguments. If find a match, skip writing header to temp file
-				if(!strcmp(header->ar_name,argv[i])){ //if found a match, skip next step
-					match = 1; //found a match
-					break;
+				if(argv[i] != NULL){
+					if(!strcmp(header->ar_name,argv[i])){ //if found a match, skip next step
+						match = 1; //found a match
+						break;
+					}
 				}
 			}
 			offset = get_offset(header);
@@ -289,7 +296,7 @@ int special_append(char **argv, int argc){
 				//Compare the files based on modification time, etc
 				struct stat sb2; //Status buffer
 				fstat(cmp_fd, &sb2);	
-				if((sb2.st_size == offset) && (sb2.st_mtime == headerToTime(header))){
+				if(((sb2.st_size + sb2.st_size %2) == offset) && (sb2.st_mtime == headerToTime(header))){
 					//Files are the same, copy the one we have
 					printf("%s already exists in the archive, skipping.\n", argv[i]);
 					struct ar_hdr *goodheader = reconstructheader(header);
@@ -299,7 +306,7 @@ int special_append(char **argv, int argc){
 				} else {
 					appendfile(temp_fd, argv[i]);
 				}
-				argv[i] = 0; //Mark ones we've aleady appended
+				argv[i] = NULL; //Mark ones we've aleady appended
 			} else {
 				struct ar_hdr *goodheader = reconstructheader(header);
 				writeheader(temp_fd, goodheader);
@@ -312,7 +319,7 @@ int special_append(char **argv, int argc){
 	}
 	//Append ones not already in archive
 	for(i=3; i<argc; i++){
-		if(argv[i] != 0){
+		if(argv[i] != NULL){
 			appendfile(temp_fd, argv[i]);
 		}
 	}
@@ -375,6 +382,7 @@ int appendfile(int ar_fd, char *filename){
 
 void copyFile(int in_fd, int out_fd, int offset){ 
 	//Copies the contents of in_fd to out_fd for amount of offset 
+	//Compensate for odd offset
 	char buf[BLOCKSIZE];
 	off_t copied = 0;
 	int num_read = 0;
@@ -382,10 +390,6 @@ void copyFile(int in_fd, int out_fd, int offset){
 	while(copied < offset){
 		num_read = read(in_fd, buf, BLOCKSIZE);
 		num_written = write(out_fd, buf, BLOCKSIZE);
-
-		if (num_read != num_written){
-			PukeAndExit("Error writing file");
-		}
 		copied += num_written;
 		lseek(in_fd, 0, SEEK_CUR); //Changed this to move forward
 	}
