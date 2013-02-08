@@ -92,42 +92,14 @@ int main(int argc, char **argv){
 	while(scanf("%[^,]%*c,", word) != EOF){
 		i++;
 		fputs(word, outputFiles[i % numsorts]); //round robin
-	}	
+		fputs("\n", outputFiles[i % numsorts]); //sort needs newline
+	}
 
-	/*
-	Round robin process
-	//take input from STDIN
-	while(scanf("%[^,]%*c,", word) != EOF){
+	//Flush the pipes
+	for(i=1; i < numpipes/2; i++){
+		fclose(outputFiles[i]);
 	}
-	*/
-	/*
-	switch(p=fork()){ //in parent case, p = PID of child
-		case -1:
-			//Oops case
-			break;
-		case 0:
-			//Child case
-			//Bind stdin to sort process
-			closePipe(fds[1]);
-			if (fds[0] != STDIN_FILENO) { //Defensive check
-				if (dup2(fds[0], STDIN_FILENO) == -1)
-					PukeAndExit("dup2 0");
-				closePipe(fds[0]);
-			}
-            execlp("sort", "sort", (char *)NULL);
-			break;
-		default:
-			//Parent case
-			closePipe(fds[0]);
-			FILE *output = fdopen(fds[1], "w");
-			fputs("a\nb\nd\nc", output);
-			//To do: Close the pipe
-			fclose(output);
-			closePipe(fds[1]);
-			child = wait(&status);
-			break;
-	}
-	*/	
+
 	return(0);
 }
 
