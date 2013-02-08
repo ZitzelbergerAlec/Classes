@@ -5,75 +5,135 @@
  * 
  *
  */ 
-#include <unistd.h>
+
 #include <errno.h>
+//#include <pipe.h> //can't find
+#include <getopt.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
-
+//Function prototypes
+void 	closePipe(int pfd);
+void 	createPipe(int *fds);
 void 	help();
 void 	PukeAndExit(char *errormessage);
 
 
 int main(int argc, char **argv){	
 	FILE *fp;
+	int i; 
 	int num_read;
 	int num_written;
 	char buf[100]; //Buffer for reading from pipe
 	int status;	
-	pid_t p;
 	pid_t child;
-	int fds[2];
-
-	//Create a pipe
-	if(pipe(fds) == -1){
-                perror("Error creating pipes\n");
-                exit(EXIT_FAILURE);
-        }
-	/*
-	if((fp=fopen(argv[1], "r")) == NULL) {
-    		PukeAndExit("Cannot open file.\n");
-  	}
-	*/
 	char word[100];
-	int output;
-	output = 1;
-	//while(fscanf(fp, "%[^,]%*c", word) != EOF){
-		switch(p=fork()){
-			case 0:
-				//Child case
-				//Bind stdin to sort process
-				close(fds[1]);
-				if (fds[0] != STDIN_FILENO) { /* Defensive check */
-					if (dup2(fds[0], STDIN_FILENO) == -1)
-						PukeAndExit("dup2 0");
-					if (close(fds[0]) == -1) //Close duplicate
-						PukeAndExit("close 0");
-				}
-                execlp("sort", "sort", (char *)NULL);
-				break;
-			case -1:
-				//Oops case
-				exit(-1);
-			default:
-				//Parent case
-				close(fds[0]);
-				write(fds[1], "a\nb\nd\nc", 7);
-				//To do: Close the pipe
-				if(close(fds[1]) == -1)
-					PukeAndExit("Close 1");
-				child = wait(&status);
-				break;
+
+	//Get number of processes to use
+	 
+	char *cvalue;
+	int c; 
+	int numsorts;
+	while ((c = getopt (argc, argv, "p:")) != -1)
+         switch (c){
+           case 'p':
+            	numsorts = atoi(optarg);
+             	break;
+    }
+    printf("numsorts = %d\n", numsorts);
+    int numpipes = numsorts * 2;
+	int processarray[numsorts]; //Array of processes
+	
+	//Generate all necessary pipes
+	//So all read ends will be even
+	int pipefds[4 * numsorts];
+	for(i = 0; i < numpipes; i++){
+    	if(pipe(pipefds + i*2) < 0 ){
+        	PukeAndExit("Error creating pipes\n");
+    	}
+	}
+
+	//Spawn all the sort processes
+	pid_t pid;
+	for(i = 0; i < (numsorts*2); i+=2){ //increment by 2 for pipes
+		pid = fork();
+		if(pid == 0){ //child case
+			printf("Spawning sort process \n");
+			//Bind stdin to sort process
+			closePipe(pipefds[i+1]); //close write end
+			if (pipefds[i] != STDIN_FILENO) { //Defensive check
+				if (dup2(pipefds[i], STDIN_FILENO) == -1)
+					PukeAndExit("dup2 0");
+				closePipe(pipefds[i]);
+			}
+            execlp("sort", "sort", (char *)NULL);
 		}
-	//}	
+	}
+
+	//Close read end of pipes in parent
+	for(i = 0; i < numpipes; i += 2){
+    	closePipe(pipefds[i]);
+	}
+
+	//Fopen all output pipes
+	int j = 0; //counter for outputFiles array
+	FILE *outputFiles[numpipes/2];
+	for(i=1; i < numpipes; i+= 2){
+		outputFiles[j] = fdopen(pipefds[i], "w");
+		j++;
+
+	}
+
+	//Distribute words to them
+	i = 0;
+	while(scanf("%[^,]%*c,", word) != EOF){
+		i++;
+		fputs(word, outputFiles[i % numsorts]); //round robin
+	}	
+
+	/*
+	Round robin process
+	//take input from STDIN
+	while(scanf("%[^,]%*c,", word) != EOF){
+	}
+	*/
+	/*
+	switch(p=fork()){ //in parent case, p = PID of child
+		case -1:
+			//Oops case
+			break;
+		case 0:
+			//Child case
+			//Bind stdin to sort process
+			closePipe(fds[1]);
+			if (fds[0] != STDIN_FILENO) { //Defensive check
+				if (dup2(fds[0], STDIN_FILENO) == -1)
+					PukeAndExit("dup2 0");
+				closePipe(fds[0]);
+			}
+            execlp("sort", "sort", (char *)NULL);
+			break;
+		default:
+			//Parent case
+			closePipe(fds[0]);
+			FILE *output = fdopen(fds[1], "w");
+			fputs("a\nb\nd\nc", output);
+			//To do: Close the pipe
+			fclose(output);
+			closePipe(fds[1]);
+			child = wait(&status);
+			break;
+	}
+	*/	
 	return(0);
 }
 
 void help(){
 	printf("Usage:\n");
-	printf("uniqify [filename] [number of sorting processes]\n");
+	printf("uniqify -p [number of sorting processes]\n");
 	exit(0);
 }
 
@@ -82,3 +142,15 @@ void PukeAndExit(char *errormessage){
 	exit(-1);
 }
 
+void closePipe(int pfd){
+	char errormessage[8];
+	if(close(pfd) == -1){
+				snprintf(errormessage, 8, "Close %d\n", pfd);
+				PukeAndExit(errormessage);
+	}
+}
+
+void createPipe(int *fds){
+	if(pipe(fds) == -1)
+                PukeAndExit("Error creating pipes\n");
+}
