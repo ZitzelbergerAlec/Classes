@@ -23,12 +23,8 @@ void 	PukeAndExit(char *errormessage);
 
 
 int main(int argc, char **argv){	
-	FILE *fp;
 	int i; 
-	int num_read;
-	int num_written;
 	char buf[100]; //Buffer for reading from pipe
-	int status;	
 	pid_t child;
 	char word[100];
 
@@ -37,19 +33,19 @@ int main(int argc, char **argv){
 	char *cvalue;
 	int c; 
 	int numsorts;
-	while ((c = getopt (argc, argv, "p:")) != -1)
+	while ((c = getopt(argc, argv, "p:")) != -1)
          switch (c){
            case 'p':
             	numsorts = atoi(optarg);
              	break;
     }
-    printf("numsorts = %d\n", numsorts);
+
     int numpipes = numsorts * 2;
 	int processarray[numsorts]; //Array of processes
 	
 	//Generate all necessary pipes
 	//So all read ends will be even
-	int pipefds[4 * numsorts];
+	int pipefds[2 * numpipes];
 	for(i = 0; i < numpipes; i++){
     	if(pipe(pipefds + i*2) < 0 ){
         	PukeAndExit("Error creating pipes\n");
@@ -58,28 +54,31 @@ int main(int argc, char **argv){
 
 	//Spawn all the sort processes
 	pid_t pid;
-	for(i = 0; i < (numsorts*2); i+=2){ //increment by 2 for pipes
+	int j = 0; //counter for pipes, increments by 2
+	for(i = 0; i < numsorts; i++){ 
 		pid = fork();
+		processarray[i] = pid;
 		if(pid == 0){ //child case
 			printf("Spawning sort process \n");
 			//Bind stdin to sort process
-			closePipe(pipefds[i+1]); //close write end
-			if (pipefds[i] != STDIN_FILENO) { //Defensive check
-				if (dup2(pipefds[i], STDIN_FILENO) == -1)
+			closePipe(pipefds[j+1]); //close write end
+			if (pipefds[j] != STDIN_FILENO){ //Defensive check
+				if (dup2(pipefds[j], STDIN_FILENO) == -1)
 					PukeAndExit("dup2 0");
-				closePipe(pipefds[i]);
+				closePipe(pipefds[j]);
 			}
             execlp("sort", "sort", (char *)NULL);
 		}
+		j += 2;
 	}
 
 	//Close read end of pipes in parent
-	for(i = 0; i < numpipes; i += 2){
+	for(i = 0; i < numpipes; i+=2){
     	closePipe(pipefds[i]);
 	}
 
 	//Fopen all output pipes
-	int j = 0; //counter for outputFiles array
+	j = 0; //counter for outputFiles array
 	FILE *outputFiles[numpipes/2];
 	for(i=1; i < numpipes; i+= 2){
 		outputFiles[j] = fdopen(pipefds[i], "w");
@@ -95,9 +94,21 @@ int main(int argc, char **argv){
 		fputs("\n", outputFiles[i % numsorts]); //sort needs newline
 	}
 
-	//Flush the pipes
+	//Flush the pipes:
+	//Close output files
 	for(i=1; i < numpipes/2; i++){
 		fclose(outputFiles[i]);
+	}
+
+	//Close pipes
+	for(i=1; i<numpipes; i+=2){
+		closePipe(pipefds[i]);
+	}
+
+	//Reap all zombies
+	int status;
+	for(i=0; i < numsorts; i++){
+		waitpid(processarray[i], &status, 0);
 	}
 
 	return(0);
