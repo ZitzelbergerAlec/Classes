@@ -6,8 +6,10 @@
  *
  */ 
 
+#define _POSIX_SOURCE //for fdopen()
+#include <ctype.h>
 #include <errno.h>
-//#include <pipe.h> //can't find
+#include <fcntl.h>
 #include <getopt.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -132,9 +134,10 @@ int main(int argc, char **argv){
 			}		
 		default:
 			break;
-
 	}
-
+	for(i=0; i<(numsorts + 1); i++){ //wait for child processes to die. Sort processes + suppressor
+		wait(NULL);
+	}
 	return(0);
 }
 
@@ -167,9 +170,9 @@ int *generatePipes(int numpipes){ //returns an array of pipes of size 2*numpipes
 	int *pipesArray = (int *)malloc(sizeof(int) * (2 * numpipes));
 	int i;
 	for(i = 0; i < numpipes; i++){
-    	if(pipe(pipesArray + i*2) < 0){
-        	PukeAndExit("Error creating pipes\n");
-    	}
+    		if(pipe(pipesArray + i*2) < 0){
+        		PukeAndExit("Error creating pipes\n");
+    		}
 	}
 	return(pipesArray);
 }
