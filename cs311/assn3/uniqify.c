@@ -42,30 +42,42 @@ int main(int argc, char **argv){
 	int processarray[numsorts]; //Array of processes
 	
 	//Generate all necessary pipes for sort
+
 	//So all read ends will be even
 	int *sortpipefds = generatePipes(numsorts);
+
+	//Generate pipes for the suppressor
+	int *suppipefds = generatePipes(numsorts);
 
 	//Spawn all the sort processes
 	pid_t pid;
 	int j = 0; //counter for pipes, increments by 2
 	for(i = 0; i < numsorts; i++){ 
 		pid = fork();
-		processarray[i] = pid;
 		if(pid == 0){ //child case
 			printf("Sort process spawned\n");
-			//Bind stdin to sort process
-			closePipe(sortpipefds[j+1]); //close write end
+			//Bind stdin to pipe
+			closePipe(sortpipefds[j+1]); //close write end of input pipe
 			if(sortpipefds[j] != STDIN_FILENO){ //Defensive check
 				if(dup2(sortpipefds[j], STDIN_FILENO) == -1)
 					PukeAndExit("dup2 0");
 				closePipe(sortpipefds[j]);
 			}
-			j += 2;
+			//Bind stdout to suppressor pipe
+			closePipe(suppipefds[j]); //close read end of output pipe
+			if(suppipefds[j+1] != STDOUT_FILENO){ //Defensive check
+				if(dup2(suppipefds[j+1], STDOUT_FILENO) == -1)
+					PukeAndExit("dup2 1"); //problem here
+				closePipe(suppipefds[j+1]);
+			}
             execlp("sort", "sort", (char *)NULL);
+		} else {
+			processarray[i] = pid;
 		}
+		j += 2;
 	}
 
-	//Close read end of pipes in parent
+	//Close read end of pipes in parent (parser)
 	for(i = 0; i < numsorts; i+=2){
     	closePipe(sortpipefds[i]);
 	}
@@ -88,9 +100,39 @@ int main(int argc, char **argv){
 	}
 
 	//Flush the pipes:
-	//Close output pipes and input pipes
-	for(i=1; i < numsorts; i++){
+	//Close output pipes pipes
+	for(i=0; i < numsorts; i++){
 		fclose(outputs[i]);
+	}
+
+	//Fopen all input pipes
+	j = 0; //counter for outputs array
+	FILE *inputs[numsorts];
+	for(i=0; i < numsorts*2; i+= 2){
+		inputs[j] = fdopen(suppipefds[i], "r");
+		j++;
+	}
+
+	//Fork to suppressor
+	switch(fork()){
+		case -1:
+			//oops
+			break;
+		case 0:
+			printf("Spawning suppressor process");
+			char inbuf[100];
+			//Close write end of pipes in suppressor
+			for(i = 1; i < numsorts; i+=2){
+		    	closePipe(suppipefds[i]);
+			}
+			for(i=0;i<numsorts;i++){
+				fgets(inbuf, 100, inputs[i]);
+				printf("In pipe: %s\n", inbuf);
+
+			}		
+		default:
+			break;
+
 	}
 
 	return(0);
@@ -104,6 +146,7 @@ void help(){
 
 void PukeAndExit(char *errormessage){
 	perror(errormessage);
+	printf("Errno = %d\n", errno);
 	exit(-1);
 }
 
@@ -121,7 +164,7 @@ void createPipe(int *fds){
 }
 
 int *generatePipes(int numpipes){ //returns an array of pipes of size 2*numpipes
-	int *pipesArray = (int *)malloc(sizeof(int) * (2*numpipes));
+	int *pipesArray = (int *)malloc(sizeof(int) * (2 * numpipes));
 	int i;
 	for(i = 0; i < numpipes; i++){
     	if(pipe(pipesArray + i*2) < 0){
