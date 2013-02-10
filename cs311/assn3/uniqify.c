@@ -85,10 +85,10 @@ void PukeAndExit(char *errormessage){
 }
 
 void closePipe(int pfd){
-	char errormessage[8];
 	if(close(pfd) == -1){
-				snprintf(errormessage, 8, "Error closing pipe %d\n", pfd);
-				PukeAndExit(errormessage);
+		char errormessage[8];
+		snprintf(errormessage, 8, "Error closing pipe %d\n", pfd);
+		PukeAndExit(errormessage);
 	}
 }
 
@@ -107,7 +107,6 @@ int **generatePipes(int numpipes){ //returns a 2-dimensional array of pipes
 	}
 	return(pipesArray);
 }
-
 
 int *debugSorts(int numsorts, int **inPipe, int **outPipe){
 	//Debugs spawned processes by printing everything 
@@ -137,9 +136,9 @@ void debugProcess(int *inPipe){
 	FILE *input;
 	input = fdopen(inPipe[0], "r");
 	while(fgets(word, MAX_WORD_LEN, input) != NULL){
-		printf("in process %d\n", pid);
 		printf("word = %s\n", word);
 	}
+	exit(0);
 }
 
 int *spawnSorts(int numsorts, int **inPipe, int **outPipe){
@@ -178,26 +177,22 @@ void RRParser(int numsorts, int **outPipe){ //Round Robin parser
     	closePipe(outPipe[i][0]);
 	}
 
-	//fdopen() all output pipes
-	FILE *outputs[numsorts];
-	for(i=0; i < numsorts; i++){
-		outputs[i] = fdopen(outPipe[i][1], "w");
-		if(outputs[i] == NULL)
-			printf("Error: could not create output stream.\n");
-	}
-
-	//Distribute words to them
-	while(scanf("%[^,]%*c,", word) != EOF){
-		strtoupper(word);
-		fputs(word, outputs[i % numsorts]); //round robin
-		fputs("\n", outputs[i % numsorts]); //sort needs newline
-		i++;
-	}
+	int readnum;
+    char buf[1];
+    i = 0;    
+    while ((readnum = read(STDIN_FILENO, buf, 1)) != 0) {
+            if (isalpha(buf[0])) {
+            		buf[0] = toupper(buf[0]);
+            } else {
+                    buf[0] = '\n';
+                    i++;
+            }
+            write(outPipe[i % numsorts][1], buf, 1);
+    }
 
 	//Flush the streams:
 	for(i=0; i < numsorts; i++){
-		if(fclose(outputs[i]) == EOF)
-			printf("Error closing stream.\n");
+		closePipe(outPipe[i][1]);
 	}
 }
 
