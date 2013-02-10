@@ -25,12 +25,14 @@ void 	closePipe(int pfd);
 void 	createPipe(int *fds);
 int 	**generatePipesArray(int numpipes);
 void 	help();
+void  	mergeWords(int numwords, char **words);
 void 	PukeAndExit(char *errormessage);
 void 	RRParser(int numsorts, int **outPipe);
 void  	spawnSorts(int numsorts, int **inPipe, int **outPipe);
 void 	strtoupper(char *str);
 void 	spawnSuppressor(int numsorts, int **inPipe);
 void 	suppressorProcess(int numsorts, int **inPipe);
+void 	swapWords(int i, int j, char **words);
 
 int main(int argc, char **argv){	
 	int i;
@@ -184,6 +186,7 @@ void spawnSuppressor(int numsorts, int **inPipe){
 void suppressorProcess(int numsorts, int **inPipe){
 	int i;
 	char buf[MAX_WORD_LEN]; 
+	char *words[numsorts];
 
 	//Fopen all input pipes
 	FILE *inputs[numsorts];
@@ -193,14 +196,65 @@ void suppressorProcess(int numsorts, int **inPipe){
 			printf("Error: could not create input stream.\n");
 	}
 
-	i=0;
-	while(fgets(buf, MAX_WORD_LEN, inputs[i % numsorts]) != NULL){		
-		printf("In pipe: %s\n", buf);
-		i++;
+	i=0; //Index for pipes
+	int j = 0; //Array index for words
+	/*
+	structure for current word
+	typedef struct {
+		char *word;
+		int wordCount;
 	}
+	curword
+	*/
+	while(fgets(buf, MAX_WORD_LEN, inputs[i % numsorts]) != NULL){		
+		i++;
+		if(buf == NULL){
+			continue;
+		}
+		words[j] = buf;
+		if(j != numsorts){
+			j++;
+		} else {
+			mergeWords(j, words);
+			j = 0;
+		}
+	}
+
+	//To do: merge leftovers
+
 
 	//Close inputs
 	for(i=0; i < numsorts; i++){
 		fclose(inputs[i]);
 	}
+}
+
+void mergeWords(int numwords, char **words){
+	//Takes an unorganized array of words
+	//Returns one organized in alphabetical order
+	int alpha; //index of next lowest alphabetical word
+	//Perform an insertion sort
+	int i, j;
+	for(j=0; j < numwords; j++){
+		alpha = j;
+		for(i = j; i < numwords; i++){
+			if(strcmp(words[i],words[alpha]) < 0)
+				alpha = i; //found a new alpha word
+		}
+		swapWords(j, alpha, words);
+	}
+	//debug
+	printf("Words in order are:\n");
+	for(i=0;i<numwords;i++){
+		printf("%s\n", words[i]);
+	}
+	///debug
+}
+
+void swapWords(int i, int j, char **words){
+	//Swaps 2 words in an array of words
+	char *temp;
+	temp = words[i];
+	words[i] = words[j];
+	words[j] = temp;
 }
