@@ -33,6 +33,7 @@ void 	spawnSuppressor(int numsorts, int **inPipe);
 void 	suppressorProcess(int numsorts, int **inPipe);
 
 int main(int argc, char **argv){	
+	int i;
 	if(argc < 2){
 		help();
 		exit(0);
@@ -54,16 +55,7 @@ int main(int argc, char **argv){
 	RRParser(numsorts, sortpipefds);
 
 	//Spawn suppressor process
-	//spawnSuppressor(numsorts, suppipefds);	
-	
-	int i;
-	//debug for suppressor
-	//Close write end of pipes in suppressor
-	for(i = 0; i < numsorts; i++){
-    		closePipe(suppipefds[i][1]);
-	}
-	suppressorProcess(numsorts, suppipefds);
-	///debug
+	spawnSuppressor(numsorts, suppipefds);	
 
 	for(i=0; i<numsorts; i++){ //wait for child processes to die. 
 		wait(NULL);
@@ -136,6 +128,7 @@ void spawnSorts(int numsorts, int **inPipe, int **outPipe){
 	            		break;
 			default: //parent case
 				closePipe(inPipe[i][0]); //Close read end of pipe in parent
+				closePipe(outPipe[i][1]); //Close write end of output pipe in parent
 		}
 	}
 }
@@ -179,10 +172,6 @@ void spawnSuppressor(int numsorts, int **inPipe){
 			//oops
 			break;
 		case 0:
-			//Close write end of pipes in suppressor
-			for(i = 0; i < numsorts; i++){
-		    		closePipe(inPipe[i][1]);
-			}
 			suppressorProcess(numsorts, inPipe);
 			_exit(EXIT_SUCCESS);
 			break;
@@ -193,8 +182,9 @@ void spawnSuppressor(int numsorts, int **inPipe){
 }
 
 void suppressorProcess(int numsorts, int **inPipe){
-	char buf[MAX_WORD_LEN];
-	int i; 
+	int i;
+	char buf[MAX_WORD_LEN]; 
+
 	//Fopen all input pipes
 	FILE *inputs[numsorts];
 	for(i=0; i < numsorts; i++){
