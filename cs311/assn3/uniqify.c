@@ -23,14 +23,14 @@
 //Function prototypes
 void 	closePipe(int pfd);
 void 	createPipe(int *fds);
-int 	*generatePipes(int numpipes);
+int 	**generatePipes(int numpipes);
 void 	help();
 void 	PukeAndExit(char *errormessage);
-void 	RRParser(int numsorts, int *sortpipefds);
-int  	*spawnSorts(int numsorts, int *sortpipefds, int *suppipefds);
+void 	RRParser(int numsorts, int **sortpipefds);
+int  	*spawnSorts(int numsorts, int **inPipe, int **outPipe);
 void 	strtoupper(char *str);
-void 	spawnSuppressor(int numsorts, int *suppipefds);
-void 	suppressorProcess(int numsorts, int *suppipefds);
+void 	spawnSuppressor(int numsorts, int **suppipefds);
+void 	suppressorProcess(int numsorts, int **suppipefds);
 
 int main(int argc, char **argv){	
 	int i, j; //counters 
@@ -46,10 +46,10 @@ int main(int argc, char **argv){
     }
 	
 	//Generate all necessary pipes for sort
-	int *sortpipefds = generatePipes(numsorts);
+	int **sortpipefds = generatePipes(numsorts);
 
 	//Generate pipes for the suppressor
-	int *suppipefds = generatePipes(numsorts);
+	int **suppipefds = generatePipes(numsorts);
 
 	//Spawn sort processes
 	int *processArray = spawnSorts(numsorts, sortpipefds, suppipefds);
@@ -91,24 +91,23 @@ void createPipe(int *fds){
                 PukeAndExit("Error creating pipes\n");
 }
 
-int *generatePipes(int numpipes){ //returns an array of pipes of size 2*numpipes
-	int *pipesArray = (int *)malloc(sizeof(int) * (2 * numpipes));
+int **generatePipes(int numpipes){ //returns a 2-dimensional array of pipes
+	int **pipesArray = (int **) malloc(sizeof(int *) * (numpipes));
 	int i;
 	for(i = 0; i < numpipes; i++){
-    		if(pipe(pipesArray + i*2) < 0){
+    		pipesArray[i] = (int *) malloc(sizeof(int) * 2);
+    		if(pipe(pipesArray[i]) < 0){
         		PukeAndExit("Error creating pipes\n");
     		}
 	}
 	return(pipesArray);
 }
 
-int *spawnSorts(int numsorts, int *sortpipefds, int *suppipefds){
+int *spawnSorts(int numsorts, int **inPipe, int **outPipe){
 	//returns an array containing all the PIDs of the child processes
 	//Spawn all the sort processes
 	pid_t pid;
-	int j = 0; //counter for pipes, increments by 2
 	int i; 
-
 	int *processArray = (int *)malloc(sizeof(int) * numsorts);
 	for(i = 0; i < numsorts; i++){ 
 		switch(pid = fork()){
@@ -116,11 +115,11 @@ int *spawnSorts(int numsorts, int *sortpipefds, int *suppipefds){
 					PukeAndExit("Forking error\n");
 			case 0: //child case
 				//Bind stdin to pipe
-				closePipe(sortpipefds[j+1]); //close write end of input pipe
-				if(sortpipefds[j] != STDIN_FILENO){ //Defensive check
-					if(dup2(sortpipefds[j], STDIN_FILENO) == -1)
+				closePipe(inPipe[i][1]); //close write end of input pipe
+				if(inPipe[i][0] != STDIN_FILENO){ //Defensive check
+					if(dup2(inPipe[i][0], STDIN_FILENO) == -1)
 						PukeAndExit("dup2 0");
-					closePipe(sortpipefds[j]); //Close duplicate pipe
+					closePipe(inPipe[i][0]); //Close duplicate pipe
 				}
 				/* Debug
 				//Bind stdout to suppressor pipe
@@ -137,28 +136,25 @@ int *spawnSorts(int numsorts, int *sortpipefds, int *suppipefds){
 				printf("child process %d: %d\n", i, pid);
 				processArray[i] = pid;
 		}
-		j += 2;
 	}
 	return processArray;
 }
 
-void RRParser(int numsorts, int *sortpipefds){ //Round Robin parser
+void RRParser(int numsorts, int **sortpipefds){ //Round Robin parser
 	int i, j;
 	char word[100];
 
 	//Close read end of pipes
 	for(i = 0; i < (numsorts * 2); i+=2){
-    	closePipe(sortpipefds[i]);
+    	closePipe(sortpipefds[i][0]);
 	}
 
 	//Fopen all output pipes
-	j = 0; //counter for outputs array
 	FILE *outputs[numsorts];
-	for(i=1; i < (numsorts * 2); i+= 2){
-		outputs[j] = fdopen(sortpipefds[i], "w");
-		if(outputs[j] == NULL)
+	for(i=0; i < numsorts; i++){
+		outputs[i] = fdopen(sortpipefds[i][1], "w");
+		if(outputs[i] == NULL)
 			printf("Error: could not create output stream.\n");
-		j++;
 
 	}
 
@@ -186,7 +182,7 @@ void strtoupper(char *str){ //convert a string to uppercase
 	}
 }
 
-void spawnSuppressor(int numsorts, int *suppipefds){
+void spawnSuppressor(int numsorts, int **suppipefds){
 	pid_t pid;
 	//Fork to suppressor
 	switch(pid = fork()){
@@ -202,23 +198,21 @@ void spawnSuppressor(int numsorts, int *suppipefds){
 	}
 }
 
-void suppressorProcess(int numsorts, int *suppipefds){
+void suppressorProcess(int numsorts, int **suppipefds){
 	char buf[100];
 	int i, j; 
 	
 	//Fopen all input pipes
-	j = 0; //counter for inputs array
 	FILE *inputs[numsorts];
-	for(i=0; i < numsorts*2; i+= 2){
-		inputs[j] = fdopen(suppipefds[i], "r");
-		if(inputs[j] == NULL)
+	for(i=0; i < numsorts; i++){
+		inputs[i] = fdopen(suppipefds[i][0], "r");
+		if(inputs[i] == NULL)
 			printf("Error: could not create input stream.\n");
-		j++;
 	}
 
 	//Close write end of pipes in suppressor
-	for(i = 1; i < numsorts; i+=2){
-    	closePipe(suppipefds[i]);
+	for(i = 0; i < numsorts; i++){
+    	closePipe(suppipefds[i][1]);
 	}
 	for(i=0;i<numsorts;i++){
 		fgets(buf, 100, inputs[i]);
