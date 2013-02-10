@@ -14,11 +14,16 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
 #define MAX_WORD_LEN 100 //maximum word length
+
+//Debug function prototypes
+int *debugSorts(int numsorts, int **inPipe, int **outPipe);
+void debugProcess(int *inPipe);
+
 
 //Function prototypes
 void 	closePipe(int pfd);
@@ -52,14 +57,15 @@ int main(int argc, char **argv){
 	int **suppipefds = generatePipes(numsorts);
 
 	//Spawn sort processes
-	int *processArray = spawnSorts(numsorts, sortpipefds, suppipefds);
+	//int *processArray = spawnSorts(numsorts, sortpipefds, suppipefds);
+
+	int *processArray = debugSorts(numsorts, sortpipefds, suppipefds);
 
 	//parse STDIN
 	RRParser(numsorts, sortpipefds);
 
 	//Spawn suppressor process
-	//spawnSuppressor(numsorts, suppipefds);
-	
+	//spawnSuppressor(numsorts, suppipefds);	
 	for(i=0; i<numsorts; i++){ //wait for child processes to die. 
 		wait(NULL);
 	}
@@ -81,7 +87,7 @@ void PukeAndExit(char *errormessage){
 void closePipe(int pfd){
 	char errormessage[8];
 	if(close(pfd) == -1){
-				snprintf(errormessage, 8, "Close %d\n", pfd);
+				snprintf(errormessage, 8, "Error closing pipe %d\n", pfd);
 				PukeAndExit(errormessage);
 	}
 }
@@ -100,6 +106,40 @@ int **generatePipes(int numpipes){ //returns a 2-dimensional array of pipes
         		PukeAndExit("Error creating pipes\n");
 	}
 	return(pipesArray);
+}
+
+
+int *debugSorts(int numsorts, int **inPipe, int **outPipe){
+	//Debugs spawned processes by printing everything 
+	//Spawn all the sort processes
+	pid_t pid;
+	int i; 
+	int *processArray = (int *)malloc(sizeof(int) * numsorts);
+	for(i = 0; i < numsorts; i++){ 
+		switch(pid = fork()){
+			case -1: //oops case
+					PukeAndExit("Forking error\n");
+			case 0: //child case
+				//Bind stdin to pipe
+				closePipe(inPipe[i][1]); //close write end of input pipe
+	            debugProcess(inPipe[i]);
+	            break;
+			default: //parent case
+				processArray[i] = pid;
+		}
+	}
+	return processArray;
+}
+
+void debugProcess(int *inPipe){
+	int pid = getpid();
+	char word[MAX_WORD_LEN];
+	FILE *input;
+	input = fdopen(inPipe[0], "r");
+	while(fgets(word, MAX_WORD_LEN, input) != NULL){
+		printf("in process %d\n", pid);
+		printf("word = %s\n", word);
+	}
 }
 
 int *spawnSorts(int numsorts, int **inPipe, int **outPipe){
@@ -147,7 +187,6 @@ void RRParser(int numsorts, int **outPipe){ //Round Robin parser
 	}
 
 	//Distribute words to them
-	i = 0;
 	while(scanf("%[^,]%*c,", word) != EOF){
 		strtoupper(word);
 		fputs(word, outputs[i % numsorts]); //round robin
