@@ -29,8 +29,8 @@ void 	PukeAndExit(char *errormessage);
 void 	RRParser(int numsorts, int **outPipe);
 void  	spawnSorts(int numsorts, int **inPipe, int **outPipe);
 void 	strtoupper(char *str);
-void 	spawnSuppressor(int numsorts, int **suppipefds);
-void 	suppressorProcess(int numsorts, int **suppipefds);
+void 	spawnSuppressor(int numsorts, int **inPipe);
+void 	suppressorProcess(int numsorts, int **inPipe);
 
 int main(int argc, char **argv){	
 	if(argc < 2){
@@ -54,8 +54,17 @@ int main(int argc, char **argv){
 	RRParser(numsorts, sortpipefds);
 
 	//Spawn suppressor process
-	spawnSuppressor(numsorts, suppipefds);	
+	//spawnSuppressor(numsorts, suppipefds);	
+	
 	int i;
+	//debug for suppressor
+	//Close write end of pipes in suppressor
+	for(i = 0; i < numsorts; i++){
+    		closePipe(suppipefds[i][1]);
+	}
+	suppressorProcess(numsorts, suppipefds);
+	///debug
+
 	for(i=0; i<numsorts; i++){ //wait for child processes to die. 
 		wait(NULL);
 	}
@@ -161,7 +170,7 @@ void strtoupper(char *str){ //convert a string to uppercase
 	}
 }
 
-void spawnSuppressor(int numsorts, int **suppipefds){
+void spawnSuppressor(int numsorts, int **inPipe){
 	pid_t pid;
 	int i; 
 	//Fork to suppressor
@@ -172,30 +181,32 @@ void spawnSuppressor(int numsorts, int **suppipefds){
 		case 0:
 			//Close write end of pipes in suppressor
 			for(i = 0; i < numsorts; i++){
-		    		closePipe(suppipefds[i][1]);
+		    		closePipe(inPipe[i][1]);
 			}
-			printf("Spawned suppressor process");
-			suppressorProcess(numsorts, suppipefds);
+			suppressorProcess(numsorts, inPipe);
+			_exit(EXIT_SUCCESS);
+			break;
 		default:
 			waitpid(pid, NULL, 0);
 			break;
 	}
 }
 
-void suppressorProcess(int numsorts, int **suppipefds){
-	char buf[100];
+void suppressorProcess(int numsorts, int **inPipe){
+	char buf[MAX_WORD_LEN];
 	int i; 
 	//Fopen all input pipes
 	FILE *inputs[numsorts];
 	for(i=0; i < numsorts; i++){
-		inputs[i] = fdopen(suppipefds[i][0], "r");
+		inputs[i] = fdopen(inPipe[i][0], "r");
 		if(inputs[i] == NULL)
 			printf("Error: could not create input stream.\n");
 	}
-	for(i=0;i<numsorts;i++){
-		fgets(buf, 100, inputs[i]);
-		printf("In pipe: %s\n", buf);
 
+	i=0;
+	while(fgets(buf, MAX_WORD_LEN, inputs[i % numsorts]) != NULL){		
+		printf("In pipe: %s\n", buf);
+		i++;
 	}
 
 	//Close inputs
