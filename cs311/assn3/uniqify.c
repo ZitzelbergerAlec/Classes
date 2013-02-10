@@ -18,7 +18,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#define MAX_LEN //maximum word length
+#define MAX_WORD_LEN 100 //maximum word length
 
 //Function prototypes
 void 	closePipe(int pfd);
@@ -26,7 +26,7 @@ void 	createPipe(int *fds);
 int 	**generatePipes(int numpipes);
 void 	help();
 void 	PukeAndExit(char *errormessage);
-void 	RRParser(int numsorts, int **sortpipefds);
+void 	RRParser(int numsorts, int **outPipe);
 int  	*spawnSorts(int numsorts, int **inPipe, int **outPipe);
 void 	strtoupper(char *str);
 void 	spawnSuppressor(int numsorts, int **suppipefds);
@@ -96,9 +96,8 @@ int **generatePipes(int numpipes){ //returns a 2-dimensional array of pipes
 	int i;
 	for(i = 0; i < numpipes; i++){
     		pipesArray[i] = (int *) malloc(sizeof(int) * 2);
-    		if(pipe(pipesArray[i]) < 0){
+    		if(pipe(pipesArray[i]) < 0)
         		PukeAndExit("Error creating pipes\n");
-    		}
 	}
 	return(pipesArray);
 }
@@ -121,41 +120,30 @@ int *spawnSorts(int numsorts, int **inPipe, int **outPipe){
 						PukeAndExit("dup2 0");
 					closePipe(inPipe[i][0]); //Close duplicate pipe
 				}
-				/* Debug
-				//Bind stdout to suppressor pipe
-				closePipe(suppipefds[j]); //close read end of output pipe
-				if(suppipefds[j+1] != STDOUT_FILENO){ //Defensive check
-					if(dup2(suppipefds[j+1], STDOUT_FILENO) == -1)
-						PukeAndExit("dup2 1"); //problem here
-					closePipe(suppipefds[j+1]);
-				}
-				*/
 	            execlp("sort", "sort", (char *)NULL);
 	            break;
 			default: //parent case
-				printf("child process %d: %d\n", i, pid);
 				processArray[i] = pid;
 		}
 	}
 	return processArray;
 }
 
-void RRParser(int numsorts, int **sortpipefds){ //Round Robin parser
-	int i, j;
-	char word[100];
+void RRParser(int numsorts, int **outPipe){ //Round Robin parser
+	int i;
+	char word[MAX_WORD_LEN];
 
 	//Close read end of pipes
-	for(i = 0; i < (numsorts * 2); i+=2){
-    	closePipe(sortpipefds[i][0]);
+	for(i = 0; i < numsorts; i++){
+    	closePipe(outPipe[i][0]);
 	}
 
-	//Fopen all output pipes
+	//fdopen() all output pipes
 	FILE *outputs[numsorts];
 	for(i=0; i < numsorts; i++){
-		outputs[i] = fdopen(sortpipefds[i][1], "w");
+		outputs[i] = fdopen(outPipe[i][1], "w");
 		if(outputs[i] == NULL)
 			printf("Error: could not create output stream.\n");
-
 	}
 
 	//Distribute words to them
