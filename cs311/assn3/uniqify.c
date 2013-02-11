@@ -33,14 +33,9 @@ void 	strtoupper(char *str);
 void 	spawnSuppressor(int numsorts, int **inPipe);
 void 	suppressorProcess(int numsorts, int **inPipe);
 void 	swapWords(int i, int j, char **words);
+void 	waitOnChildren(int numChildren);
 
 int main(int argc, char **argv){	
-	int i;
-	if(argc < 2){
-		help();
-		exit(0);
-	}
-	
 	//Get number of processes to use
 	int numsorts = atoi(argv[1]);
 
@@ -57,12 +52,21 @@ int main(int argc, char **argv){
 	RRParser(numsorts, sortpipefds);
 
 	//Spawn suppressor process
-	spawnSuppressor(numsorts, suppipefds);	
+	//spawnSuppressor(numsorts, suppipefds);	
+	//Debug
+	suppressorProcess(numsorts, suppipefds);	
 
-	for(i=0; i<numsorts; i++){ //wait for child processes to die. 
+	//Wait for child processes to die
+	waitOnChildren(numsorts);
+	
+	return(0);
+}
+
+void waitOnChildren(int numChildren){
+	int i;
+	for(i=0; i<numChildren; i++){
 		wait(NULL);
 	}
-	return(0);
 }
 
 void help(){
@@ -196,32 +200,65 @@ void suppressorProcess(int numsorts, int **inPipe){
 			printf("Error: could not create input stream.\n");
 	}
 
-	i=0; //Index for pipes
-	int j = 0; //Array index for words
-	/*
-	structure for current word
-	typedef struct {
-		char *word;
-		int wordCount;
-	}
-	curword
-	*/
-	while(fgets(buf, MAX_WORD_LEN, inputs[i % numsorts]) != NULL){		
+
+	int j,k; //index for words and inner for loop, respectively
+	i=j=k=0; //i is the index for pipes
+	
+	//To do: make this struct
+	//structure for counting words
+	struct wordCounter{
+		char word[MAX_WORD_LEN];
+		int count;
+	} curWord;
+	
+	//To do: This loop should have a NULL counter instead that counts the number of NULLS at every go around
+	//That way it won't break out too early if one of the pipes is empty but others still have data.
+	//If the number of NULLS is equal to numsorts, break.
+
+	int nullCount = 0; //counts number of nulls from fgets
+	while(1){		
+		if(fgets(buf, MAX_WORD_LEN, inputs[i % numsorts]) == NULL){
+			nullCount++;
+			if(nullCount == numsorts){
+				break;
+			}
+		}
 		i++;
-		if(buf == NULL){
+		if(buf == NULL){ //Don't allow NULL words to be passed into mergeWords
 			continue;
 		}
-		words[j] = buf;
-		if(j != numsorts){
-			j++;
+		printf("j = %d\n", j);
+		j++;
+		if(j < numsorts){
+			words[j] = buf;
+			printf("words[%d] = %s\n", j, words[j]);
 		} else {
-			mergeWords(j, words);
+			k=0;
+			//mergeWords(j, words); //this causes a segfault
+			printf("words[%d] = %s\n", j, words[j]);
+			if(i == numsorts){ //set initial curWord
+				//printf("words[0] = %s\n", words[0]);
+				//strncpy(curWord.word, words[0], MAX_WORD_LEN);
+				curWord.count = 1;
+				k=1; //Start at index 1
+				//printf("curWord.word = %s\n", curWord.word);
+			}
+			/*
+			for(k;k<j;k++){
+				if(!strcmp(words[k],curWord.word)){
+					curWord.count++;
+				} else {
+					printf("%s %d\n", curWord.word, curWord.count);
+					curWord.word = words[k];
+					curWord.count = 1;
+				}
+			}
+			*/
 			j = 0;
+			words[j] = buf;
 		}
 	}
-
 	//To do: merge leftovers
-
 
 	//Close inputs
 	for(i=0; i < numsorts; i++){
@@ -230,11 +267,11 @@ void suppressorProcess(int numsorts, int **inPipe){
 }
 
 void mergeWords(int numwords, char **words){
+	int i, j;
 	//Takes an unorganized array of words
 	//Returns one organized in alphabetical order
 	int alpha; //index of next lowest alphabetical word
 	//Perform an insertion sort
-	int i, j;
 	for(j=0; j < numwords; j++){
 		alpha = j;
 		for(i = j; i < numwords; i++){
@@ -243,12 +280,6 @@ void mergeWords(int numwords, char **words){
 		}
 		swapWords(j, alpha, words);
 	}
-	//debug
-	printf("Words in order are:\n");
-	for(i=0;i<numwords;i++){
-		printf("%s\n", words[i]);
-	}
-	///debug
 }
 
 void swapWords(int i, int j, char **words){
