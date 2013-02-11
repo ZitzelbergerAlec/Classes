@@ -152,13 +152,16 @@ void spawnSorts(int numsorts, int **inPipe, int **outPipe){
 }
 
 void RRParser(int numsorts, int **outPipe){ //Round Robin parser
+	//Sends words that contain only alphabetical characters
+	//to do: never sends empty strings
 	int i;
 	char word[MAX_WORD_LEN];
     	char buf[1];
+    	char prev; //previous written character (prevents blank lines from being sent)
     	i = 0;    
     	while(read(STDIN_FILENO, buf, 1) != 0) {
 	        if(isalpha(buf[0])){
-	            	buf[0] = toupper(buf[0]);
+	            	buf[0] = tolower(buf[0]);
 	        } else {
 	                buf[0] = '\n';
 	                i++;
@@ -200,6 +203,7 @@ void spawnSuppressor(int numsorts, int **inPipe){
 
 void suppressorProcess(int numsorts, int **inPipe){
 	int i;
+	int numWords; //The size of the buffer for uniqifying the sorted words
 	char buf[MAX_WORD_LEN]; 
 	char **words;
 	FILE *inputs[numsorts];
@@ -207,10 +211,16 @@ void suppressorProcess(int numsorts, int **inPipe){
 	curWord->count = 0;
 
         //initialize word array
-        words = (char**)malloc(numsorts * sizeof(char*));
-        for (i = 0; i < numsorts; i++) {
+        //If the number of sort processes is too small,
+        //Make the buffer big enough to handle more words
+        if(numsorts < 5){
+        	numWords = 2*numsorts;
+        }
+        words = (char**)malloc(numWords * sizeof(char*));
+        for (i = 0; i < numWords; i++) {
                 words[i] = (char*)malloc(MAX_WORD_LEN * sizeof(char));
         }
+        clearWords(numsorts, words);
 
         //fdopen inPipes
         for(i = 0; i < numsorts; i++) {
@@ -222,17 +232,21 @@ void suppressorProcess(int numsorts, int **inPipe){
         int nullCount = 0;
         while(1){
         	if(fgets(words[j], MAX_WORD_LEN, inputs[i % numsorts]) == NULL){
-                        strncpy(words[j], "0", MAX_WORD_LEN); //mark words
+                        //strncpy(words[j], "0", MAX_WORD_LEN); //mark words
                         nullCount++;
-                        if(nullCount == numsorts)
+                        if(nullCount == numsorts){
+                        	//print remaining words and break
+                        	alphWords(j, words);
+                		printWords(j, words, curWord);
                         	break;
+                        }
                 } else {
                 	stripNewline(words[j]);
                 	if(isEmpty(words[j]))
                 		continue;
                 }
                 j++;
-                if(!(j < numsorts)){
+                if(!(j < numWords)){
                 	alphWords(j, words);
                 	printWords(j, words, curWord);
                 	clearWords(j, words);
@@ -256,7 +270,7 @@ void suppressorProcess(int numsorts, int **inPipe){
 }
 
 int isEmpty(char *str){ //returns 1 if a string is empty
-	if(str[0] == '\0')
+	if(str[0] == '\0' || str[0] == '\n')
 		return 1;
 	return 0;
 }
@@ -265,9 +279,9 @@ void DebugPrintWords(int numWords, char **words){
 	//debugs words array by printing them out
 	int i;
 	for(i=0; i<numWords; i++){
-		if(!strcmp(words[i], "0"))
-			continue;
-		printf("words[%d] = %s", i, words[i]);
+		//if(!strcmp(words[i], "0"))
+		//	continue;
+		printf("words[%d] = %s\n", i, words[i]);
 	}
 }
 
