@@ -1,13 +1,14 @@
-/*
- * To do: signal handling
- */ 
-
+//Compiler directives
+#define _XOPEN_SOURCE //needed to make sigaction, etc work
 #define _POSIX_SOURCE //for fdopen()
+
+//Includes
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,6 +27,7 @@ int 	alphaIndex(int numWords, char **words);
 void 	closePipe(int pfd);
 void 	createPipe(int *fds);
 int 	**generatePipesArray(int numpipes);
+void 	grimReaper(int s);
 void 	help();
 int 	isEmpty(char *str);
 void 	printWords(int numWords, char **words, struct wordCounter *curWord);
@@ -37,7 +39,22 @@ void 	spawnSuppressor(int numSorts, int **inPipe);
 void 	suppressorProcess(int numSorts, int **inPipe);
 void 	waitOnChildren(int numChildren);
 
+
 int main(int argc, char **argv){	
+	if(argc < 2)
+		help();
+
+	//Setup signal handlers
+	struct sigaction act;
+	
+	act.sa_handler = grimReaper;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = 0;
+
+	sigaction(SIGQUIT, &act, NULL);
+	sigaction(SIGINT, &act, NULL);
+	sigaction(SIGHUP, &act, NULL);
+
 	//Get number of processes to use
 	int numSorts = atoi(argv[1]);
 
@@ -60,6 +77,15 @@ int main(int argc, char **argv){
 	waitOnChildren(numSorts);
 	
 	return(0);
+}
+
+//Signal Handler
+//Reference: http://stackoverflow.com/questions/1641182/how-can-i-catch-a-ctrl-c-event-c
+void grimReaper(int s){ 
+        //Clean up
+	//Issue a QUIT signal to all processes in group
+        kill(getpgrp(), SIGQUIT); 
+        exit(1); 
 }
 
 void waitOnChildren(int numChildren){
@@ -95,10 +121,10 @@ void createPipe(int *fds){
 }
 
 int **generatePipesArray(int numpipes){ //returns an empty 2-dimensional array
-	int **pipesArray = (int **) malloc(sizeof(int *) * (numpipes));
+	int **pipesArray = malloc(sizeof(int *) * (numpipes));
 	int i;
 	for(i = 0; i < numpipes; i++){
-    		pipesArray[i] = (int *) malloc(sizeof(int) * 2);
+    		pipesArray[i] = malloc(sizeof(int) * 2);
 	}
 	return(pipesArray);
 }
@@ -181,13 +207,13 @@ void suppressorProcess(int numSorts, int **inPipe){
 	char buf[MAX_WORD_LEN]; 
 	char **words;
 	FILE *inputs[numSorts];
-	struct wordCounter *curWord = (struct wordCounter *) malloc(sizeof(struct wordCounter));
+	struct wordCounter *curWord = malloc(sizeof(struct wordCounter));
 	int alpha; //index of alpha word in pipe
 
         //initialize word array
-        words = (char**)malloc(numSorts * sizeof(char*));
+        words = malloc(numSorts * sizeof(char*));
         for (i = 0; i < numSorts; i++) {
-                words[i] = (char*)malloc(MAX_WORD_LEN * sizeof(char));
+                words[i] = malloc(MAX_WORD_LEN * sizeof(char));
         }
 
         //fdopen inPipes
