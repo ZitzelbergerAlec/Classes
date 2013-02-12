@@ -38,38 +38,36 @@ void 	help();
 int 	isEmpty(char *str);
 void 	printWords(int numWords, char **words, struct wordCounter *curWord);
 void 	PukeAndExit(char *errormessage);
-void 	RRParser(int numsorts, int **outPipe);
-void  	spawnSorts(int numsorts, int **inPipe, int **outPipe);
+void 	RRParser(int numSorts, int **outPipe);
+void  	spawnSorts(int numSorts, int **inPipe, int **outPipe);
 char 	*stripNewline(char *word);
 void 	strtoupper(char *str);
-void 	spawnSuppressor(int numsorts, int **inPipe);
-void 	suppressorProcess(int numsorts, int **inPipe);
+void 	spawnSuppressor(int numSorts, int **inPipe);
+void 	suppressorProcess(int numSorts, int **inPipe);
 void 	swapWords(int i, int j, char **words);
 void 	waitOnChildren(int numChildren);
 
 int main(int argc, char **argv){	
 	//Get number of processes to use
-	int numsorts = atoi(argv[1]);
+	int numSorts = atoi(argv[1]);
 
 	//Generate all necessary pipes for sort
-	int **sortpipefds = generatePipesArray(numsorts);
+	int **sortpipefds = generatePipesArray(numSorts);
 
 	//Generate pipes for the suppressor
-	int **suppipefds = generatePipesArray(numsorts);
+	int **suppipefds = generatePipesArray(numSorts);
 
 	//Spawn sort processes
-	spawnSorts(numsorts, sortpipefds, suppipefds);
+	spawnSorts(numSorts, sortpipefds, suppipefds);
 
 	//parse STDIN
-	RRParser(numsorts, sortpipefds);
+	RRParser(numSorts, sortpipefds);
 
 	//Spawn suppressor process
-	//spawnSuppressor(numsorts, suppipefds);	
-	//Debug
-	suppressorProcess(numsorts, suppipefds);	
+	spawnSuppressor(numSorts, suppipefds);
 
 	//Wait for child processes to die
-	waitOnChildren(numsorts);
+	waitOnChildren(numSorts);
 	
 	return(0);
 }
@@ -116,12 +114,12 @@ int **generatePipesArray(int numpipes){ //returns an empty 2-dimensional array
 	return(pipesArray);
 }
 
-void spawnSorts(int numsorts, int **inPipe, int **outPipe){
+void spawnSorts(int numSorts, int **inPipe, int **outPipe){
 	//returns an array containing all the PIDs of the child processes
 	//Spawn all the sort processes
 	pid_t pid;
 	int i; 
-	for(i = 0; i < numsorts; i++){ 
+	for(i = 0; i < numSorts; i++){ 
 		createPipe(inPipe[i]);
 		createPipe(outPipe[i]);
 		switch(pid = fork()){
@@ -151,13 +149,11 @@ void spawnSorts(int numsorts, int **inPipe, int **outPipe){
 	}
 }
 
-void RRParser(int numsorts, int **outPipe){ //Round Robin parser
+void RRParser(int numSorts, int **outPipe){ //Round Robin parser
 	//Sends words that contain only alphabetical characters
 	//to do: never sends empty strings
-	int i;
-	char word[MAX_WORD_LEN];
-    	char buf[1];
-    	i = 0;    
+	int i = 0;
+    	char buf[1]; 
     	while(read(STDIN_FILENO, buf, 1) != 0) {
 	        if(isalpha(buf[0])){
 	            	buf[0] = tolower(buf[0]);
@@ -165,11 +161,11 @@ void RRParser(int numsorts, int **outPipe){ //Round Robin parser
 	                buf[0] = '\n';
 	                i++;
 	        }
-	        write(outPipe[i % numsorts][1], buf, 1);
+	        write(outPipe[i % numSorts][1], buf, 1);
     	}
 
 	//Flush the streams:
-	for(i=0; i < numsorts; i++){
+	for(i=0; i < numSorts; i++){
 		closePipe(outPipe[i][1]);
 	}
 }
@@ -182,7 +178,7 @@ void strtoupper(char *str){ //convert a string to uppercase
 	}
 }
 
-void spawnSuppressor(int numsorts, int **inPipe){
+void spawnSuppressor(int numSorts, int **inPipe){
 	pid_t pid;
 	int i; 
 	//Fork to suppressor
@@ -191,7 +187,7 @@ void spawnSuppressor(int numsorts, int **inPipe){
 			//oops
 			break;
 		case 0:
-			suppressorProcess(numsorts, inPipe);
+			suppressorProcess(numSorts, inPipe);
 			_exit(EXIT_SUCCESS);
 			break;
 		default:
@@ -200,38 +196,38 @@ void spawnSuppressor(int numsorts, int **inPipe){
 	}
 }
 
-void suppressorProcess(int numsorts, int **inPipe){
+void suppressorProcess(int numSorts, int **inPipe){
 	int i;
 	char buf[MAX_WORD_LEN]; 
 	char **words;
-	FILE *inputs[numsorts];
+	FILE *inputs[numSorts];
 	struct wordCounter *curWord = (struct wordCounter *) malloc(sizeof(struct wordCounter));
 	int alpha; //index of alpha word in pipe
 
         //initialize word array
-        words = (char**)malloc(numsorts * sizeof(char*));
-        for (i = 0; i < numsorts; i++) {
+        words = (char**)malloc(numSorts * sizeof(char*));
+        for (i = 0; i < numSorts; i++) {
                 words[i] = (char*)malloc(MAX_WORD_LEN * sizeof(char));
         }
 
         //fdopen inPipes
         //And get first batch of words to initialize curWord with
-        for(i = 0; i < numsorts; i++) {
+        for(i = 0; i < numSorts; i++) {
                 inputs[i] = fdopen(inPipe[i][0], "r");
-                if(fgets(words[i], MAX_WORD_LEN, inputs[i % numsorts]) == NULL)
+                if(fgets(words[i], MAX_WORD_LEN, inputs[i % numSorts]) == NULL)
                 	words[i] = NULL;
         }
-        alpha = alphaIndex(numsorts, words);
+        alpha = alphaIndex(numSorts, words);
         strncpy(curWord->word, stripNewline(words[alpha]), MAX_WORD_LEN);
         curWord->count = 1;
 
         int nullCount = 0;
-        while(nullCount < numsorts){
+        while(nullCount < numSorts){
         	if(fgets(words[alpha], MAX_WORD_LEN, inputs[alpha]) == NULL){
                         words[alpha] = NULL;
                         nullCount++;
                 }
-                alpha = alphaIndex(numsorts, words);
+                alpha = alphaIndex(numSorts, words);
                 if(alpha == -1)
                 	break;
                	if(!strcmp(curWord->word, stripNewline(words[alpha]))){
@@ -244,14 +240,14 @@ void suppressorProcess(int numsorts, int **inPipe){
         }
 
         //Free words array
-        for (i = 0; i < numsorts; i++) {
+        for (i = 0; i < numSorts; i++) {
                 free(words[i]);
         }
         free(words);
         free(curWord);
 
 	//Close inputs
-	for(i=0; i < numsorts; i++){
+	for(i=0; i < numSorts; i++){
 		fclose(inputs[i]);
 	}
 }
