@@ -1,9 +1,5 @@
 /*
- * Notes:
- * cast everything to uppercase
- * have command line argument for number of processes
  * To do: signal handling
- *
  */ 
 
 #define _POSIX_SOURCE //for fdopen()
@@ -25,12 +21,8 @@ struct wordCounter{
 	int count;
 };
 
-//debug
-void DebugPrintWords(int numWords, char **words);
-
 //Function prototypes
 int 	alphaIndex(int numWords, char **words);
-void 	clearWords(int numWords, char **words);
 void 	closePipe(int pfd);
 void 	createPipe(int *fds);
 int 	**generatePipesArray(int numpipes);
@@ -41,10 +33,8 @@ void 	PukeAndExit(char *errormessage);
 void 	RRParser(int numSorts, int **outPipe);
 void  	spawnSorts(int numSorts, int **inPipe, int **outPipe);
 char 	*stripNewline(char *word);
-void 	strtoupper(char *str);
 void 	spawnSuppressor(int numSorts, int **inPipe);
 void 	suppressorProcess(int numSorts, int **inPipe);
-void 	swapWords(int i, int j, char **words);
 void 	waitOnChildren(int numChildren);
 
 int main(int argc, char **argv){	
@@ -105,7 +95,6 @@ void createPipe(int *fds){
 }
 
 int **generatePipesArray(int numpipes){ //returns an empty 2-dimensional array
-	//To do: why can't I create the pipes in here?
 	int **pipesArray = (int **) malloc(sizeof(int *) * (numpipes));
 	int i;
 	for(i = 0; i < numpipes; i++){
@@ -151,7 +140,6 @@ void spawnSorts(int numSorts, int **inPipe, int **outPipe){
 
 void RRParser(int numSorts, int **outPipe){ //Round Robin parser
 	//Sends words that contain only alphabetical characters
-	//to do: never sends empty strings
 	int i = 0;
     	char buf[1]; 
     	while(read(STDIN_FILENO, buf, 1) != 0) {
@@ -167,14 +155,6 @@ void RRParser(int numSorts, int **outPipe){ //Round Robin parser
 	//Flush the streams:
 	for(i=0; i < numSorts; i++){
 		closePipe(outPipe[i][1]);
-	}
-}
-
-void strtoupper(char *str){ //convert a string to uppercase
-	int i = 0;
-	while(str[i] != '\0'){
-		str[i] = toupper(str[i]);
-		i++;
 	}
 }
 
@@ -233,7 +213,8 @@ void suppressorProcess(int numSorts, int **inPipe){
                	if(!strcmp(curWord->word, stripNewline(words[alpha]))){
                		curWord->count++;
                	} else {
-               		printf("%s %d\n", curWord->word, curWord->count);
+               		if(!isEmpty(curWord->word))
+               			printf("%s %d\n", curWord->word, curWord->count);
                		strncpy(curWord->word, words[alpha], MAX_WORD_LEN);
                		curWord->count = 1;
                	}
