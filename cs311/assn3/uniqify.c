@@ -255,8 +255,8 @@ void suppressorProcess(int numSorts, int **inPipe)
 			curWord->count++;
 		} else {
 			if (!isEmpty(curWord->word))
-				printf("%s %d\n", curWord->word,
-				       curWord->count);
+				printf("%d %s\n", curWord->count,
+				       curWord->word);
 			strncpy(curWord->word, words[alpha], MAX_WORD_LEN);
 			curWord->count = 1;
 		}
