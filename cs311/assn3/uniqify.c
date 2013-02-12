@@ -29,7 +29,7 @@ struct wordCounter{
 void DebugPrintWords(int numWords, char **words);
 
 //Function prototypes
-void  	alphWords(int numWords, char **words);
+int 	alphaIndex(int numWords, char **words);
 void 	clearWords(int numWords, char **words);
 void 	closePipe(int pfd);
 void 	createPipe(int *fds);
@@ -40,7 +40,7 @@ void 	printWords(int numWords, char **words, struct wordCounter *curWord);
 void 	PukeAndExit(char *errormessage);
 void 	RRParser(int numsorts, int **outPipe);
 void  	spawnSorts(int numsorts, int **inPipe, int **outPipe);
-void 	stripNewline(char *word);
+char 	*stripNewline(char *word);
 void 	strtoupper(char *str);
 void 	spawnSuppressor(int numsorts, int **inPipe);
 void 	suppressorProcess(int numsorts, int **inPipe);
@@ -157,7 +157,6 @@ void RRParser(int numsorts, int **outPipe){ //Round Robin parser
 	int i;
 	char word[MAX_WORD_LEN];
     	char buf[1];
-    	char prev; //previous written character (prevents blank lines from being sent)
     	i = 0;    
     	while(read(STDIN_FILENO, buf, 1) != 0) {
 	        if(isalpha(buf[0])){
@@ -203,58 +202,46 @@ void spawnSuppressor(int numsorts, int **inPipe){
 
 void suppressorProcess(int numsorts, int **inPipe){
 	int i;
-	int numWords; //The size of the buffer for uniqifying the sorted words
 	char buf[MAX_WORD_LEN]; 
 	char **words;
 	FILE *inputs[numsorts];
 	struct wordCounter *curWord = (struct wordCounter *) malloc(sizeof(struct wordCounter));
-	curWord->count = 0;
+	int alpha; //index of alpha word in pipe
 
         //initialize word array
-        //If the number of sort processes is too small,
-        //Make the buffer big enough to handle more words
-        if(numsorts < 5){
-        	numWords = 2*numsorts;
-        }
-        words = (char**)malloc(numWords * sizeof(char*));
-        for (i = 0; i < numWords; i++) {
+        words = (char**)malloc(numsorts * sizeof(char*));
+        for (i = 0; i < numsorts; i++) {
                 words[i] = (char*)malloc(MAX_WORD_LEN * sizeof(char));
         }
-        clearWords(numsorts, words);
 
         //fdopen inPipes
+        //And get first batch of words to initialize curWord with
         for(i = 0; i < numsorts; i++) {
                 inputs[i] = fdopen(inPipe[i][0], "r");
+                if(fgets(words[i], MAX_WORD_LEN, inputs[i % numsorts]) == NULL)
+                	words[i] = NULL;
         }
+        alpha = alphaIndex(numsorts, words);
+        strncpy(curWord->word, stripNewline(words[alpha]), MAX_WORD_LEN);
+        curWord->count = 1;
 
-        i = 0;
-        int j = 0;
         int nullCount = 0;
-        while(1){
-        	if(fgets(words[j], MAX_WORD_LEN, inputs[i % numsorts]) == NULL){
-                        //strncpy(words[j], "0", MAX_WORD_LEN); //mark words
+        while(nullCount < numsorts){
+        	if(fgets(words[alpha], MAX_WORD_LEN, inputs[alpha]) == NULL){
+                        words[alpha] = NULL;
                         nullCount++;
-                        if(nullCount == numsorts){
-                        	//print remaining words and break
-                        	alphWords(j, words);
-                		printWords(j, words, curWord);
-                        	break;
-                        }
-                } else {
-                	stripNewline(words[j]);
-                	if(isEmpty(words[j]))
-                		continue;
                 }
-                j++;
-                if(!(j < numWords)){
-                	alphWords(j, words);
-                	printWords(j, words, curWord);
-                	clearWords(j, words);
-                	j = 0;
-                }
-        	i++;
+                alpha = alphaIndex(numsorts, words);
+                if(alpha == -1)
+                	break;
+               	if(!strcmp(curWord->word, stripNewline(words[alpha]))){
+               		curWord->count++;
+               	} else {
+               		printf("%s %d\n", curWord->word, curWord->count);
+               		strncpy(curWord->word, words[alpha], MAX_WORD_LEN);
+               		curWord->count = 1;
+               	}
         }
-
 
         //Free words array
         for (i = 0; i < numsorts; i++) {
@@ -275,72 +262,33 @@ int isEmpty(char *str){ //returns 1 if a string is empty
 	return 0;
 }
 
-void DebugPrintWords(int numWords, char **words){
-	//debugs words array by printing them out
-	int i;
-	for(i=0; i<numWords; i++){
-		//if(!strcmp(words[i], "0"))
-		//	continue;
-		printf("words[%d] = %s\n", i, words[i]);
-	}
-}
-
-void printWords(int numWords, char **words, struct wordCounter *curWord){
-	//Print the unique words and their counts
-	int i = 0;
-	if(curWord->count == 0){ //curWord is uninitializied; this is first time through loop
-		strncpy(curWord->word, words[0], MAX_WORD_LEN);
-		curWord->count = 1;
-		i = 1;
-	}
-	for(i;i<numWords;i++){
-		if(!strcmp(words[i], "0"))
-			continue;
-		if(!strcmp(words[i],curWord->word)){
-			curWord->count++;
-		} else {
-			printf("%s %d\n", curWord->word, curWord->count);
-			strncpy(curWord->word, words[i], MAX_WORD_LEN);
-			curWord->count = 1;
-		}
-	}
-}
-
-void stripNewline(char *word){ //removes trailing newline characters from strings
-	if (word[strlen(word) - 1] == '\n')
+char *stripNewline(char *word){ //removes trailing newline characters from strings
+	if(word[strlen(word) - 1] == '\n')
   		word[strlen(word) - 1] = '\0';
+  	return word;
 }
 
-void clearWords(int numWords, char **words){
-	//Clears the array of words
-	int i; 
-	for(i = 0; i < numWords; i++){
-		strncpy(words[i], "0", MAX_WORD_LEN);
-	}
-}
-
-void alphWords(int numWords, char **words){ //Alphabetizes words
-	//Takes an unorganized array of words
-	//Returns one organized in alphabetical order
-	int i, j;
-	int alpha; //index of next lowest alphabetical word
-	//Perform an insertion sort
-	for(j=0; j < numWords; j++){
-		alpha = j;
-		for(i = j; i < numWords; i++){
-			if(!strcmp(words[i], "0"))
-				continue;
-			if(strcmp(words[i],words[alpha]) < 0)
-				alpha = i; //found a new alpha word
+int alphaIndex(int numWords, char **words){
+	//returns the index of the lowest alphabetical word in a set
+	int alpha = -1;
+	int i;
+	//First, find the first alpha word. If all the words are NULL, return -1 for error
+	for(i=0;i<numWords;i++){
+		if(words[i] == NULL){
+			continue;
+		} else {
+			alpha = i;
+			break;
 		}
-		swapWords(j, alpha, words);
 	}
-}
-
-void swapWords(int i, int j, char **words){
-	//Swaps 2 words in an array of words
-	char *temp;
-	temp = words[i];
-	words[i] = words[j];
-	words[j] = temp;
+	if(alpha == -1)
+		return -1;
+	//Now find the lowest alphabetical word
+	for(i=0;i<numWords;i++){
+		if(words[i] == NULL)
+			continue;
+		if(strcmp(words[i], words[alpha]) < 0)
+			alpha = i;
+	}
+	return alpha;
 }
