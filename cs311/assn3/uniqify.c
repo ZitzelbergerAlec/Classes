@@ -26,6 +26,7 @@ struct wordCounter {
 int alphaIndex(int numWords, char **words);
 void closePipe(int pfd);
 void createPipe(int *fds);
+void freePipesArray(int numPipes, int **pipesArray);
 int **generatePipesArray(int numpipes);
 void grimReaper(int s);
 void help();
@@ -79,6 +80,10 @@ int main(int argc, char **argv)
 
 	//Wait for child processes to die
 	waitOnChildren(numSorts);
+
+	//Free malloced arrays of pipes
+	freePipesArray(numSorts, sortpipefds);	
+	freePipesArray(numSorts, suppipefds);	
 
 	return (0);
 }
@@ -316,4 +321,13 @@ int alphaIndex(int numWords, char **words)
 			alpha = i;
 	}
 	return alpha;
+}
+
+void freePipesArray(int numPipes, int **pipesArray)
+{
+        int i;
+        for (i = 0; i < numPipes; i++) {
+                free(pipesArray[i]);
+        }
+        free(pipesArray);
 }
