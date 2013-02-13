@@ -16,7 +16,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#define MAX_WORD_LEN 100	//maximum word length
+#define MAX_WORD_LEN 100 //maximum word length
 
 //Global variables and stuff
 pid_t *process_array;
@@ -203,8 +203,14 @@ void r_r_parser(int **out_pipe)
 {				//Round Robin parser
 	//Sends words that contain only alphabetical characters
 	//to do: use fputs
-	int i = 0;
-	char buf[1];
+	int i;
+	char buf[2];
+	//fdopen() pipes for writing
+	FILE *outputs[num_sorts];
+	for (i = 0; i < num_sorts; i++) {
+		outputs[i] = fdopen(out_pipe[i][1], "w");
+	}
+
 	while (read(STDIN_FILENO, buf, 1) != 0) {
 		if (isalpha(buf[0])) {
 			buf[0] = tolower(buf[0]);
@@ -212,12 +218,13 @@ void r_r_parser(int **out_pipe)
 			buf[0] = '\n';
 			i++;
 		}
-		write(out_pipe[i % num_sorts][1], buf, 1);
+		buf[1] = '\0';
+		fputs(buf, outputs[i % num_sorts]);
 	}
 
 	//Flush the streams:
 	for (i = 0; i < num_sorts; i++) {
-		close_pipe(out_pipe[i][1]);
+		fclose(outputs[i]);
 	}
 }
 
