@@ -11,6 +11,6 @@ int main()
 	while (result != EOF){
 		result = scanf("%[a-zA-Z]", buf); //scan what we want
 		printf("%s\n", buf);
-		result = scanf("%[^a-zA-Z]", buf); //scan what we don't.
+		result = scanf("%*[^a-zA-Z]"); //scan what we don't.
 	}
 }
