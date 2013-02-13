@@ -45,6 +45,9 @@ int main(int argc, char **argv)
 	if (argc < 2)
 		help();
 
+	if(atoi(argv[1]) > 9000)
+		printf("Number of pipes is OVER 9000!!!\n");
+
 	//Setup signal handlers
 	struct sigaction act;
 
