@@ -270,6 +270,10 @@ void suppressorProcess(int numSorts, int **inPipe)
 		}
 	}
 
+	//Print last word
+	printf("%d %s\n", curWord->count,
+				       curWord->word);
+
 	//Free words array
 	for (i = 0; i < numSorts; i++) {
 		free(words[i]);
