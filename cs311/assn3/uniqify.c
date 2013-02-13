@@ -1,6 +1,7 @@
 //Compiler directives
-#define _XOPEN_SOURCE		//needed to make sigaction, etc work
-#define _POSIX_SOURCE		//for fdopen()
+#define _XOPEN_SOURCE 500 //needed to make sigaction, etc work
+#define _POSIX_SOURCE //for fdopen()
+#define _BSD_SOURCE //for killpg()
 
 //Includes
 #include <ctype.h>
@@ -17,28 +18,28 @@
 
 #define MAX_WORD_LEN 100	//maximum word length
 
-struct wordCounter {
+struct word_counter {
 	char word[MAX_WORD_LEN];
 	int count;
 };
 
 //Function prototypes
-int alphaIndex(int numWords, char **words);
-void closePipe(int pfd);
-void createPipe(int *fds);
-void freePipesArray(int numPipes, int **pipesArray);
-int **generatePipesArray(int numpipes);
-void grimReaper(int s);
+int alpha_index(int num_words, char **words);
+void close_pipe(int pfd);
+void create_pipe(int *fds);
+void free_pipes_array(int num_pipes, int **pipes_array);
+int **generate_pipes_array(int num_pipes);
+void grim_reaper(int s);
 void help();
-int isEmpty(char *str);
-void printWords(int numWords, char **words, struct wordCounter *curWord);
-void PukeAndExit(char *errormessage);
-void RRParser(int numSorts, int **outPipe);
-void spawnSorts(int numSorts, int **inPipe, int **outPipe);
-char *stripNewline(char *word);
-void spawnSuppressor(int numSorts, int **inPipe);
-void suppressorProcess(int numSorts, int **inPipe);
-void waitOnChildren(int numChildren);
+int is_empty(char *str);
+void print_words(int num_words, char **words, struct word_counter *cur_word);
+void puke_and_exit(char *errormessage);
+void r_r_parser(int num_sorts, int **out_pipe);
+void spawn_sorts(int num_sorts, int **in_pipe, int **out_pipe);
+char *strip_newline(char *word);
+void spawn_suppressor(int num_sorts, int **in_pipe);
+void suppressor_process(int num_sorts, int **in_pipe);
+void reap_children(int numChildren);
 
 
 int main(int argc, char **argv)
@@ -46,13 +47,13 @@ int main(int argc, char **argv)
 	if (argc < 2)
 		help();
 
-	if(atoi(argv[1]) > 9000)
-		printf("Number of pipes is OVER 9000!!!\n");
+	if(atoi(argv[1]) > 1000)
+		printf("Number of sorts is OVER 9000!!!\n");
 
 	//Setup signal handlers
 	struct sigaction act;
 
-	act.sa_handler = grimReaper;
+	act.sa_handler = grim_reaper;
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = 0;
 
@@ -61,44 +62,45 @@ int main(int argc, char **argv)
 	sigaction(SIGHUP, &act, NULL);
 
 	//Get number of processes to use
-	int numSorts = atoi(argv[1]);
+	int num_sorts = atoi(argv[1]);
 
 	//Generate all necessary pipes for sort
-	int **sortpipefds = generatePipesArray(numSorts);
+	int **sortpipefds = generate_pipes_array(num_sorts);
 
 	//Generate pipes for the suppressor
-	int **suppipefds = generatePipesArray(numSorts);
+	int **suppipefds = generate_pipes_array(num_sorts);
 
 	//Spawn sort processes
-	spawnSorts(numSorts, sortpipefds, suppipefds);
+	spawn_sorts(num_sorts, sortpipefds, suppipefds);
 
 	//parse STDIN
-	RRParser(numSorts, sortpipefds);
+	r_r_parser(num_sorts, sortpipefds);
 
 	//Spawn suppressor process
-	spawnSuppressor(numSorts, suppipefds);
+	spawn_suppressor(num_sorts, suppipefds);
 
 	//Wait for child processes to die
-	waitOnChildren(numSorts);
+	reap_children(num_sorts);
 
 	//Free malloced arrays of pipes
-	freePipesArray(numSorts, sortpipefds);	
-	freePipesArray(numSorts, suppipefds);	
+	free_pipes_array(num_sorts, sortpipefds);	
+	free_pipes_array(num_sorts, suppipefds);	
 
 	return (0);
 }
 
 //Signal Handler
 //Reference: http://stackoverflow.com/questions/1641182/how-can-i-catch-a-ctrl-c-event-c
-void grimReaper(int s)
+void grim_reaper(int s)
 {
 	//Clean up
 	//Issue a QUIT signal to all processes in group
-	kill(getpgrp(), SIGQUIT);
+	printf("KILLING EVERYTHING! with signal %d\n", s);
+	killpg(getpgrp(), SIGQUIT);
 	exit(1);
 }
 
-void waitOnChildren(int numChildren)
+void reap_children(int numChildren)
 {
 	int i;
 	for (i = 0; i < numChildren; i++) {
@@ -113,78 +115,79 @@ void help()
 	exit(0);
 }
 
-void PukeAndExit(char *errormessage)
+void puke_and_exit(char *errormessage)
 {
 	perror(errormessage);
 	printf("Errno = %d\n", errno);
 	exit(-1);
 }
 
-void closePipe(int pfd)
+void close_pipe(int pfd)
 {
 	if (close(pfd) == -1) {
 		char errormessage[8];
 		snprintf(errormessage, 8, "Error closing pipe %d\n", pfd);
-		PukeAndExit(errormessage);
+		puke_and_exit(errormessage);
 	}
 }
 
-void createPipe(int *fds)
+void create_pipe(int *fds)
 {
 	if (pipe(fds) == -1)
-		PukeAndExit("Error creating pipes\n");
+		puke_and_exit("Error creating pipes\n");
 }
 
-int **generatePipesArray(int numpipes)
+int **generate_pipes_array(int num_pipes)
 {				//returns an empty 2-dimensional array
-	int **pipesArray = malloc(sizeof(int *) * (numpipes));
+	int **pipes_array = malloc(sizeof(int *) * (num_pipes));
 	int i;
-	for (i = 0; i < numpipes; i++) {
-		pipesArray[i] = malloc(sizeof(int) * 2);
+	for (i = 0; i < num_pipes; i++) {
+		pipes_array[i] = malloc(sizeof(int) * 2);
 	}
-	return (pipesArray);
+	return (pipes_array);
 }
 
-void spawnSorts(int numSorts, int **inPipe, int **outPipe)
+void spawn_sorts(int num_sorts, int **in_pipe, int **out_pipe)
 {
 	//returns an array containing all the PIDs of the child processes
 	//Spawn all the sort processes
 	pid_t pid;
 	int i;
-	for (i = 0; i < numSorts; i++) {
-		createPipe(inPipe[i]);
-		createPipe(outPipe[i]);
+	for (i = 0; i < num_sorts; i++) {
+		create_pipe(in_pipe[i]);
+		create_pipe(out_pipe[i]);
 		switch (pid = fork()) {
 		case -1:	//oops case
-			PukeAndExit("Forking error\n");
+			puke_and_exit("Forking error\n");
 		case 0:	//child case
-			//Bind stdin to inPipe
-			closePipe(inPipe[i][1]);	//close write end of input pipe
-			if (inPipe[i][0] != STDIN_FILENO) {	//Defensive check
-				if (dup2(inPipe[i][0], STDIN_FILENO) == -1)
-					PukeAndExit("dup2 0");
-				closePipe(inPipe[i][0]);	//Close duplicate pipe
+			//Bind stdin to in_pipe
+			close_pipe(in_pipe[i][1]);	//close write end of input pipe
+			if (in_pipe[i][0] != STDIN_FILENO) {	//Defensive check
+				if (dup2(in_pipe[i][0], STDIN_FILENO) == -1)
+					puke_and_exit("dup2 0");
+				close_pipe(in_pipe[i][0]);	//Close duplicate pipe
 			}
-			//Bind stdout to outPipe
-			closePipe(outPipe[i][0]);	//close read end of output pipe
-			if (outPipe[i][1] != STDOUT_FILENO) {	//Defensive check
-				if (dup2(outPipe[i][1], STDOUT_FILENO) ==
+			//Bind stdout to out_pipe
+			close_pipe(out_pipe[i][0]);	//close read end of output pipe
+			if (out_pipe[i][1] != STDOUT_FILENO) {	//Defensive check
+				if (dup2(out_pipe[i][1], STDOUT_FILENO) ==
 				    -1)
-					PukeAndExit("dup2 1");
-				closePipe(outPipe[i][1]);	//Close duplicate pipe
+					puke_and_exit("dup2 1");
+				close_pipe(out_pipe[i][1]);	//Close duplicate pipe
 			}
 			execlp("sort", "sort", (char *) NULL);
 			break;
 		default:	//parent case
-			closePipe(inPipe[i][0]);	//Close read end of pipe in parent
-			closePipe(outPipe[i][1]);	//Close write end of output pipe in parent
+			close_pipe(in_pipe[i][0]);	//Close read end of pipe in parent
+			close_pipe(out_pipe[i][1]);	//Close write end of output pipe in parent
 		}
 	}
 }
 
-void RRParser(int numSorts, int **outPipe)
+void r_r_parser(int num_sorts, int **out_pipe)
 {				//Round Robin parser
 	//Sends words that contain only alphabetical characters
+	//to do: use fputs
 	int i = 0;
 	char buf[1];
 	while (read(STDIN_FILENO, buf, 1) != 0) {
@@ -194,16 +197,16 @@ void RRParser(int numSorts, int **outPipe)
 			buf[0] = '\n';
 			i++;
 		}
-		write(outPipe[i % numSorts][1], buf, 1);
+		write(out_pipe[i % num_sorts][1], buf, 1);
 	}
 
 	//Flush the streams:
-	for (i = 0; i < numSorts; i++) {
-		closePipe(outPipe[i][1]);
+	for (i = 0; i < num_sorts; i++) {
+		close_pipe(out_pipe[i][1]);
 	}
 }
 
-void spawnSuppressor(int numSorts, int **inPipe)
+void spawn_suppressor(int num_sorts, int **in_pipe)
 {
 	pid_t pid;
 	int i;
@@ -213,7 +216,7 @@ void spawnSuppressor(int numSorts, int **inPipe)
 		//oops
 		break;
 	case 0:
-		suppressorProcess(numSorts, inPipe);
+		suppressor_process(num_sorts, in_pipe);
 		_exit(EXIT_SUCCESS);
 		break;
 	default:
@@ -222,92 +225,92 @@ void spawnSuppressor(int numSorts, int **inPipe)
 	}
 }
 
-void suppressorProcess(int numSorts, int **inPipe)
+void suppressor_process(int num_sorts, int **in_pipe)
 {
 	int i;
 	char buf[MAX_WORD_LEN];
 	char **words;
-	FILE *inputs[numSorts];
-	struct wordCounter *curWord = malloc(sizeof(struct wordCounter));
+	FILE *inputs[num_sorts];
+	struct word_counter *cur_word = malloc(sizeof(struct word_counter));
 	int alpha;		//index of alpha word in pipe
 
 	//initialize word array
-	words = malloc(numSorts * sizeof(char *));
-	for (i = 0; i < numSorts; i++) {
+	words = malloc(num_sorts * sizeof(char *));
+	for (i = 0; i < num_sorts; i++) {
 		words[i] = malloc(MAX_WORD_LEN * sizeof(char));
 	}
 
-	//fdopen inPipes
-	//And get first batch of words to initialize curWord with
-	for (i = 0; i < numSorts; i++) {
-		inputs[i] = fdopen(inPipe[i][0], "r");
-		if (fgets(words[i], MAX_WORD_LEN, inputs[i % numSorts]) ==
+	//fdopen in_pipes
+	//And get first batch of words to initialize cur_word with
+	for (i = 0; i < num_sorts; i++) {
+		inputs[i] = fdopen(in_pipe[i][0], "r");
+		if (fgets(words[i], MAX_WORD_LEN, inputs[i % num_sorts]) ==
 		    NULL)
 			words[i] = NULL;
 	}
-	alpha = alphaIndex(numSorts, words);
-	strncpy(curWord->word, stripNewline(words[alpha]), MAX_WORD_LEN);
-	curWord->count = 1;
+	alpha = alpha_index(num_sorts, words);
+	strncpy(cur_word->word, strip_newline(words[alpha]), MAX_WORD_LEN);
+	cur_word->count = 1;
 
 	int nullCount = 0;
-	while (nullCount < numSorts) {
+	while (nullCount < num_sorts) {
 		if (fgets(words[alpha], MAX_WORD_LEN, inputs[alpha]) ==
 		    NULL) {
 			words[alpha] = NULL;
 			nullCount++;
 		}
-		alpha = alphaIndex(numSorts, words);
+		alpha = alpha_index(num_sorts, words);
 		if (alpha == -1)
 			break;
-		if (!strcmp(curWord->word, stripNewline(words[alpha]))) {
-			curWord->count++;
+		if (!strcmp(cur_word->word, strip_newline(words[alpha]))) {
+			cur_word->count++;
 		} else {
-			if (!isEmpty(curWord->word))
-				printf("%d %s\n", curWord->count,
-				       curWord->word);
-			strncpy(curWord->word, words[alpha], MAX_WORD_LEN);
-			curWord->count = 1;
+			if (!is_empty(cur_word->word))
+				printf("%d %s\n", cur_word->count,
+				       cur_word->word);
+			strncpy(cur_word->word, words[alpha], MAX_WORD_LEN);
+			cur_word->count = 1;
 		}
 	}
 
 	//Print last word
-	printf("%d %s\n", curWord->count,
-				       curWord->word);
+	printf("%d %s\n", cur_word->count,
+				       cur_word->word);
 
 	//Free words array
-	for (i = 0; i < numSorts; i++) {
+	for (i = 0; i < num_sorts; i++) {
 		free(words[i]);
 	}
 	free(words);
-	free(curWord);
+	free(cur_word);
 
 	//Close inputs
-	for (i = 0; i < numSorts; i++) {
+	for (i = 0; i < num_sorts; i++) {
 		fclose(inputs[i]);
 	}
 }
 
-int isEmpty(char *str)
+int is_empty(char *str)
 {				//returns 1 if a string is empty
 	if (str[0] == '\0' || str[0] == '\n')
 		return 1;
 	return 0;
 }
 
-char *stripNewline(char *word)
+char *strip_newline(char *word)
 {				//removes trailing newline characters from strings
 	if (word[strlen(word) - 1] == '\n')
 		word[strlen(word) - 1] = '\0';
 	return word;
 }
 
-int alphaIndex(int numWords, char **words)
+int alpha_index(int num_words, char **words)
 {
 	//returns the index of the lowest alphabetical word in a set
 	int alpha = -1;
 	int i;
 	//First, find the first alpha word. If all the words are NULL, return -1 for error
-	for (i = 0; i < numWords; i++) {
+	for (i = 0; i < num_words; i++) {
 		if (words[i] == NULL) {
 			continue;
 		} else {
@@ -318,7 +321,7 @@ int alphaIndex(int numWords, char **words)
 	if (alpha == -1)
 		return -1;
 	//Now find the lowest alphabetical word
-	for (i = 0; i < numWords; i++) {
+	for (i = 0; i < num_words; i++) {
 		if (words[i] == NULL)
 			continue;
 		if (strcmp(words[i], words[alpha]) < 0)
@@ -327,11 +330,11 @@ int alphaIndex(int numWords, char **words)
 	return alpha;
 }
 
-void freePipesArray(int numPipes, int **pipesArray)
+void free_pipes_array(int num_pipes, int **pipes_array)
 {
         int i;
-        for (i = 0; i < numPipes; i++) {
-                free(pipesArray[i]);
+        for (i = 0; i < num_pipes; i++) {
+                free(pipes_array[i]);
         }
-        free(pipesArray);
+        free(pipes_array);
 }
