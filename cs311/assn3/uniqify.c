@@ -1,7 +1,7 @@
 //Compiler directives
-#define _XOPEN_SOURCE 500 //needed to make sigaction, etc work
-#define _POSIX_SOURCE //for fdopen()
-#define _BSD_SOURCE //for killpg()
+#define _XOPEN_SOURCE 500	//needed to make sigaction, etc work
+#define _POSIX_SOURCE		//for fdopen()
+#define _BSD_SOURCE		//for killpg()
 
 //Includes
 #include <ctype.h>
@@ -16,7 +16,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#define MAX_WORD_LEN 100 //maximum word length
+#define MAX_WORD_LEN 100	//maximum word length
 
 //Global variables and stuff
 pid_t *process_array;
@@ -37,7 +37,8 @@ int **generate_pipes_array(int num_pipes);
 void grim_reaper(int s);
 void help();
 int is_empty(char *str);
-void print_words(int num_words, char **words, struct word_counter *cur_word);
+void print_words(int num_words, char **words,
+		 struct word_counter *cur_word);
 void puke_and_exit(char *errormessage);
 void r_r_parser(int **out_pipe);
 void spawn_sorts(int **in_pipe, int **out_pipe);
@@ -54,7 +55,7 @@ int main(int argc, char **argv)
 	//Get number of processes to use
 	num_sorts = atoi(argv[1]);
 
-	if(num_sorts > 1000)
+	if (num_sorts > 1000)
 		printf("Number of sorts is OVER 9000!!!\n");
 
 	//Setup signal handlers
@@ -87,8 +88,8 @@ int main(int argc, char **argv)
 	reap_children(num_sorts);
 
 	//Free malloced arrays of pipes
-	free_pipes_array(num_sorts, sortpipefds);	
-	free_pipes_array(num_sorts, suppipefds);	
+	free_pipes_array(num_sorts, sortpipefds);
+	free_pipes_array(num_sorts, suppipefds);
 	free(process_array);
 	return (0);
 }
@@ -99,16 +100,16 @@ void grim_reaper(int s)
 {
 	//QUIT children
 	int i;
-	if(process_array != NULL){
-		for(i=0; i < num_sorts; i++){
+	if (process_array != NULL) {
+		for (i = 0; i < num_sorts; i++) {
 			kill(process_array[i], SIGQUIT);
 		}
 	}
 	//Free malloced arrays
-	if(sortpipefds != NULL)
-		free_pipes_array(num_sorts, sortpipefds);	
-	if(suppipefds != NULL)
-		free_pipes_array(num_sorts, suppipefds);	
+	if (sortpipefds != NULL)
+		free_pipes_array(num_sorts, sortpipefds);
+	if (suppipefds != NULL)
+		free_pipes_array(num_sorts, suppipefds);
 	free(process_array);
 	exit(1);
 }
@@ -177,7 +178,8 @@ void spawn_sorts(int **in_pipe, int **out_pipe)
 			//Bind stdin to in_pipe
 			close_pipe(in_pipe[i][1]);	//close write end of input pipe
 			if (in_pipe[i][0] != STDIN_FILENO) {	//Defensive check
-				if (dup2(in_pipe[i][0], STDIN_FILENO) == -1)
+				if (dup2(in_pipe[i][0], STDIN_FILENO) ==
+				    -1)
 					puke_and_exit("dup2 0");
 				close_pipe(in_pipe[i][0]);	//Close duplicate pipe
 			}
@@ -202,7 +204,6 @@ void spawn_sorts(int **in_pipe, int **out_pipe)
 void r_r_parser(int **out_pipe)
 {				//Round Robin parser
 	//Sends words that contain only alphabetical characters
-	//to do: use fputs
 	int i;
 	char buf[2];
 	//fdopen() pipes for writing
@@ -253,7 +254,8 @@ void suppressor_process(int **in_pipe)
 	char buf[MAX_WORD_LEN];
 	char **words;
 	FILE *inputs[num_sorts];
-	struct word_counter *cur_word = malloc(sizeof(struct word_counter));
+	struct word_counter *cur_word =
+	    malloc(sizeof(struct word_counter));
 	int alpha;		//index of alpha word in pipe
 
 	//initialize word array
@@ -290,14 +292,14 @@ void suppressor_process(int **in_pipe)
 			if (!is_empty(cur_word->word))
 				printf("%d %s\n", cur_word->count,
 				       cur_word->word);
-			strncpy(cur_word->word, words[alpha], MAX_WORD_LEN);
+			strncpy(cur_word->word, words[alpha],
+				MAX_WORD_LEN);
 			cur_word->count = 1;
 		}
 	}
 
 	//Print last word
-	printf("%d %s\n", cur_word->count,
-				       cur_word->word);
+	printf("%d %s\n", cur_word->count, cur_word->word);
 
 	//Free words array
 	for (i = 0; i < num_sorts; i++) {
@@ -354,9 +356,9 @@ int alpha_index(int num_words, char **words)
 
 void free_pipes_array(int num_pipes, int **pipes_array)
 {
-        int i;
-        for (i = 0; i < num_pipes; i++) {
-                free(pipes_array[i]);
-        }
-        free(pipes_array);
+	int i;
+	for (i = 0; i < num_pipes; i++) {
+		free(pipes_array[i]);
+	}
+	free(pipes_array);
 }
