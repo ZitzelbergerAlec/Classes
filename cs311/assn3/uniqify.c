@@ -18,6 +18,11 @@
 
 #define MAX_WORD_LEN 100	//maximum word length
 
+//Global variables and stuff
+pid_t *process_array;
+int num_sorts;
+int **sortpipefds;
+int **suppipefds;
 struct word_counter {
 	char word[MAX_WORD_LEN];
 	int count;
@@ -34,20 +39,22 @@ void help();
 int is_empty(char *str);
 void print_words(int num_words, char **words, struct word_counter *cur_word);
 void puke_and_exit(char *errormessage);
-void r_r_parser(int num_sorts, int **out_pipe);
-void spawn_sorts(int num_sorts, int **in_pipe, int **out_pipe);
+void r_r_parser(int **out_pipe);
+void spawn_sorts(int **in_pipe, int **out_pipe);
 char *strip_newline(char *word);
-void spawn_suppressor(int num_sorts, int **in_pipe);
-void suppressor_process(int num_sorts, int **in_pipe);
-void reap_children(int numChildren);
-
+void spawn_suppressor(int **in_pipe);
+void suppressor_process(int **in_pipe);
+void reap_children(int num_children);
 
 int main(int argc, char **argv)
 {
 	if (argc < 2)
 		help();
 
-	if(atoi(argv[1]) > 1000)
+	//Get number of processes to use
+	num_sorts = atoi(argv[1]);
+
+	if(num_sorts > 1000)
 		printf("Number of sorts is OVER 9000!!!\n");
 
 	//Setup signal handlers
@@ -61,23 +68,20 @@ int main(int argc, char **argv)
 	sigaction(SIGINT, &act, NULL);
 	sigaction(SIGHUP, &act, NULL);
 
-	//Get number of processes to use
-	int num_sorts = atoi(argv[1]);
-
 	//Generate all necessary pipes for sort
-	int **sortpipefds = generate_pipes_array(num_sorts);
+	sortpipefds = generate_pipes_array(num_sorts);
 
 	//Generate pipes for the suppressor
-	int **suppipefds = generate_pipes_array(num_sorts);
+	suppipefds = generate_pipes_array(num_sorts);
 
 	//Spawn sort processes
-	spawn_sorts(num_sorts, sortpipefds, suppipefds);
+	spawn_sorts(sortpipefds, suppipefds);
 
 	//parse STDIN
-	r_r_parser(num_sorts, sortpipefds);
+	r_r_parser(sortpipefds);
 
 	//Spawn suppressor process
-	spawn_suppressor(num_sorts, suppipefds);
+	spawn_suppressor(suppipefds);
 
 	//Wait for child processes to die
 	reap_children(num_sorts);
@@ -85,7 +89,7 @@ int main(int argc, char **argv)
 	//Free malloced arrays of pipes
 	free_pipes_array(num_sorts, sortpipefds);	
 	free_pipes_array(num_sorts, suppipefds);	
-
+	free(process_array);
 	return (0);
 }
 
@@ -93,17 +97,26 @@ int main(int argc, char **argv)
 //Reference: http://stackoverflow.com/questions/1641182/how-can-i-catch-a-ctrl-c-event-c
 void grim_reaper(int s)
 {
-	//Clean up
-	//Issue a QUIT signal to all processes in group
-	printf("KILLING EVERYTHING! with signal %d\n", s);
-	killpg(getpgrp(), SIGQUIT);
+	//QUIT children
+	int i;
+	if(process_array != NULL){
+		for(i=0; i < num_sorts; i++){
+			kill(process_array[i], SIGQUIT);
+		}
+	}
+	//Free malloced arrays
+	if(sortpipefds != NULL)
+		free_pipes_array(num_sorts, sortpipefds);	
+	if(suppipefds != NULL)
+		free_pipes_array(num_sorts, suppipefds);	
+	free(process_array);
 	exit(1);
 }
 
-void reap_children(int numChildren)
+void reap_children(int num_children)
 {
 	int i;
-	for (i = 0; i < numChildren; i++) {
+	for (i = 0; i < num_children; i++) {
 		wait(NULL);
 	}
 }
@@ -147,10 +160,11 @@ int **generate_pipes_array(int num_pipes)
 	return (pipes_array);
 }
 
-void spawn_sorts(int num_sorts, int **in_pipe, int **out_pipe)
+void spawn_sorts(int **in_pipe, int **out_pipe)
 {
 	//returns an array containing all the PIDs of the child processes
 	//Spawn all the sort processes
+	process_array = malloc(sizeof(pid_t) * num_sorts);
 	pid_t pid;
 	int i;
 	for (i = 0; i < num_sorts; i++) {
@@ -178,13 +192,14 @@ void spawn_sorts(int num_sorts, int **in_pipe, int **out_pipe)
 			execlp("sort", "sort", (char *) NULL);
 			break;
 		default:	//parent case
+			process_array[i] = pid;
 			close_pipe(in_pipe[i][0]);	//Close read end of pipe in parent
 			close_pipe(out_pipe[i][1]);	//Close write end of output pipe in parent
 		}
 	}
 }
 
-void r_r_parser(int num_sorts, int **out_pipe)
+void r_r_parser(int **out_pipe)
 {				//Round Robin parser
 	//Sends words that contain only alphabetical characters
 	//to do: use fputs
@@ -206,7 +221,7 @@ void r_r_parser(int num_sorts, int **out_pipe)
 	}
 }
 
-void spawn_suppressor(int num_sorts, int **in_pipe)
+void spawn_suppressor(int **in_pipe)
 {
 	pid_t pid;
 	int i;
@@ -216,7 +231,7 @@ void spawn_suppressor(int num_sorts, int **in_pipe)
 		//oops
 		break;
 	case 0:
-		suppressor_process(num_sorts, in_pipe);
+		suppressor_process(in_pipe);
 		_exit(EXIT_SUCCESS);
 		break;
 	default:
@@ -225,7 +240,7 @@ void spawn_suppressor(int num_sorts, int **in_pipe)
 	}
 }
 
-void suppressor_process(int num_sorts, int **in_pipe)
+void suppressor_process(int **in_pipe)
 {
 	int i;
 	char buf[MAX_WORD_LEN];
