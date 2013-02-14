@@ -83,7 +83,8 @@ int main(int argc, char **argv)
 	r_r_parser(sortpipefds);
 
 	//Spawn suppressor process
-	spawn_suppressor(suppipefds);
+	//spawn_suppressor(suppipefds);
+	suppressor_process(suppipefds);
 
 	//Wait for child processes to die
 	reap_children(num_sorts);
@@ -207,19 +208,22 @@ void r_r_parser(int **out_pipe)
 	//Sends words that contain only alphabetical characters
 	int i;
 	int result = 0;
-	char buf[MAX_WORD_LEN];
+	char buf[2];
 	//fdopen() pipes for writing
 	FILE *outputs[num_sorts];
 	for (i = 0; i < num_sorts; i++) {
 		outputs[i] = fdopen(out_pipe[i][1], "w");
 	}
 
-	while (result != EOF){
-		result = scanf("%[a-zA-Z]", buf); //scan what we want
-		fputs(strtolower(buf), outputs[i % num_sorts]);
-		fputs("\n", outputs[i % num_sorts]);
-		result = scanf("%*[^a-zA-Z]"); //scan what we don't.
-		i++;
+	while (read(STDIN_FILENO, buf, 1) != 0) {
+		if (isalpha(buf[0])) {
+			buf[0] = tolower(buf[0]);
+		} else {
+			buf[0] = '\n';
+			i++;
+		}
+		buf[1] = '\0';
+		fputs(buf, outputs[i % num_sorts]);
 	}
 
 	//Flush the streams:
