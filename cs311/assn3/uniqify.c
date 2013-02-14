@@ -84,6 +84,7 @@ int main(int argc, char **argv)
 
 	//Spawn suppressor process
 	//spawn_suppressor(suppipefds);
+	//Debug
 	suppressor_process(suppipefds);
 
 	//Wait for child processes to die
@@ -208,22 +209,23 @@ void r_r_parser(int **out_pipe)
 	//Sends words that contain only alphabetical characters
 	int i;
 	int result = 0;
-	char buf[2];
+	char buf[MAX_WORD_LEN];
 	//fdopen() pipes for writing
 	FILE *outputs[num_sorts];
 	for (i = 0; i < num_sorts; i++) {
 		outputs[i] = fdopen(out_pipe[i][1], "w");
 	}
-
-	while (read(STDIN_FILENO, buf, 1) != 0) {
-		if (isalpha(buf[0])) {
-			buf[0] = tolower(buf[0]);
+	int j = 0; //index for buffer
+	while (read(STDIN_FILENO, buf[j], 1) != 0) {
+		if (isalpha(buf[j]) && j < (MAX_WORD_LEN - 3)) { //To make sure there is space for newline and null terminator
+			j++;
 		} else {
-			buf[0] = '\n';
+			buf[j] = '\n';
+			buf[j + 1] = '\0';
+			j = 0;
 			i++;
 		}
-		buf[1] = '\0';
-		fputs(buf, outputs[i % num_sorts]);
+		fputs(strtolower(buf), outputs[i % num_sorts]);
 	}
 
 	//Flush the streams:
