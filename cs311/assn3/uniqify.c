@@ -31,6 +31,7 @@ struct word_counter {
 //Function prototypes
 int alpha_index(int num_words, char **words);
 void close_pipe(int pfd);
+void close_pipes_array(int **pipe_array, int start, int end);
 void create_pipe(int *fds);
 void free_pipes_array(int num_pipes, int **pipes_array);
 int **generate_pipes_array(int num_pipes);
@@ -83,9 +84,7 @@ int main(int argc, char **argv)
 	r_r_parser(sortpipefds);
 
 	//Spawn suppressor process
-	//spawn_suppressor(suppipefds);
-	//Debug
-	suppressor_process(suppipefds);
+	spawn_suppressor(suppipefds);
 
 	//Wait for child processes to die
 	reap_children(num_sorts);
@@ -166,72 +165,76 @@ int **generate_pipes_array(int num_pipes)
 
 void spawn_sorts(int **in_pipe, int **out_pipe)
 {
+
 	//returns an array containing all the PIDs of the child processes
 	//Spawn all the sort processes
 	process_array = malloc(sizeof(pid_t) * num_sorts);
 	pid_t pid;
-	int i;
-	for (i = 0; i < num_sorts; i++) {
-		create_pipe(in_pipe[i]);
-		create_pipe(out_pipe[i]);
-		switch (pid = fork()) {
-		case -1:	//oops case
-			puke_and_exit("Forking error\n");
-		case 0:	//child case
-			//Bind stdin to in_pipe
-			close_pipe(in_pipe[i][1]);	//close write end of input pipe
-			if (in_pipe[i][0] != STDIN_FILENO) {	//Defensive check
-				if (dup2(in_pipe[i][0], STDIN_FILENO) ==
-				    -1)
-					puke_and_exit("dup2 0");
-				close_pipe(in_pipe[i][0]);	//Close duplicate pipe
-			}
-			//Bind stdout to out_pipe
-			close_pipe(out_pipe[i][0]);	//close read end of output pipe
-			if (out_pipe[i][1] != STDOUT_FILENO) {	//Defensive check
-				if (dup2(out_pipe[i][1], STDOUT_FILENO) ==
-				    -1)
-					puke_and_exit("dup2 1");
-				close_pipe(out_pipe[i][1]);	//Close duplicate pipe
-			}
-			execlp("sort", "sort", (char *) NULL);
-			break;
-		default:	//parent case
-			process_array[i] = pid;
-			close_pipe(in_pipe[i][0]);	//Close read end of pipe in parent
-			close_pipe(out_pipe[i][1]);	//Close write end of output pipe in parent
-		}
-	}
+        int i;
+        for (i = 0; i < num_sorts; i++){
+                create_pipe(in_pipe[i]);
+                create_pipe(out_pipe[i]);  
+                switch(pid = fork()){
+                        case -1:
+                                puke_and_exit("Forking error\n");
+                        case 0: /* CHILD */
+			        close(STDIN_FILENO);
+			        close(STDOUT_FILENO);
+
+
+			        if (in_pipe[i][0] != STDIN_FILENO) {	//Defensive check
+					if (dup2(in_pipe[i][0], STDIN_FILENO) ==
+					    -1)
+						puke_and_exit("dup2 0");
+					}
+				//Bind stdout to out_pipe
+				close_pipe(out_pipe[i][0]);	//close read end of output pipe
+				if (out_pipe[i][1] != STDOUT_FILENO) {	//Defensive check
+					if (dup2(out_pipe[i][1], STDOUT_FILENO) ==
+					    -1)
+						puke_and_exit("dup2 1");
+				}
+                                //Pipes from previously-spawned children are still open in this child
+                                //Close them and close the duplicate pipes just created by dup2 
+                                close_pipes_array(in_pipe, 0, i+1);
+                                close_pipes_array(out_pipe, 0, i+1);
+                                execlp("sort", "sort", (char *)NULL);
+                        default:
+                                process_array[i] = pid;
+                                close_pipe(in_pipe[i][0]);
+                		close_pipe(out_pipe[i][1]);
+                                break; 
+                }
+        }
 }
 
 void r_r_parser(int **out_pipe)
 {				//Round Robin parser
 	//Sends words that contain only alphabetical characters
-	int i;
-	int result = 0;
-	char buf[MAX_WORD_LEN];
-	//fdopen() pipes for writing
-	FILE *outputs[num_sorts];
-	for (i = 0; i < num_sorts; i++) {
-		outputs[i] = fdopen(out_pipe[i][1], "w");
-	}
-	int j = 0; //index for buffer
-	while (read(STDIN_FILENO, buf[j], 1) != 0) {
-		if (isalpha(buf[j]) && j < (MAX_WORD_LEN - 3)) { //To make sure there is space for newline and null terminator
-			j++;
-		} else {
-			buf[j] = '\n';
-			buf[j + 1] = '\0';
-			j = 0;
-			i++;
-		}
-		fputs(strtolower(buf), outputs[i % num_sorts]);
-	}
+	  int i, readnum;
+        char buf[2];
+                
+        FILE *outputs[num_sorts];
+        for (i = 0; i < num_sorts; i++) {
+                outputs[i] = fdopen(out_pipe[i][1], "w");
+        }
 
-	//Flush the streams:
-	for (i = 0; i < num_sorts; i++) {
-		fclose(outputs[i]);
-	}
+        while ((readnum = read(STDIN_FILENO, buf, 1)) != 0) {
+                /* check to see if alpha */
+                if (isalpha(buf[0])) {
+                        buf[0] = tolower(buf[0]);
+                } else {
+                        buf[0] = '\n';
+                        buf[1] = '\0';
+                        i++;
+                }
+                fputs(buf, outputs[i % num_sorts]);
+        }
+
+        //Flush the streams:
+        for (i = 0; i < num_sorts; i++) {
+                fclose(outputs[i]);
+        }
 }
 
 char *strtolower(char *str){
@@ -371,4 +374,15 @@ void free_pipes_array(int num_pipes, int **pipes_array)
 		free(pipes_array[i]);
 	}
 	free(pipes_array);
+}
+
+void close_pipes_array(int **pipe_array, int start, int end)
+{
+        int i, j;
+        for (i = start; i < end; i++) {
+                for ( j = 0; j < 2; j++) {
+                	/* Using close_pipes() here will throw an error because some pipes have already been closed */
+                        close(pipe_array[i][j]);
+                }
+        }
 }
