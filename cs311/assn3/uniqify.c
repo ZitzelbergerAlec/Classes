@@ -211,25 +211,20 @@ void spawn_sorts(int **in_pipe, int **out_pipe)
 void r_r_parser(int **out_pipe)
 {				//Round Robin parser
 	//Sends words that contain only alphabetical characters
-	  int i, readnum;
-        char buf[2];
-                
+	int i;   
+        char buf[MAX_WORD_LEN];
         FILE *outputs[num_sorts];
         for (i = 0; i < num_sorts; i++) {
                 outputs[i] = fdopen(out_pipe[i][1], "w");
         }
 
-        while ((readnum = read(STDIN_FILENO, buf, 1)) != 0) {
-                /* check to see if alpha */
-                if (isalpha(buf[0])) {
-                        buf[0] = tolower(buf[0]);
-                } else {
-                        buf[0] = '\n';
-                        buf[1] = '\0';
-                        i++;
-                }
-                fputs(buf, outputs[i % num_sorts]);
-        }
+	int result = 0;
+	while (result != EOF){
+		result = scanf("%[a-zA-Z]", buf); //scan what we want
+		fputs(strtolower(buf), outputs[i % num_sorts]);
+		fputs("\n", outputs[i % num_sorts]);
+		result = scanf("%*[^a-zA-Z]"); //scan what we don't.
+	}
 
         //Flush the streams:
         for (i = 0; i < num_sorts; i++) {
