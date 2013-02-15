@@ -20,7 +20,7 @@
 
 //Global variables and stuff
 pid_t *process_array;
-int num_sorts;
+int num_sorts = 0;
 int **sortpipefds;
 int **suppipefds;
 struct word_counter {
@@ -31,7 +31,7 @@ struct word_counter {
 //Function prototypes
 int alpha_index(int num_words, char **words);
 void close_pipe(int pfd);
-void close_pipes_array(int **pipe_array, int start, int end);
+void close_pipes_array(int **pipe_array, int end);
 void create_pipe(int *fds);
 void free_pipes_array(int num_pipes, int **pipes_array);
 int **generate_pipes_array(int num_pipes);
@@ -107,12 +107,16 @@ void grim_reaper(int s)
 			kill(process_array[i], SIGQUIT);
 		}
 	}
+	//Wait for child processes to die
+	reap_children(num_sorts);
+
 	//Free malloced arrays
 	if (sortpipefds != NULL)
 		free_pipes_array(num_sorts, sortpipefds);
 	if (suppipefds != NULL)
 		free_pipes_array(num_sorts, suppipefds);
 	free(process_array);
+	
 	exit(1);
 }
 
@@ -175,18 +179,16 @@ void spawn_sorts(int **in_pipe, int **out_pipe)
                 create_pipe(in_pipe[i]);
                 create_pipe(out_pipe[i]);  
                 switch(pid = fork()){
-                        case -1:
+                        case -1: //Oops case
                                 puke_and_exit("Forking error\n");
-                        case 0: /* CHILD */
+                        case 0: //Child case
 			        close(STDIN_FILENO);
 			        close(STDOUT_FILENO);
-
-
 			        if (in_pipe[i][0] != STDIN_FILENO) {	//Defensive check
 					if (dup2(in_pipe[i][0], STDIN_FILENO) ==
 					    -1)
 						puke_and_exit("dup2 0");
-					}
+				}
 				//Bind stdout to out_pipe
 				close_pipe(out_pipe[i][0]);	//close read end of output pipe
 				if (out_pipe[i][1] != STDOUT_FILENO) {	//Defensive check
@@ -196,10 +198,10 @@ void spawn_sorts(int **in_pipe, int **out_pipe)
 				}
                                 //Pipes from previously-spawned children are still open in this child
                                 //Close them and close the duplicate pipes just created by dup2 
-                                close_pipes_array(in_pipe, 0, i+1);
-                                close_pipes_array(out_pipe, 0, i+1);
+                                close_pipes_array(in_pipe, i+1);
+                                close_pipes_array(out_pipe, i+1);
                                 execlp("sort", "sort", (char *)NULL);
-                        default:
+                        default: //Parent case
                                 process_array[i] = pid;
                                 close_pipe(in_pipe[i][0]);
                 		close_pipe(out_pipe[i][1]);
@@ -218,7 +220,7 @@ void r_r_parser(int **out_pipe)
                 outputs[i] = fdopen(out_pipe[i][1], "w");
         }
 
-	int result = 0;
+	int result = scanf("%*[^a-zA-Z]"); /*Scan and discard any leading stuff we don't want */ 
 	while (result != EOF){
 		result = scanf("%[a-zA-Z]", buf); //scan what we want
 		fputs(strtolower(buf), outputs[i % num_sorts]);
@@ -371,10 +373,11 @@ void free_pipes_array(int num_pipes, int **pipes_array)
 	free(pipes_array);
 }
 
-void close_pipes_array(int **pipe_array, int start, int end)
+void close_pipes_array(int **pipe_array, int end)
 {
+	/* closes an array of pipes from zero up to a certain end point */
         int i, j;
-        for (i = start; i < end; i++) {
+        for (i = 0; i < end; i++) {
                 for ( j = 0; j < 2; j++) {
                 	/* Using close_pipes() here will throw an error because some pipes have already been closed */
                         close(pipe_array[i][j]);
