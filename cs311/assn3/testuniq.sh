@@ -1,5 +1,8 @@
 #!/bin/bash
 # Runs test on uniqify
+# Usage: 
+# testuniq.sh subfolder
+# if no subfolder, just use "."
 
 function p {
 	local STR="$1"
@@ -11,7 +14,7 @@ function p {
 }
 
 echo "Filename, size (bytes), system time"
-for f in textfiles/*
+for f in $1/*txt
 	do 
 		p $f
 done
