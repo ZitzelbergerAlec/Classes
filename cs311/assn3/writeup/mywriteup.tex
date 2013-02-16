@@ -14,7 +14,6 @@
 \usepackage{pstricks, pst-node}
 \usepackage{geometry}
 \geometry{textheight=10in, textwidth=7.5in}
-\usepackage{graphicx}
 %random comment
 
 \newcommand{\cred}[1]{{\color{red}#1}}
@@ -51,26 +50,6 @@ CS 311
 \end{center}
 
 \begin{enumerate}
-
-\item \emph{Plots}
-\begin{figure}[H]
-	\begin{center}
-	\includegraphics[width=8in]{figure1}
-	\end{center}
-	\caption{Uniqify using 10 sort processes.}
-\end{figure}
-\begin{figure}[H]
-	\begin{center}
-	\includegraphics[width=8in]{figure2}
-	\end{center}
-	\caption{Uniqify using 50 sort processes.}
-\end{figure}
-\begin{figure}[H]
-	\begin{center}
-	\includegraphics[width=8in]{figure3}
-	\end{center}
-	\caption{Uniqify using 100 sort processes.}
-\end{figure}
 
 \item \emph{A design for your system, as well as places your implementation deviated from this design.}
 I designed my system to be as efficient as possible and to minimize rewriting code by substituting functions wherever I had repetition. Initially, I deviated from this in a couple of places. In the parser, I was reading in one character at a time, writing a null termitator character to the end of the buffer, then writing one character at a time to the pipes. This obviously was not an optimal way to read input, so later I switched to using scanf to read an entire word at a time and then write that. Initially, I was opening an entire array of pipes in the parent, then looping through in the parent and the child closing the ones I didn't need. I switched this to opening only the pipes I needed where I needed them. I still had to loop through and close the previous children's pipes in the subsequent children (because those pipes were inherited by the parent), but there was no other more efficient way to do this that I was aware of. Initially, my suppressor process was not optimal. I read words into an array, performed an insertion sort, returned the array, then printed them. Not only was this a waste of time, but it didn't output the words in the right order. It couldn't. Not without reading every word into an array from the pipes. So instead, I switched to a function that found the next highest alphabetical word from each pipe and stored it in a struct that kept track of its count. It repeated this until there were no more words, and printed out words plus counts when it found new ones. This minimized the use of memory, made it unnecessary to perform a bunch of insertion sorts, and worked in every case. 
