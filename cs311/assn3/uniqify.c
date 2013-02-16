@@ -35,6 +35,7 @@ void free_pipes_array(int num_pipes, int **pipes_array);
 int **generate_pipes_array(int num_pipes);
 void grim_reaper(int s);
 void help();
+int is_empty(char *str);
 void puke_and_exit(char *errormessage);
 void r_r_parser(int **out_pipe);
 void spawn_sorts(int **in_pipe, int **out_pipe);
@@ -79,9 +80,7 @@ int main(int argc, char **argv)
 	r_r_parser(sortpipefds);
 
 	/* Spawn suppressor process */
-	//spawn_suppressor(suppipefds);
-	//Debug
-	suppressor_process(suppipefds);
+	spawn_suppressor(suppipefds);
 
 	/* Wait for child processes to die */
 	reap_children(num_sorts);
@@ -172,8 +171,9 @@ void create_pipe(int *fds)
 		puke_and_exit("Error creating pipes\n");
 }
 
+/* returns an empty 2-dimensional array */
 int **generate_pipes_array(int num_pipes)
-{				//returns an empty 2-dimensional array
+{				
 	int **pipes_array = malloc(sizeof(int *) * (num_pipes));
 	int i;
 	for (i = 0; i < num_pipes; i++) {
@@ -182,10 +182,9 @@ int **generate_pipes_array(int num_pipes)
 	return (pipes_array);
 }
 
+/* creates an array containing all the PIDs of the child processes */
 void spawn_sorts(int **in_pipe, int **out_pipe)
 {
-
-	//returns an array containing all the PIDs of the child processes
 	//Spawn all the sort processes
 	process_array = malloc(sizeof(pid_t) * num_sorts);
 	pid_t pid;
@@ -204,15 +203,17 @@ void spawn_sorts(int **in_pipe, int **out_pipe)
 					    -1)
 						puke_and_exit("dup2 0");
 				}
-				//Bind stdout to out_pipe
+				/* Bind stdout to out_pipe*/
 				close_pipe(out_pipe[i][0]);	//close read end of output pipe
 				if (out_pipe[i][1] != STDOUT_FILENO) {	//Defensive check
 					if (dup2(out_pipe[i][1], STDOUT_FILENO) ==
 					    -1)
 						puke_and_exit("dup2 1");
 				}
-                                //Pipes from previously-spawned children are still open in this child
-                                //Close them and close the duplicate pipes just created by dup2 
+                                /* 
+                                Pipes from previously-spawned children are still open in this child
+                                Close them and close the duplicate pipes just created by dup2 
+                                */
                                 close_pipes_array(in_pipe, i+1);
                                 close_pipes_array(out_pipe, i+1);
                                 execlp("sort", "sort", (char *)NULL);
@@ -238,12 +239,17 @@ void r_r_parser(int **out_pipe)
                 outputs[i] = fdopen(out_pipe[i][1], "w");
         }
 
-	int result = scanf("%*[^a-zA-Z]"); /*Scan and discard any leading stuff we don't want */ 
+        /* Scan and discard any leading unwanted chars */ 
+	int result = scanf("%*[^a-zA-Z]"); 
 	while (result != EOF){
 		result = scanf("%[a-zA-Z]", buf); //scan what we want
-		fputs(strtolower(buf), outputs[i % num_sorts]);
-		fputs("\n", outputs[i % num_sorts]);
+		if(!is_empty(buf)){ //avoid putting an empty buffer into the pipe
+			fputs(strtolower(buf), outputs[i % num_sorts]);
+			fputs("\n", outputs[i % num_sorts]);
+		}
+		buf[0] = '\0'; //"empty" buffer
 		result = scanf("%*[^a-zA-Z]"); //scan what we don't.
+		i++;
 	}
 
         /* Flush the streams */
@@ -264,7 +270,6 @@ char *strtolower(char *str){
 void spawn_suppressor(int **in_pipe)
 {
 	pid_t pid;
-	int i;
 	/* Fork to suppressor */
 	switch (pid = fork()) {
 	case -1: 
@@ -282,11 +287,11 @@ void spawn_suppressor(int **in_pipe)
 void suppressor_process(int **in_pipe)
 {
 	int i;
-	char buf[MAX_WORD_LEN];
 	char **words;
 	FILE *inputs[num_sorts];
 	struct word_counter *cur_word = malloc(sizeof(struct word_counter));
 	int alpha;		//index of alpha word in pipe
+	int null_count = 0; //Increments if output from pipe is NULL (meaning EOF)
 
 	/* initialize word array */
 	words = malloc(num_sorts * sizeof(char *));
@@ -297,16 +302,18 @@ void suppressor_process(int **in_pipe)
 	/* fdopen in_pipes and get first batch of words to initialize cur_word with */
 	for (i = 0; i < num_sorts; i++) {
 		inputs[i] = fdopen(in_pipe[i][0], "r");
-		if (fgets(words[i], MAX_WORD_LEN, inputs[i % num_sorts]) == NULL)
+		if (fgets(words[i], MAX_WORD_LEN, inputs[i]) == NULL){
 			words[i] = NULL;
+			null_count++;
+		}
 	}
 	/* Find the lowest alphabetical word in the array */
 	alpha = alpha_index(num_sorts, words);
+
 	/* Make this word our current word with count 1 */
-	strncpy(cur_word->word, strip_newline(words[alpha]), MAX_WORD_LEN);
+	strncpy(cur_word->word, words[alpha], MAX_WORD_LEN);
 	cur_word->count = 1;
 
-	int null_count = 0;
 	while (null_count < num_sorts) {
 		if (fgets(words[alpha], MAX_WORD_LEN, inputs[alpha]) == NULL) {
 			words[alpha] = NULL;
@@ -316,27 +323,27 @@ void suppressor_process(int **in_pipe)
 		if (alpha == -1) /* Meaning that the entire array was NULL */
 			break;
 		/* If the next word is the same as the current one, increment count */
-		if (!strcmp(cur_word->word, strip_newline(words[alpha]))) {
+		if (!strcmp(cur_word->word, words[alpha])) {
 			cur_word->count++;
 		} else {
 			/* If it's a new word, print the last one and set current to the new one */
-			printf("%d %s\n", cur_word->count, cur_word->word);
+			printf("%d %s", cur_word->count, cur_word->word);
 			strncpy(cur_word->word, words[alpha], MAX_WORD_LEN);
 			cur_word->count = 1;
 		}
 	}
 
-	//Print last word
-	printf("%d %s\n", cur_word->count, cur_word->word);
+	/* Print last word */
+	printf("%d %s", cur_word->count, cur_word->word);
 
-	//Free words array
+	/* Free words array */
 	for (i = 0; i < num_sorts; i++) {
 		free(words[i]);
 	}
 	free(words);
 	free(cur_word);
 
-	//Close inputs
+	/* Close inputs */
 	for (i = 0; i < num_sorts; i++) {
 		fclose(inputs[i]);
 	}
@@ -395,4 +402,11 @@ void close_pipes_array(int **pipe_array, int end)
                         close(pipe_array[i][j]);
                 }
         }
+}
+
+/* Returns 1 if passed-in string is empty */
+int is_empty(char *str){
+	if(str[0] == '\0')
+		return 1;
+	return 0;
 }
