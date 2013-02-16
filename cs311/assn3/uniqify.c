@@ -1,9 +1,8 @@
-//Compiler directives
+/* Compiler directives */
 #define _XOPEN_SOURCE 500	//needed to make sigaction, etc work
 #define _POSIX_SOURCE		//for fdopen()
-#define _BSD_SOURCE		//for killpg()
 
-//Includes
+/* Includes */
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -16,9 +15,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+/* Definitions and global variables */
 #define MAX_WORD_LEN 100	//maximum word length
-
-//Global variables and stuff
 pid_t *process_array;
 int num_sorts = 0;
 int **sortpipefds;
@@ -28,7 +26,7 @@ struct word_counter {
 	int count;
 };
 
-//Function prototypes
+/* Function prototypes */
 int alpha_index(int num_words, char **words);
 void close_pipe(int pfd);
 void close_pipes_array(int **pipe_array, int end);
@@ -37,9 +35,6 @@ void free_pipes_array(int num_pipes, int **pipes_array);
 int **generate_pipes_array(int num_pipes);
 void grim_reaper(int s);
 void help();
-int is_empty(char *str);
-void print_words(int num_words, char **words,
-struct word_counter *cur_word);
 void puke_and_exit(char *errormessage);
 void r_r_parser(int **out_pipe);
 void spawn_sorts(int **in_pipe, int **out_pipe);
@@ -54,13 +49,13 @@ int main(int argc, char **argv)
 	if (argc < 2)
 		help();
 
-	//Get number of processes to use
+	/* Get number of processes to use */
 	num_sorts = atoi(argv[1]);
 
 	if (num_sorts > 1000)
 		printf("Number of sorts is OVER 9000!!!\n");
 
-	//Setup signal handlers
+	/* Setup signal handlers */
 	struct sigaction act;
 
 	act.sa_handler = grim_reaper;
@@ -71,46 +66,65 @@ int main(int argc, char **argv)
 	sigaction(SIGINT, &act, NULL);
 	sigaction(SIGHUP, &act, NULL);
 
-	//Generate all necessary pipes for sort
+	/* Generate all necessary pipes for sort */
 	sortpipefds = generate_pipes_array(num_sorts);
 
-	//Generate pipes for the suppressor
+	/* Generate pipes for the suppressor */
 	suppipefds = generate_pipes_array(num_sorts);
 
-	//Spawn sort processes
+	/* Spawn sort processes */
 	spawn_sorts(sortpipefds, suppipefds);
 
-	//parse STDIN
+	/* Parse STDIN */
 	r_r_parser(sortpipefds);
 
-	//Spawn suppressor process
-	spawn_suppressor(suppipefds);
+	/* Spawn suppressor process */
+	//spawn_suppressor(suppipefds);
+	//Debug
+	suppressor_process(suppipefds);
 
-	//Wait for child processes to die
+	/* Wait for child processes to die */
 	reap_children(num_sorts);
 
-	//Free malloced arrays of pipes
+	/* Free malloced arrays of pipes */
 	free_pipes_array(num_sorts, sortpipefds);
 	free_pipes_array(num_sorts, suppipefds);
 	free(process_array);
 	return (0);
 }
 
-//Signal Handler
-//Reference: http://stackoverflow.com/questions/1641182/how-can-i-catch-a-ctrl-c-event-c
+/*
+Signal Handler
+Reference: http://stackoverflow.com/questions/1641182/how-can-i-catch-a-ctrl-c-event-c
+*/
 void grim_reaper(int s)
 {
-	//QUIT children
 	int i;
+	int kid_signal = 0; /* signal to send to children */
+	switch(s){
+		case SIGQUIT:
+			kid_signal = SIGQUIT;
+			break;
+		case SIGHUP:
+			kid_signal = SIGQUIT;
+			break;
+		case SIGINT:
+			kid_signal = SIGINT;
+			break;
+		default:
+			kid_signal = SIGQUIT;
+	}
+
+	/* Send signals to children */
 	if (process_array != NULL) {
 		for (i = 0; i < num_sorts; i++) {
-			kill(process_array[i], SIGQUIT);
+			kill(process_array[i], kid_signal);
 		}
 	}
-	//Wait for child processes to die
+	/* Wait for child processes to die */
 	reap_children(num_sorts);
 
-	//Free malloced arrays
+	/* Free malloced arrays */
 	if (sortpipefds != NULL)
 		free_pipes_array(num_sorts, sortpipefds);
 	if (suppipefds != NULL)
@@ -120,6 +134,7 @@ void grim_reaper(int s)
 	exit(1);
 }
 
+/* Waits on child processes */
 void reap_children(int num_children)
 {
 	int i;
@@ -210,9 +225,12 @@ void spawn_sorts(int **in_pipe, int **out_pipe)
         }
 }
 
+/* 
+Round Robin parser
+Sends words that contain only alphabetical characters 
+*/
 void r_r_parser(int **out_pipe)
-{				//Round Robin parser
-	//Sends words that contain only alphabetical characters
+{				
 	int i;   
         char buf[MAX_WORD_LEN];
         FILE *outputs[num_sorts];
@@ -228,12 +246,13 @@ void r_r_parser(int **out_pipe)
 		result = scanf("%*[^a-zA-Z]"); //scan what we don't.
 	}
 
-        //Flush the streams:
+        /* Flush the streams */
         for (i = 0; i < num_sorts; i++) {
                 fclose(outputs[i]);
         }
 }
 
+/* Converts a string to lowercase */
 char *strtolower(char *str){
 	int i;
 	for(i=0;i<sizeof(str);i++){
@@ -246,10 +265,9 @@ void spawn_suppressor(int **in_pipe)
 {
 	pid_t pid;
 	int i;
-	//Fork to suppressor
+	/* Fork to suppressor */
 	switch (pid = fork()) {
-	case -1:
-		//oops
+	case -1: 
 		break;
 	case 0:
 		suppressor_process(in_pipe);
@@ -270,40 +288,40 @@ void suppressor_process(int **in_pipe)
 	struct word_counter *cur_word = malloc(sizeof(struct word_counter));
 	int alpha;		//index of alpha word in pipe
 
-	//initialize word array
+	/* initialize word array */
 	words = malloc(num_sorts * sizeof(char *));
 	for (i = 0; i < num_sorts; i++) {
 		words[i] = malloc(MAX_WORD_LEN * sizeof(char));
 	}
 
-	//fdopen in_pipes
-	//And get first batch of words to initialize cur_word with
+	/* fdopen in_pipes and get first batch of words to initialize cur_word with */
 	for (i = 0; i < num_sorts; i++) {
 		inputs[i] = fdopen(in_pipe[i][0], "r");
-		if (fgets(words[i], MAX_WORD_LEN, inputs[i % num_sorts]) == NULL) //To do: hangs here sometimes
+		if (fgets(words[i], MAX_WORD_LEN, inputs[i % num_sorts]) == NULL)
 			words[i] = NULL;
 	}
+	/* Find the lowest alphabetical word in the array */
 	alpha = alpha_index(num_sorts, words);
+	/* Make this word our current word with count 1 */
 	strncpy(cur_word->word, strip_newline(words[alpha]), MAX_WORD_LEN);
 	cur_word->count = 1;
 
-	int nullCount = 0;
-	while (nullCount < num_sorts) {
-		if (fgets(words[alpha], MAX_WORD_LEN, inputs[alpha]) ==
-		    NULL) {
+	int null_count = 0;
+	while (null_count < num_sorts) {
+		if (fgets(words[alpha], MAX_WORD_LEN, inputs[alpha]) == NULL) {
 			words[alpha] = NULL;
-			nullCount++;
+			null_count++;
 		}
 		alpha = alpha_index(num_sorts, words);
-		if (alpha == -1)
+		if (alpha == -1) /* Meaning that the entire array was NULL */
 			break;
+		/* If the next word is the same as the current one, increment count */
 		if (!strcmp(cur_word->word, strip_newline(words[alpha]))) {
 			cur_word->count++;
 		} else {
-			printf("%d %s\n", cur_word->count,
-				       cur_word->word);
-			strncpy(cur_word->word, words[alpha],
-				MAX_WORD_LEN);
+			/* If it's a new word, print the last one and set current to the new one */
+			printf("%d %s\n", cur_word->count, cur_word->word);
+			strncpy(cur_word->word, words[alpha], MAX_WORD_LEN);
 			cur_word->count = 1;
 		}
 	}
@@ -324,26 +342,20 @@ void suppressor_process(int **in_pipe)
 	}
 }
 
-int is_empty(char *str)
-{				//returns 1 if a string is empty
-	if (str[0] == '\0' || str[0] == '\n')
-		return 1;
-	return 0;
-}
-
+/* removes trailing newline characters from strings */
 char *strip_newline(char *word)
-{				//removes trailing newline characters from strings
+{				
 	if (word[strlen(word) - 1] == '\n')
 		word[strlen(word) - 1] = '\0';
 	return word;
 }
 
+/* returns the index of the lowest alphabetical word in an array */
 int alpha_index(int num_words, char **words)
 {
-	//returns the index of the lowest alphabetical word in a set
 	int alpha = -1;
 	int i;
-	//First, find the first alpha word. If all the words are NULL, return -1 for error
+	/* First, find the first alpha word. If all the words are NULL, return -1 for error */
 	for (i = 0; i < num_words; i++) {
 		if (words[i] == NULL) {
 			continue;
@@ -354,7 +366,7 @@ int alpha_index(int num_words, char **words)
 	}
 	if (alpha == -1)
 		return -1;
-	//Now find the lowest alphabetical word
+	/* Now find the lowest alphabetical word */
 	for (i = 0; i < num_words; i++) {
 		if (words[i] == NULL)
 			continue;
@@ -373,9 +385,9 @@ void free_pipes_array(int num_pipes, int **pipes_array)
 	free(pipes_array);
 }
 
+/* closes an array of pipes from zero up to a certain end point */
 void close_pipes_array(int **pipe_array, int end)
 {
-	/* closes an array of pipes from zero up to a certain end point */
         int i, j;
         for (i = 0; i < end; i++) {
                 for ( j = 0; j < 2; j++) {
