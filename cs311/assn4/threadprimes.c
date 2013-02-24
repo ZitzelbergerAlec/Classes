@@ -26,11 +26,14 @@ void init_num_array(int *num_array);
 void *mount_shmem(char *path, int object_size);
 void *process_primes_thread(void * vp);
 void puke_and_exit(char *errormessage);
+void spawn_threads();
 
 /* Global variables */
+static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 int num_primes;
 int *num_array;
 int num_threads;
+int max_prime;
 
 int main(int argc, char **argv)
 {
@@ -40,26 +43,42 @@ int main(int argc, char **argv)
 	*/	
 
 	num_threads = 2;
+	max_prime = 10000;
 
 	unsigned char *bitmap;
 	int bitmap_size = 10000 / 8 + 1;
 
 	/* Create a shared memory object */
-	void *addr = mount_shmem("/merrickd_primes", 10000*sizeof(int)); //Find primes in first 10k numbers
+	void *addr = mount_shmem("/merrickd_primes", max_prime*sizeof(int)); //Find primes in first 10k numbers
 
 	bitmap = (unsigned char*) addr;
       	num_array = (int *) (bitmap + bitmap_size);
 
       	/* Find the prime numbers */
       	init_num_array(num_array);
-      	num_primes = 10000;
+      	num_primes = max_prime;
       	
-      	/* Spawn 2 threads to find primes */
+      	spawn_threads();
+
+	printf("Number of primes found is %d\n", num_primes);
+
+	/* Delete the shared memory object */
+	if(shm_unlink("/merrickd_primes") == -1){
+                  printf("Error deleting shared memory object");
+                  exit(EXIT_FAILURE);
+        }
+
+	return 0;
+}
+
+void spawn_threads()
+{
+	/* Spawn 2 threads to find primes */
       	pthread_t *thread;	
         pthread_attr_t attr;	
         
          /* Allocate the number of pthreads given by num_proc */
-        thread = (pthread_t*)malloc(2 * sizeof(pthread_t));
+        thread = (pthread_t*)malloc(num_threads * sizeof(pthread_t));
         
         /* initialize thread attribute with defaults */
         pthread_attr_init(&attr);
@@ -75,42 +94,39 @@ int main(int argc, char **argv)
                 exit(-1);
             }
         }
-        
+
         for (i = 0; i < 2; i++) {
             pthread_join(thread[i], NULL);
     	}
-
-	printf("Number of primes found is %d\n", num_primes);
-
-	/* Delete the shared memory object */
-	if(shm_unlink("/merrickd_primes") == -1){
-                  printf("Error deleting shared memory object");
-                  exit(EXIT_FAILURE);
-        }
-
-	return 0;
 }
 
 void *process_primes_thread(void *vp)
 {
-    	find_primes(num_array, (int) vp, 10000, num_threads);
+    	find_primes(num_array, (int) vp, max_prime, num_threads);
 	pthread_exit(EXIT_SUCCESS); /* exit */
 }
 
 void find_primes(int *num_array, int min, int max, int offset)
 {
 	int k = min;
-	int i;
+	int i, s, loc;
 	while(k <= floor(sqrt(max))){
 		k+=offset;
 		if(num_array[k-1] == 1){ //Check the k-1 spot because arrays are indexed starting at zero
 			i = 2;
-			while(k*i <= 10000){
+			while(k*i <= max){
+				s = pthread_mutex_lock(&mtx);
 				if(!(num_array[k*i-1] == 0)){
-					num_primes--;
+					/* Lock num_primes with our mutex so we can decrement it */
+					if (s != 0)
+						exit(EXIT_FAILURE);
+					loc = num_primes;
+					loc--;
+					num_primes = loc;
 				}
 				num_array[k*i-1] = 0;
 				i++;
+				s = pthread_mutex_unlock(&mtx);
 			}
 		}
 	}
@@ -152,7 +168,6 @@ void init_num_array(int *num_array)
       	for(i=0;i<=10000;i++){
 		num_array[i] = 1;
 	}
-
 }
 
 void puke_and_exit(char *errormessage)
