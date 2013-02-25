@@ -24,6 +24,7 @@ int is_prime(unsigned int n);
 unsigned int count_primes();
 void find_primes(unsigned int min, unsigned int max, unsigned int offset);
 void help();
+void init_candidate_primes(unsigned int max, unsigned int limit);
 void init_num_array();
 void *mount_shmem(char *path, int object_size);
 void *process_primes_thread(void *vp);
@@ -44,15 +45,10 @@ static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 unsigned int num_primes;
 unsigned char *num_array;
 unsigned int num_threads;
-unsigned int max_prime = 255;
+unsigned int max_prime = 4000000000; //1 million
 
 int main(int argc, char **argv)
 {
-	/*
-	   if(argc < 3)
-	   help();
-	 */
-
 	num_threads = 2;
 
 	unsigned int object_size = max_prime/BITS_PER_WORD; // ~500 MB
@@ -63,13 +59,11 @@ int main(int argc, char **argv)
 	num_array = (unsigned char*) addr; /* num_array is our bitmap */
 
 	init_num_array();
-
 	/* Create the threads */
 	//spawn_threads();
 	//debug
 	
 	/* Find the primes */	
-
 	find_primes(1, max_prime, 1);
 
 	unsigned int num_primes = count_primes();
@@ -115,7 +109,6 @@ void *process_primes_thread(void *vp)
 	pthread_exit(EXIT_SUCCESS);	/* exit */
 }
 
-
 /* Finds primes using Sieve of Atkin method */
 void find_primes(unsigned int min, unsigned int max, unsigned int offset)
 {
@@ -124,7 +117,26 @@ void find_primes(unsigned int min, unsigned int max, unsigned int offset)
 	unsigned int square_multiple;
 	unsigned int limit = ceil(sqrt(max));
 
+	printf("Initializing candidate primes\n");
 	/* Initialize candidate primes: */
+	init_candidate_primes(max, limit);
+
+	printf("Eliminating composites\n");
+	/* Eliminate composites */
+	for(k=5; k<limit; k++){
+		if (is_prime(k)) {
+			i = 1;
+			square_multiple = k * k * i;
+			while (square_multiple <= max) {
+				set_not_prime(square_multiple);
+				i++;
+				square_multiple = k * k * i;
+			}
+		} 
+	}
+}
+
+void init_candidate_primes(unsigned int max, unsigned int limit){
 	unsigned int x, y, n;
 	for(x=1;x<limit;x++){
 		for(y=1;y<limit;y++){
@@ -138,20 +150,6 @@ void find_primes(unsigned int min, unsigned int max, unsigned int offset)
 			if(x > y && n <= max && n % 12 == 11)
 				toggle(n);
 		}
-	}
-
-	/* Eliminate composites */
-	for(k=5; k<limit; k++){
-		printf("k = %u\n", k);
-		if (is_prime(k)) {
-			i = 1;
-			square_multiple = k * k * i;
-			while (square_multiple <= max) {
-				set_not_prime(square_multiple);
-				i++;
-				square_multiple = k * k * i;
-			}
-		} 
 	}
 }
 
@@ -218,9 +216,14 @@ int is_prime(unsigned int n)
 void init_num_array()
 {
 	unsigned int i;
-	for (i = 1; i < (max_prime); i++) { //8 bits can represent 256 numbers
-		set_not_prime(i); /* Set everything to notprime */
-	}	
+	/* Set words one at a time */
+	for (i = 0; i < (max_prime/BITS_PER_WORD); i++) { 
+		num_array[i] = 255; //0b11111111 (not prime)
+	}
+	/* Set remaining values to not prime */
+	for(i = max_prime - (max_prime % BITS_PER_WORD); i<max_prime; i++){
+		set_not_prime(i);
+	}
 	set_prime(2);
 	set_prime(3);
 }
@@ -237,10 +240,9 @@ unsigned int count_primes()
 	unsigned int prime_count = 0;
 	unsigned int i;
 	for(i=0; i < max_prime; i++){
-		if(is_prime(i)){	
-			printf("%u is prime\n", i);
+		if(is_prime(i)){
 			prime_count++;
 		}
 	}
-	return prime_count - 1; //because 1 is not prime, according to wolfram alpha
+	return prime_count;
 }
