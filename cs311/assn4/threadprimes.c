@@ -22,9 +22,10 @@
 /* Function prototypes */
 int is_prime(unsigned int n);
 unsigned int count_primes();
+void elim_composites();
 void find_primes(unsigned int min, unsigned int max, unsigned int offset);
 void help();
-void init_candidate_primes(unsigned int max, unsigned int limit);
+void *init_candidate_primes(void *args);
 void init_num_array();
 void *mount_shmem(char *path, int object_size);
 void *process_primes_thread(void *vp);
@@ -45,7 +46,8 @@ static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 unsigned int num_primes;
 unsigned char *num_array;
 unsigned int num_threads;
-unsigned int max_prime = 4000000000; //1 million
+unsigned int max_prime = 1000; 
+unsigned int limit;
 
 int main(int argc, char **argv)
 {
@@ -60,11 +62,10 @@ int main(int argc, char **argv)
 
 	init_num_array();
 	/* Create the threads */
-	//spawn_threads();
-	//debug
+	spawn_threads();
 	
 	/* Find the primes */	
-	find_primes(1, max_prime, 1);
+	
 
 	unsigned int num_primes = count_primes();
 
@@ -93,41 +94,59 @@ void spawn_threads()
 
 	/* i is used as the thread id, is passed as the thread's only argument */
 	unsigned int i;
+	
+	/* Have threads initialize candidate primes. */
+	limit = ceil(sqrt(max_prime));
+
 	for (i = 0; i < num_threads; i++) {
-		if (pthread_create(&thread[i], &attr, process_primes_thread, (void *) i) != 0)
+		if (pthread_create(&thread[i], &attr, init_candidate_primes, (void *) i) != 0)
 			puke_and_exit("Error creating thread.\n");
 	}
 
-	for (i = 0; i < 2; i++) {
+	for (i = 0; i < num_threads; i++) {
 		pthread_join(thread[i], NULL);
 	}
-}
 
-void *process_primes_thread(void *vp)
-{
-	find_primes((unsigned int) vp, max_prime, num_threads);
-	pthread_exit(EXIT_SUCCESS);	/* exit */
+	/* Debug: Find primes in serial. */
+	find_primes(1, max_prime, 1);
 }
 
 /* Finds primes using Sieve of Atkin method */
 void find_primes(unsigned int min, unsigned int max, unsigned int offset)
 {
+	/* Eliminate composites */
+	printf("Eliminating composites\n");
+	elim_composites();
+}
+
+void *init_candidate_primes(void *vp){
+	unsigned int start = (unsigned int) vp;
+	unsigned int x, y, n;
+	for(x=start; x<limit; x+=num_threads){
+		for(y=1; y<limit; y++){
+			n = 4*x*x + y*y;
+			if(n <= max_prime && ((n % 12 == 1) || n % 12 == 5))
+				toggle(n);
+			n = 3*x*x + y*y;
+			if(n <= max_prime && n % 12 == 7)
+				toggle(n);
+			n = 3*x*x - y*y;
+			if(x > y && n <= max_prime && n % 12 == 11)
+				toggle(n);
+		}
+	}
+	pthread_exit(EXIT_SUCCESS);
+}
+
+void elim_composites(){
 	unsigned int k;
 	unsigned int i;
 	unsigned int square_multiple;
-	unsigned int limit = ceil(sqrt(max));
-
-	printf("Initializing candidate primes\n");
-	/* Initialize candidate primes: */
-	init_candidate_primes(max, limit);
-
-	printf("Eliminating composites\n");
-	/* Eliminate composites */
 	for(k=5; k<limit; k++){
 		if (is_prime(k)) {
 			i = 1;
 			square_multiple = k * k * i;
-			while (square_multiple <= max) {
+			while (square_multiple <= max_prime) {
 				set_not_prime(square_multiple);
 				i++;
 				square_multiple = k * k * i;
@@ -136,22 +155,6 @@ void find_primes(unsigned int min, unsigned int max, unsigned int offset)
 	}
 }
 
-void init_candidate_primes(unsigned int max, unsigned int limit){
-	unsigned int x, y, n;
-	for(x=1;x<limit;x++){
-		for(y=1;y<limit;y++){
-			n = 4*x*x + y*y;
-			if(n <= max && ((n % 12 == 1) || n % 12 == 5))
-				toggle(n);
-			n = 3*x*x + y*y;
-			if(n <= max && n % 12 == 7)
-				toggle(n);
-			n = 3*x*x - y*y;
-			if(x > y && n <= max && n % 12 == 11)
-				toggle(n);
-		}
-	}
-}
 
 void help()
 {
@@ -239,7 +242,7 @@ unsigned int count_primes()
 {
 	unsigned int prime_count = 0;
 	unsigned int i;
-	for(i=0; i < max_prime; i++){
+	for(i=1; i < max_prime; i++){
 		if(is_prime(i)){
 			prime_count++;
 		}
