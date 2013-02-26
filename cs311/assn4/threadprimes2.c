@@ -19,19 +19,19 @@
 #include <semaphore.h>
 
 void initial_errorchk(int argc, char *argv[]);
-void start_calc(unsigned int *count);
+void spawn_threads();
 void process_primes(unsigned int min, unsigned int max);
 void *process_primes_thread(void * vp);
-unsigned int next_k(unsigned int k);
-void init_bitmap(unsigned char *bitmap, unsigned int bitmap_size);
+unsigned int next_seed(unsigned int k);
+void init_bitmap();
 
-void primes_k(int n, unsigned char *kbitmap);
+void seed_primes();
 void puke_and_exit(char *errormessage);
 
-int shmem_fd, num_proc;
+int shmem_fd, num_threads;
 char proc_type;
 unsigned char *bitmap;
-unsigned char *bitmap_multis;
+unsigned int bitmap_size;
 unsigned int max_prime;
 char print;
 
@@ -39,6 +39,8 @@ char print;
 void *mount_shmem(char *path, unsigned int object_size);
 int is_prime(unsigned int n);
 void set_not_prime(unsigned int n);
+void set_prime(unsigned int n);
+unsigned int count_primes();
 
 /* Global variables and typedefs */
 /* Reference: http://stackoverflow.com/questions/1225998/what-is-bitmap-in-c */
@@ -50,44 +52,50 @@ enum { BITS_PER_WORD = 8 };
 
 int main(int argc, char *argv[])
 {
-    unsigned int bitmap_size;
-    unsigned int bitmap_multis_size;
-    void *shmaddr;
-    unsigned int count=0;
-    
-    printf("Initial check..."); 
-    /* To do: why flusd stdout here but not at the next printf statement? */
-    fflush(stdout);
+    void *addr;
     
     initial_errorchk(argc, argv);
-    printf("Done.\n");
     
     /* update sizes */
-    bitmap_size = ((max_prime / 8) + 1);
-    bitmap_multis_size = ((sqrt(max_prime) / 8) + 1);
+    bitmap_size = (max_prime / BITS_PER_WORD + 1);
+
+    /* Mount shared memory */
+    addr = mount_shmem("/merrickd_primes", bitmap_size);
     
-    /* make shared memory */
-    printf("Initialize Shared Memory...");
-    fflush(stdout); /* Flush any pending stdout */
-    shmaddr = mount_shmem("/merrickd_primes", bitmap_size + bitmap_multis_size + 2);
-    bitmap = shmaddr;
-    bitmap_multis = (unsigned char *)shmaddr + bitmap_size;
+    /* Initialize bitmap */
+    bitmap = addr;
     init_bitmap(bitmap, bitmap_size);
-    init_bitmap(bitmap_multis, bitmap_multis_size);
-    printf("Done.\n");
     
+    /* Seed primes */
+    printf("Seeding primes...\n");
+    seed_primes();
+
+    /* Compute primes */
+    printf("Computing primes...\n");
+    spawn_threads();
     
-    start_calc(&count);
-    
-    printf("%u primes found.\n", count);
-    
+    printf("Counting primes...\n");
+    unsigned int prime_count = count_primes();   
+    printf("%u primes found.\n", prime_count);
+
     /* Delete the shared memory object */
     if (shm_unlink("/merrickd_primes") == -1) {
         printf("Error deleting shared memory object");
         exit(EXIT_FAILURE);
     }
     
-    exit(EXIT_SUCCESS);
+    return 0;
+}
+
+unsigned int count_primes(){
+        unsigned int prime_count = 0;
+        //count the number of primes
+        unsigned long i;
+        for (i=0; i<=max_prime; i++){
+            if (is_prime(i))
+                prime_count++;
+        }
+        return prime_count;
 }
 
 void initial_errorchk(int argc, char *argv[])
@@ -96,14 +104,13 @@ void initial_errorchk(int argc, char *argv[])
     
     /* error checking for number of argc */
     if (argc != 5){
-        printf("Invalid number of arguments\n" \
+        puke_and_exit("Invalid number of arguments\n" \
                "Usage: primes [p|t] [#processes/threads] [Max_prime_number] [print? y|n]\n");
-        exit(EXIT_FAILURE);
     }
     
     /* make sure input argv is a int */
-    if ((num_proc = atoi(argv[2])) > 0) {
-        //printf("Entered number: %d\n", num_proc);
+    if ((num_threads = atoi(argv[2])) > 0) {
+        //printf("Entered number: %d\n", num_threads);
     } else {
         printf("Invalid number of processes/threads\n");
         exit(EXIT_FAILURE);
@@ -136,77 +143,47 @@ void initial_errorchk(int argc, char *argv[])
     }
 }
 
-void start_calc(unsigned int *count)
+void spawn_threads()
 {
     unsigned int i;
-    unsigned long j;
-    unsigned int primes_count;
     
-    bitmap[0] = 0b10101100; //Special case, set bits 0 and 1 off, bit 2 on
-    bitmap_multis[0] &= ~(1 << 0 | 1 << 1 | 1 << 2); //bitmap init with odds only
-    
-    /* fill bitmap_multis */
-    printf("Pre-Calc Ks...");
-    fflush(stdout);
-    
-    /* To do: what is the diff between bitmap and bitmap_multis? */
-    primes_k(sqrt(max_prime), bitmap_multis);
-    printf("Done.\n");
-    
-    /* thread or multi-process with this function */
-    printf("Running Calculations...");
-    fflush(stdout);
-    
-    /* Start threads */
     pthread_t *thread;		/* thread object */
-    pthread_attr_t attr;			/* set of thread attributes for thread */
+    pthread_attr_t attr;			/* thread attributes */
     
-     /* Allocate the number of pthreads given by num_proc */
-    thread = (pthread_t*)malloc(num_proc * sizeof(pthread_t));
+    thread = malloc(num_threads * sizeof(pthread_t));
     
-    /* initialize thread attribute with defaults */
+    /* init thread attribute with defaults */
     pthread_attr_init(&attr);
 
-    /* Create threads that will each execute mult_matrix */
-    /* i is used as the thread id, is passed as the thread's only argument */
-    for (i = 0; i < num_proc; i++) {
-        if (pthread_create(&thread[i], 			 	/* thread */
-                           &attr, 				 	/* thread attribute */
-                           process_primes_thread, 	/* function to execute */
-                           (void*) (i)) != 0) {            /* thread argument */
-            perror("Cannot create the thread.");
-            exit(-1);
-        }
+    /* i is thread ID is passed as argument */
+    for (i = 0; i < num_threads; i++) {
+        if (pthread_create(&thread[i], &attr, process_primes_thread, (void*) (i)) != 0)
+            puke_and_exit("Cannot create the thread.");
     }
     
-    for (i = 0; i < num_proc; i++) {
+    /* Wait on threads to finish */
+    for (i = 0; i < num_threads; i++) {
         pthread_join(thread[i], NULL);
     }
-    printf("Done.\n");
-    
-    
-    printf("Counting primes...\n");
-    fflush(stdout);
-    *count=0;
-    //count the number of primes
-    for (j=0; j<=max_prime; j++)
-        if (bitmap[j/8] & (1 << (j%8))){
-            (*count)++;
-            if (print == 'y') printf("%lu\n", j);
-        }
-    printf("Done.\n\n");        
 }
 
+/* 
+Loops through a chunk of the seed primes and sets all their multiples to not prime 
+Stops at max/3 because everything after that has been marked previously. 
+*/
 void process_primes(unsigned int min, unsigned int max)
 {    
     unsigned long i;
     unsigned int k=0;
  
-    while ((k = next_k(k)) != 0) {
-        if (k > max/2) break;
-        /* To do: What does the following line of code do? */
-        for (i=(min/k < 2 ? 2 : min/k); (i*k) <= max; i++)
-            set_not_prime(i*k); /* set bit off, not prime */
+    while ((k = next_seed(k)) != 0) {
+        if (k > max/3) break; 
+        /* 
+        Assign 2 to i if min/k < 2, otherwise i = min/k, because 3 is the lowest prime afte 2 and
+        bitmap has been initialized without evens. 
+        */
+        for (i=(min/k < 3 ? 3 : min/k); (i*k) <= max; i++) 
+            set_not_prime(i*k); 
     }
 }
 
@@ -214,35 +191,32 @@ void *process_primes_thread(void * vp)
 {
     unsigned int min, max;
     unsigned int i = (unsigned int) vp;
-    
-    min = i * (max_prime/num_proc) + 1;
-    if (i==num_proc-1)
-        max = max_prime;
-    else
-        max = min + (max_prime/num_proc) - 1;
-    
+
+    min = i * (max_prime/num_threads) + 1;
+    max = (i==num_threads-1) ? max_prime : min + (max_prime/num_threads) - 1;
+
     process_primes(min, max);
-    
+    //printf("\nThread %u gets min = %u, max = %u", i, min, max); 
     pthread_exit(EXIT_SUCCESS);
 }
 
-/* returns next k in bitmap_multis else return 0 to indicate end */
-unsigned int next_k(unsigned int k)
+/* returns next seed prime or 0 to indicate end */
+unsigned int next_seed(unsigned int cur_seed)
 {
-    unsigned int n;
-    for (n=k+1; n<=sqrt(max_prime); n++)
-        if (is_prime(n)) { /* if bit n is set */
-            return n;
-        }
+    unsigned int i;
+    for (i=cur_seed+1; i<=sqrt(max_prime); i++)
+        if (is_prime(i))
+            return i;
     return 0;
 }
 
-/* initialize bitmap with odds */
-void init_bitmap(unsigned char *initbitmap, unsigned int bitmap_size)
+/* Initialize bitmap with odds */
+void init_bitmap()
 {
+    bitmap[0] = 0b10101100; /* Special case; set 2 to prime, 1 to not prime */
     unsigned int i;
-    for(i = 0; i < bitmap_size; i++)
-        initbitmap[i] = 0b10101010;
+    for(i = 1; i < bitmap_size; i++)
+        bitmap[i] = 0b10101010;
 }
 
 /* Mounts a shared memory object. Copied from code from class */
@@ -254,16 +228,16 @@ void *mount_shmem(char *path, unsigned int object_size)
     shmem_fd = shm_open(path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
 
     if (shmem_fd == -1)
-        puke_and_exit("Failed to open shared memory object\n");
+        puke_and_exit("Failed to open shared memory object.\n");
 
     if (ftruncate(shmem_fd, object_size) == -1)
-        puke_and_exit("Failed to resize shared memory object\n");
+        puke_and_exit("Failed to resize shared memory object.\n");
 
     /* map the shared memory object */
     addr = mmap(NULL, object_size, PROT_READ | PROT_WRITE, MAP_SHARED, shmem_fd, 0);
 
     if (addr == MAP_FAILED)
-        puke_and_exit("Failed to map shared memory object\n");
+        puke_and_exit("Failed to map shared memory object.\n");
 
     return addr;
 }
@@ -275,17 +249,20 @@ void puke_and_exit(char *errormessage)
     exit(EXIT_FAILURE);
 }
 
-void primes_k(int n, unsigned char *kbitmap)
-{
+/* 
+Uses Sieve of Eratosthenes to seed the bitmap with primes up until sqrt(max_prime). 
+Every number from sqrt(max_prime) to max_prime will either be prime or a multiple of them.
+*/
+void seed_primes()
+{   
     int k=3, i; //k is used for identifing primes and marking multiples of itself
-    
+    unsigned int n = sqrt(max_prime);
     while (k <= sqrt(n)) {
         for (i = 2; i * k <= n; i++)
-            kbitmap[(i*k) / 8] &= ~(1 << ((i*k) % 8)); /* set bit to off */
-        
+            set_not_prime(i*k);
         do
             k++;
-        while((kbitmap[(i*k)/8] & (1 << ((i*k)%8))) != 0);
+        while(is_prime(i*k));
     }
 }
 
@@ -296,7 +273,14 @@ int is_prime(unsigned int n)
     return bit != 0; 
 }
 
+/* Sets a bit to 0 (not prime) */
 void set_not_prime(unsigned int n) 
 { 
     bitmap[WORD_OFFSET(n)] &= ~(1 << BIT_OFFSET(n));
+}
+
+/* Sets a bit to 1 (prime) */
+void set_prime(unsigned int n) 
+{ 
+    bitmap[WORD_OFFSET(n)] |= (1 << BIT_OFFSET(n));
 }
