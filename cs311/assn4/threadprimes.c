@@ -56,9 +56,7 @@ unsigned int max_prime = UINT_MAX;
 
 int main(int argc, char **argv)
 {
-
 	/* Initialize signal handling */
-	/* Setup signal handlers */
 	struct sigaction act;
 
 	act.sa_handler = grim_reaper;
@@ -91,13 +89,13 @@ int main(int argc, char **argv)
 	spawn_threads();
 	
 	/* Find the primes */	
+	printf("Counting primes...\n");
 	unsigned int num_primes = count_primes();
 	printf("Number of primes found is %u\n", num_primes);
 
 	/* Delete the shared memory object */
 	if (shm_unlink(SHM_NAME) == -1) {
-		printf("Error deleting shared memory object");
-		exit(EXIT_FAILURE);
+		puke_and_exit("Error deleting shared memory object");
 	}
 
 	return 0;
@@ -105,13 +103,10 @@ int main(int argc, char **argv)
 void grim_reaper(int s){
 	/* Delete the shared memory object */
 	if (shm_unlink(SHM_NAME) == -1) {
-		printf("Error deleting shared memory object");
-		exit(EXIT_FAILURE);
+		puke_and_exit("Error deleting shared memory object");
 	}
 	exit(EXIT_FAILURE);
 }
-
-
 
 /* 
 Uses Sieve of Eratosthenes to seed the bitmap with primes up until sqrt(max_prime). 
@@ -157,8 +152,8 @@ void *elim_composites(void *vp){
 	unsigned int min = i * (max_prime/num_threads) + 1;
 	/* If we're on the last thread, set the max equal to the max_prime */
 	unsigned int max = (i == num_threads-1) ? max_prime : min + (max_prime/num_threads) - 1;
-
-	unsigned int j, k;
+	unsigned int j; 
+	unsigned long k; //This is much faster as long as opposed to unsigned int
 	j=1;
 	while((j=next_seed(j)) != 0){
 		for(k = (min/j < 3) ? 3 : (min/j); (j*k)<=max; k++){
@@ -176,13 +171,11 @@ Will return 0 if none were found.
 unsigned int next_seed(unsigned int cur_seed)
 {
 	unsigned int i;
-	for(i = cur_seed + 1; i <= sqrt(max_prime); i++){
+	for(i = cur_seed + 1; i <= sqrt(max_prime); i++)
 		if(is_prime(i))
 			return i;
-	}
 	return 0;
 }
-
 
 void help()
 {
@@ -256,10 +249,9 @@ void puke_and_exit(char *errormessage)
 unsigned int count_primes()
 {
 	unsigned int prime_count = 0;
-	unsigned int i;
+	unsigned long i;
 	for(i=2; i <= max_prime; i++){
 		if(is_prime(i)){
-			printf("%u is prime\n", i);
 			prime_count++;
 		}
 	}
