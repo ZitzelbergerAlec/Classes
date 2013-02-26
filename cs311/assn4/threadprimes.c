@@ -22,14 +22,14 @@
 /* Function prototypes */
 int is_prime(unsigned int n);
 unsigned int count_primes();
-void elim_composites();
+void *elim_composites(void *vp);
 void find_primes(unsigned int min, unsigned int max, unsigned int offset);
 void help();
-void *init_candidate_primes(void *args);
-void init_num_array();
+void init_bitmap();
 void *mount_shmem(char *path, int object_size);
 void *process_primes_thread(void *vp);
 void puke_and_exit(char *errormessage);
+void seed_primes();
 void set_not_prime(unsigned int n);
 void set_prime(unsigned int n);
 void spawn_threads();
@@ -41,44 +41,68 @@ typedef char word_t;
 enum { BITS_PER_WORD = 8 };	
 #define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
 #define BIT_OFFSET(b)  ((b) % BITS_PER_WORD)
+#define SHM_NAME "/merrickd_primes"
+struct thread_args{
+	unsigned int thread_id;
+	unsigned int min;
+	unsigned int max;
+};
 
 static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 unsigned int num_primes;
-unsigned char *num_array;
+unsigned char *bitmap;
 unsigned int num_threads;
-unsigned int max_prime = 1000; 
-unsigned int limit;
+unsigned int max_prime = 25;
 
 int main(int argc, char **argv)
 {
 	num_threads = 2;
 
-	unsigned int object_size = max_prime/BITS_PER_WORD; // ~500 MB
+	unsigned int bitmap_size = max_prime/BITS_PER_WORD + 1;
 
 	/* Create a shared memory object */
-	void *addr = mount_shmem("/merrickd_primes", object_size); /* 4294967295 = 2^32 */
+	void *addr = mount_shmem(SHM_NAME, bitmap_size); 
 
-	num_array = (unsigned char*) addr; /* num_array is our bitmap */
-
-	init_num_array();
+	/* Initialize bitmap */
+	bitmap = (unsigned char*) addr;
+	init_bitmap();
+	
 	/* Create the threads */
+	printf("Seeding primes...\n");
+	seed_primes();
+
+	/* Create the threads */
+	printf("Calculating primes...\n");
 	spawn_threads();
 	
 	/* Find the primes */	
-	
-
 	unsigned int num_primes = count_primes();
-
 	printf("Number of primes found is %u\n", num_primes);
 
 	/* Delete the shared memory object */
-	if (shm_unlink("/merrickd_primes") == -1) {
+	if (shm_unlink(SHM_NAME) == -1) {
 		printf("Error deleting shared memory object");
 		exit(EXIT_FAILURE);
 	}
 
 	return 0;
 }
+
+/* 
+Uses Sieve of Eratosthenes to seed the bitmap with primes up until sqrt(max_prime). 
+Every number from sqrt(max_prime) to max_prime will either be prime or a multiple of them.
+*/
+void seed_primes()
+{
+	unsigned int limit = sqrt(max_prime);
+	unsigned int i, j;
+	for(i=3; i<=sqrt(limit); i++){
+		if(is_prime(i))
+			for(j=3; (i*j)<=limit; j++)
+				set_not_prime(i*j);
+	}
+}
+
 
 void spawn_threads()
 {
@@ -87,72 +111,34 @@ void spawn_threads()
 	pthread_attr_t attr;
 
 	/* Allocate the number of pthreads given by num_proc */
-	thread = (pthread_t *) malloc(num_threads * sizeof(pthread_t));
+	thread = malloc(num_threads * sizeof(pthread_t));
 
 	/* initialize thread attribute with defaults */
 	pthread_attr_init(&attr);
 
-	/* i is used as the thread id, is passed as the thread's only argument */
-	unsigned int i;
-	
-	/* Have threads initialize candidate primes. */
-	limit = ceil(sqrt(max_prime));
+	struct thread_args *args;
+	args = malloc(sizeof(struct thread_args));
 
+	/* Create a struct of arguments for threads */
+	unsigned int i;
 	for (i = 0; i < num_threads; i++) {
-		if (pthread_create(&thread[i], &attr, init_candidate_primes, (void *) i) != 0)
+		args->thread_id = i;
+		args->min = i * (max_prime/num_threads) + 1;
+		/* If we're on the last thread, set the max equal to the max_prime */
+		args->max = (i == num_threads-1) ? max_prime : args->min + (max_prime/num_threads) - 1;
+		if (pthread_create(&thread[i], &attr, elim_composites, (void *) args) != 0)
 			puke_and_exit("Error creating thread.\n");
 	}
 
 	for (i = 0; i < num_threads; i++) {
 		pthread_join(thread[i], NULL);
 	}
-
-	/* Debug: Find primes in serial. */
-	find_primes(1, max_prime, 1);
 }
 
-/* Finds primes using Sieve of Atkin method */
-void find_primes(unsigned int min, unsigned int max, unsigned int offset)
-{
-	/* Eliminate composites */
-	printf("Eliminating composites\n");
-	elim_composites();
-}
-
-void *init_candidate_primes(void *vp){
-	unsigned int start = (unsigned int) vp;
-	unsigned int x, y, n;
-	for(x=start; x<limit; x+=num_threads){
-		for(y=1; y<limit; y++){
-			n = 4*x*x + y*y;
-			if(n <= max_prime && ((n % 12 == 1) || n % 12 == 5))
-				toggle(n);
-			n = 3*x*x + y*y;
-			if(n <= max_prime && n % 12 == 7)
-				toggle(n);
-			n = 3*x*x - y*y;
-			if(x > y && n <= max_prime && n % 12 == 11)
-				toggle(n);
-		}
-	}
+void *elim_composites(void *vp){
+	struct thread_args *args = (struct thread_args*)(vp);
+	printf("thread %u gets min = %u, max = %u\n", args->thread_id, args->min, args->max);
 	pthread_exit(EXIT_SUCCESS);
-}
-
-void elim_composites(){
-	unsigned int k;
-	unsigned int i;
-	unsigned int square_multiple;
-	for(k=5; k<limit; k++){
-		if (is_prime(k)) {
-			i = 1;
-			square_multiple = k * k * i;
-			while (square_multiple <= max_prime) {
-				set_not_prime(square_multiple);
-				i++;
-				square_multiple = k * k * i;
-			}
-		} 
-	}
 }
 
 
@@ -186,49 +172,36 @@ void *mount_shmem(char *path, int object_size)
 	return addr;
 }
 
-void set_not_prime(unsigned int n) 
-{ 
-    num_array[WORD_OFFSET(n)] |= (1 << BIT_OFFSET(n));
-}
-
-/* 0 designates a prime number */
-void set_prime(unsigned int n) 
-{ 
-    num_array[WORD_OFFSET(n)] &= ~(1 << BIT_OFFSET(n));
-}
-
-/* If n is 1, set to 0 and vice-versa */
-void toggle(unsigned int n) 
-{
-	word_t bit = num_array[WORD_OFFSET(n)] & (1 << BIT_OFFSET(n));
-	if(bit==0){
-		num_array[WORD_OFFSET(n)] |= (1 << BIT_OFFSET(n));			
-	} else {
-		num_array[WORD_OFFSET(n)] &= ~(1 << BIT_OFFSET(n));		
-	}
-}
-
 /* Returns 1 if the index of num_primes at n is prime, 0 otherwise */
 int is_prime(unsigned int n)
-{	
-    word_t bit = num_array[WORD_OFFSET(n)] & (1 << BIT_OFFSET(n));
-    return bit == 0; 
+{   
+    word_t bit = bitmap[WORD_OFFSET(n)] & (1 << BIT_OFFSET(n));
+    return bit != 0; 
+}
+
+/* Sets a bit to 0 (not prime) */
+void set_not_prime(unsigned int n) 
+{ 
+    bitmap[WORD_OFFSET(n)] &= ~(1 << BIT_OFFSET(n));
+}
+
+/* Sets a bit to 1 (prime) */
+void set_prime(unsigned int n) 
+{ 
+    bitmap[WORD_OFFSET(n)] |= (1 << BIT_OFFSET(n));
 }
 
 /* Initialize to all odds to prime. */
-void init_num_array()
+void init_bitmap()
 {
 	unsigned int i;
 	/* Set words one at a time */
-	for (i = 0; i < (max_prime/BITS_PER_WORD); i++) { 
-		num_array[i] = 255; //0b11111111 (not prime)
+	for (i = 0; i < (max_prime/BITS_PER_WORD + 1); i++) { 
+		bitmap[i] = 0b10101010; 
 	}
-	/* Set remaining values to not prime */
-	for(i = max_prime - (max_prime % BITS_PER_WORD); i<max_prime; i++){
-		set_not_prime(i);
-	}
+	/* set 1 to not prime and 2 to prime */
+	set_not_prime(1);
 	set_prime(2);
-	set_prime(3);
 }
 
 void puke_and_exit(char *errormessage)
@@ -242,10 +215,10 @@ unsigned int count_primes()
 {
 	unsigned int prime_count = 0;
 	unsigned int i;
-	for(i=1; i < max_prime; i++){
+	for(i=2; i <= max_prime; i++){
 		if(is_prime(i)){
 			prime_count++;
 		}
 	}
-	return prime_count;
+	return prime_count; 
 }
