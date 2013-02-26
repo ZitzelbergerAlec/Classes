@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <semaphore.h>
+#include <signal.h>
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -24,9 +25,11 @@ int is_prime(unsigned int n);
 unsigned int count_primes();
 void *elim_composites(void *vp);
 void find_primes(unsigned int min, unsigned int max, unsigned int offset);
+void grim_reaper(int s);
 void help();
 void init_bitmap();
 void *mount_shmem(char *path, int object_size);
+unsigned int next_seed(unsigned int cur_seed);
 void *process_primes_thread(void *vp);
 void puke_and_exit(char *errormessage);
 void seed_primes();
@@ -35,28 +38,38 @@ void set_prime(unsigned int n);
 void spawn_threads();
 void toggle(unsigned int n);
 
-/* Global variables and typedefs */
-/* Reference: http://stackoverflow.com/questions/1225998/what-is-bitmap-in-c */
+/* 
+Global variables and typedefs.
+Bitmap functions.
+Reference: http://stackoverflow.com/questions/1225998/what-is-bitmap-in-c 
+*/
 typedef char word_t;
 enum { BITS_PER_WORD = 8 };	
 #define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
 #define BIT_OFFSET(b)  ((b) % BITS_PER_WORD)
 #define SHM_NAME "/merrickd_primes"
-struct thread_args{
-	unsigned int thread_id;
-	unsigned int min;
-	unsigned int max;
-};
 
-static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 unsigned int num_primes;
 unsigned char *bitmap;
 unsigned int num_threads;
-unsigned int max_prime = 25;
+unsigned int max_prime = UINT_MAX;
 
 int main(int argc, char **argv)
 {
-	num_threads = 2;
+
+	/* Initialize signal handling */
+	/* Setup signal handlers */
+	struct sigaction act;
+
+	act.sa_handler = grim_reaper;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = 0;
+
+	sigaction(SIGQUIT, &act, NULL);
+	sigaction(SIGINT, &act, NULL);
+	sigaction(SIGHUP, &act, NULL);
+
+	num_threads = 500;
 
 	unsigned int bitmap_size = max_prime/BITS_PER_WORD + 1;
 
@@ -69,10 +82,12 @@ int main(int argc, char **argv)
 	
 	/* Create the threads */
 	printf("Seeding primes...\n");
+	fflush(stdout);
 	seed_primes();
 
 	/* Create the threads */
-	printf("Calculating primes...\n");
+	printf("Eliminating composites...\n");
+	fflush(stdout);
 	spawn_threads();
 	
 	/* Find the primes */	
@@ -87,6 +102,16 @@ int main(int argc, char **argv)
 
 	return 0;
 }
+void grim_reaper(int s){
+	/* Delete the shared memory object */
+	if (shm_unlink(SHM_NAME) == -1) {
+		printf("Error deleting shared memory object");
+		exit(EXIT_FAILURE);
+	}
+	exit(EXIT_FAILURE);
+}
+
+
 
 /* 
 Uses Sieve of Eratosthenes to seed the bitmap with primes up until sqrt(max_prime). 
@@ -116,17 +141,9 @@ void spawn_threads()
 	/* initialize thread attribute with defaults */
 	pthread_attr_init(&attr);
 
-	struct thread_args *args;
-	args = malloc(sizeof(struct thread_args));
-
-	/* Create a struct of arguments for threads */
 	unsigned int i;
-	for (i = 0; i < num_threads; i++) {
-		args->thread_id = i;
-		args->min = i * (max_prime/num_threads) + 1;
-		/* If we're on the last thread, set the max equal to the max_prime */
-		args->max = (i == num_threads-1) ? max_prime : args->min + (max_prime/num_threads) - 1;
-		if (pthread_create(&thread[i], &attr, elim_composites, (void *) args) != 0)
+	for (i = 0; i < num_threads; i++){
+		if (pthread_create(&thread[i], &attr, elim_composites, (void *) i) != 0)
 			puke_and_exit("Error creating thread.\n");
 	}
 
@@ -136,9 +153,34 @@ void spawn_threads()
 }
 
 void *elim_composites(void *vp){
-	struct thread_args *args = (struct thread_args*)(vp);
-	printf("thread %u gets min = %u, max = %u\n", args->thread_id, args->min, args->max);
+	unsigned int i = (unsigned int) vp;
+	unsigned int min = i * (max_prime/num_threads) + 1;
+	/* If we're on the last thread, set the max equal to the max_prime */
+	unsigned int max = (i == num_threads-1) ? max_prime : min + (max_prime/num_threads) - 1;
+
+	unsigned int j, k;
+	j=1;
+	while((j=next_seed(j)) != 0){
+		for(k = (min/j < 3) ? 3 : (min/j); (j*k)<=max; k++){
+			set_not_prime(j*k);
+		}
+	}
 	pthread_exit(EXIT_SUCCESS);
+}
+
+/* 
+This function is an iterator for the seed primes.
+Given the current seed prime, it will return the next one. 
+Will return 0 if none were found.
+*/
+unsigned int next_seed(unsigned int cur_seed)
+{
+	unsigned int i;
+	for(i = cur_seed + 1; i <= sqrt(max_prime); i++){
+		if(is_prime(i))
+			return i;
+	}
+	return 0;
 }
 
 
@@ -217,6 +259,7 @@ unsigned int count_primes()
 	unsigned int i;
 	for(i=2; i <= max_prime; i++){
 		if(is_prime(i)){
+			printf("%u is prime\n", i);
 			prime_count++;
 		}
 	}
