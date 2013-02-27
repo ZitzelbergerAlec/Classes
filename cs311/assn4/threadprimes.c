@@ -21,23 +21,29 @@
 #include <sys/wait.h>
 
 /* Function prototypes */
-int is_prime(unsigned int n);
 unsigned int count_primes();
-double digit_array(unsigned int *digit_array, unsigned int prime);
+unsigned int count_happys();
+void split_number(unsigned int *digit_array, unsigned int number);
 void *elim_composites(void *vp);
+void *elim_sads(void *vp);
 void find_primes(unsigned int min, unsigned int max, unsigned int offset);
 void grim_reaper(int s);
 void help();
 void init_bitmap();
+int in_sums_array(unsigned int number, unsigned int *prev_sums, int array_size);
+int is_happy(unsigned int j);
+int is_prime(unsigned int n);
 void *mount_shmem(char *path, int object_size);
 unsigned int next_seed(unsigned int cur_seed);
 unsigned int next_prime(unsigned int cur_prime);
+double count_nonzero_digits(unsigned int *digit_array);
 void puke_and_exit(char *errormessage);
 void seed_primes();
 void set_not_prime(unsigned int n);
 void set_not_happy(unsigned int n);
 void set_prime(unsigned int n);
-void spawn_threads();
+void spawn_happy_threads();
+void spawn_prime_threads();
 unsigned int sum_digit_squares(unsigned int *digit_array);
 void toggle(unsigned int n);
 
@@ -86,15 +92,28 @@ int main(int argc, char **argv)
 	fflush(stdout);
 	seed_primes();
 
-	/* Create the threads */
+	/* Find all the primes */
 	printf("Eliminating composites...\n");
 	fflush(stdout);
-	spawn_threads();
+	spawn_prime_threads();
 
-	/* Find the primes */
+	/* Count the primes */
+	/*
 	printf("Counting primes...\n");
 	unsigned int num_primes = count_primes();
 	printf("Number of primes found is %u\n", num_primes);
+	*/
+	num_threads = 2;
+
+	/* Find all the happy primes */
+	printf("Finding happy primes...\n");
+	fflush(stdout);
+	spawn_happy_threads();
+
+	/* Count the happy primes */
+	printf("Counting happy primes...\n");
+	unsigned int num_happys = count_happys();
+	printf("Number of happy primes found is %u\n", num_happys);
 
 	/* Delete the shared memory object */
 	if (shm_unlink(SHM_NAME) == -1) {
@@ -128,7 +147,11 @@ void seed_primes()
 	}
 }
 
-void spawn_threads()
+/*
+Spawns the number of threads specified by num_threads.
+To do: Optimization: Use a function pointer and make spawn_prime_threads and spawn_happy_threads one function.
+*/
+void spawn_prime_threads()
 {
 	/* Spawn 2 threads to find primes */
 	pthread_t *thread;
@@ -144,6 +167,30 @@ void spawn_threads()
 	for (i = 0; i < num_threads; i++) {
 		if (pthread_create
 		    (&thread[i], &attr, elim_composites, (void *) i) != 0)
+			puke_and_exit("Error creating thread.\n");
+	}
+
+	for (i = 0; i < num_threads; i++) {
+		pthread_join(thread[i], NULL);
+	}
+}
+
+void spawn_happy_threads()
+{
+	/* Spawn 2 threads to find primes */
+	pthread_t *thread;
+	pthread_attr_t attr;
+
+	/* Allocate the number of pthreads given by num_proc */
+	thread = malloc(num_threads * sizeof(pthread_t));
+
+	/* initialize thread attribute with defaults */
+	pthread_attr_init(&attr);
+
+	unsigned int i;
+	for (i = 0; i < num_threads; i++) {
+		if (pthread_create
+		    (&thread[i], &attr, elim_sads, (void *) i) != 0)
 			puke_and_exit("Error creating thread.\n");
 	}
 
@@ -174,7 +221,7 @@ void *elim_composites(void *vp)
 }
 
 /*  Eliminates sad numbers. */
-void elim_sads(void *vp){
+void *elim_sads(void *vp){
 	unsigned int i = (unsigned int) vp;
 	unsigned int min = i * (max_prime / num_threads) + 1;
 	/* If we're on the last thread, set the max equal to the max_prime */
@@ -184,35 +231,57 @@ void elim_sads(void *vp){
 	    (max_prime / num_threads) - 1;
 
 
-	unsigned int j, k, l;
+	unsigned int j;
 	
-	j = min;
+	j = min-1;
 	while ((j = next_prime(j)) <= max) {
 		if(j == 0)
 			break;
-		if(!is_happy(j)))
+		/* to do: check next_prime function to make sure it doesn't print duplicates */
+		printf("%u\n", j);
+		if(!is_happy(j)){
+			//printf("%u is not happy\n");
 			set_not_happy(j);
+		}
 	}
 	pthread_exit(EXIT_SUCCESS);
 }
 
 /* Returns 1 if a prime at index n is happy or 0 if not */ 
-int is_happy(unsigned int n)
+int is_happy(unsigned int j)
 {
 	/* From Wikipedia: All numbers, of the form 10^n + 3 and 10^n + 9 for n greater than 0 are Happy */
 	if(j % 10 == 3 || j % 10 == 9)
 		return 1;
-	double nonzero_digit_count; /* The number of nonzero digits in the prime */
 	unsigned int digit_array[9]; /* Array to hold the digits */
-	nonzero_digit_count = digit_array(&digit_array, j);
+	split_number(digit_array, j);
+	double nonzero_digit_count = count_nonzero_digits(digit_array); /* The number of nonzero digits in the prime */
 
 	double i;
-	unsigned int sum = sum_digit_squares(&digit_array);
+	unsigned int sum = sum_digit_squares(digit_array);
+	unsigned int prev_sums[(int) nonzero_digit_count]; /* an array to contain previous sums for comparison */
 	for(i=0; i < pow(9, nonzero_digit_count) + 1; i++){ /* pow(double x, double y) = x^y. +1 for good measure */
 		if(sum == 1)
 			return 1;
-		digit_array(&digit_array, sum);
-		sum = sum_digit_squares(&digit_array);
+		prev_sums[(int) i] = sum;
+		if(in_sums_array(sum, prev_sums, (int) i))
+			return 1;
+		split_number(digit_array, sum);		
+		sum = sum_digit_squares(digit_array);
+	}
+	return 0;
+}
+
+
+/* 
+Checks an array of prev_sums for a value. Returns if the array contains it.
+*/
+
+int in_sums_array(unsigned int number, unsigned int *prev_sums, int array_size){
+	int i;
+	for(i=0; i<array_size; i++){
+		if(prev_sums[i] == number)
+			return 1;
 	}
 	return 0;
 }
@@ -230,14 +299,22 @@ unsigned int sum_digit_squares(unsigned int *digit_array){
 	return sum;
 }
 
+/* Counts the number of nonzero digits in an array of digits. */
+double count_nonzero_digits(unsigned int *digit_array){
+	double nonzero_digit_count = 0;
+	int i;
+	for(i=0; i<10; i++)
+		if(digit_array[i] != 0)
+			nonzero_digit_count++;
+	return nonzero_digit_count;
+}
+
 /* 
 Accepts a number and a pointer to a digit_array[9].
 Splits an unsigned integer into an array of digits.
-Returns the count of the nonzero digits in the array.
 */
-double digit_array(unsigned int *digit_array, unsigned int number){
+void split_number(unsigned int *digit_array, unsigned int number){
 	unsigned int k, l;
-	double nonzero_digit_count = 0;
 	for(k = 1000000000, l = 9; k >= 1; k /= 10, l--){
 		if(k == 1000000000){
   			digit_array[l] = number/k;
@@ -247,7 +324,6 @@ double digit_array(unsigned int *digit_array, unsigned int number){
    			digit_array[l] = (number%(k*10))/k;
 		}
 	}
-	return nonzero_digit_count;
 }
 
 /* 
@@ -273,7 +349,6 @@ unsigned int next_prime(unsigned int cur_prime)
 			return i;
 	return 0;
 }
-
 
 void help()
 {
@@ -352,6 +427,7 @@ void puke_and_exit(char *errormessage)
 	exit(EXIT_FAILURE);
 }
 
+/* Counts number of primes in bitmap */
 unsigned int count_primes()
 {
 	unsigned int prime_count = 0;
@@ -362,4 +438,10 @@ unsigned int count_primes()
 		}
 	}
 	return prime_count;
+}
+
+/* Counts number of happy primes in bitmap */
+unsigned int count_happys()
+{
+	return count_primes();
 }
