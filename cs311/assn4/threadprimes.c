@@ -50,6 +50,10 @@ unsigned int sum_digit_squares(unsigned int number);
 void toggle(unsigned int n);
 int in_array(unsigned int number, unsigned int *int_array);
 
+/* Functions for debugging */
+void print_primes(unsigned int n);
+
+
 /* 
 Global variables and typedefs.
 Bitmap functions.
@@ -245,7 +249,7 @@ void *elim_sads(void *vp){
 }
 
 /* Returns 1 if a prime at index n is happy or 0 if not */ 
- int is_happy(unsigned int j)
+int is_happy(unsigned int j)
 {
 	unsigned int sum = sum_digit_squares(j);
 	return in_sums_array(sum, convergence_array, 112);
@@ -289,7 +293,11 @@ unsigned int sum_digit_squares(unsigned int number){
 	return sum;
 }
 
-/* Creates an array of numbers that converge to 1. */
+/* 
+Creates an array of numbers that converge to 1. 
+810 is the max sum we will ever encounter, because
+10*9^2 = 810.
+*/
 void init_convergence_array(){
 	unsigned int i;
 	unsigned int count = 0;
@@ -339,6 +347,7 @@ unsigned int *split_number(unsigned int number){
 This function is an iterator for the seed primes.
 Given the current seed prime, it will return the next one. 
 Will return 0 if none were found.
+To do: optimization: Could increment by 2 instead of 1.
 */
 unsigned int next_seed(unsigned int cur_seed)
 {
@@ -352,10 +361,10 @@ unsigned int next_seed(unsigned int cur_seed)
 /* Returns the next prime in the bitmap given the current prime */
 unsigned int next_prime(unsigned int cur_prime)
 {
-	unsigned int i;
-	for (i = cur_prime + 1; i <= max_prime; i++)
+	unsigned long i;
+	for (i = (long) cur_prime + 1; i <= max_prime; i++)
 		if (is_prime(i))
-			return i;
+			return (unsigned int) i;
 	return 0;
 }
 
@@ -447,6 +456,18 @@ unsigned int count_primes()
 		}
 	}
 	return prime_count;
+}
+
+/* For debugging. Prints primes up to a certain point */
+void print_primes(unsigned int n)
+{
+	unsigned int prime_count = 0;
+	unsigned int i;
+	for (i = 2; i <= n; i++) {
+		if (is_prime(i)) {
+			printf("%u\n", i);
+		}
+	}
 }
 
 /* Counts number of happy primes in bitmap */
