@@ -23,13 +23,14 @@
 /* Function prototypes */
 unsigned int count_primes();
 unsigned int count_happys();
-void split_number(unsigned int *digit_array, unsigned int number);
+int converges(unsigned int j);
 void *elim_composites(void *vp);
 void *elim_sads(void *vp);
 void find_primes(unsigned int min, unsigned int max, unsigned int offset);
 void grim_reaper(int s);
 void help();
 void init_bitmap();
+void init_convergence_array();
 int in_sums_array(unsigned int number, unsigned int *prev_sums, int array_size);
 int is_happy(unsigned int j);
 int is_prime(unsigned int n);
@@ -44,8 +45,10 @@ void set_not_happy(unsigned int n);
 void set_prime(unsigned int n);
 void spawn_happy_threads();
 void spawn_prime_threads();
-unsigned int sum_digit_squares(unsigned int *digit_array);
+unsigned int *split_number(unsigned int number);
+unsigned int sum_digit_squares(unsigned int number);
 void toggle(unsigned int n);
+int in_array(unsigned int number, unsigned int *int_array);
 
 /* 
 Global variables and typedefs.
@@ -60,8 +63,9 @@ enum { BITS_PER_WORD = 8 };
 
 unsigned int num_primes;
 unsigned char *bitmap;
-unsigned int num_threads;
+unsigned int num_threads = 500;
 unsigned int max_prime = UINT_MAX;
+unsigned int convergence_array[112]; /* Array for numbers whose digits converge to 1 when squared and summed */
 
 int main(int argc, char **argv)
 {
@@ -75,8 +79,6 @@ int main(int argc, char **argv)
 	sigaction(SIGQUIT, &act, NULL);
 	sigaction(SIGINT, &act, NULL);
 	sigaction(SIGHUP, &act, NULL);
-
-	num_threads = 500;
 
 	unsigned int bitmap_size = max_prime / BITS_PER_WORD + 1;
 
@@ -103,9 +105,10 @@ int main(int argc, char **argv)
 	unsigned int num_primes = count_primes();
 	printf("Number of primes found is %u\n", num_primes);
 	*/
-	num_threads = 2;
 
 	/* Find all the happy primes */
+	init_convergence_array();
+
 	printf("Finding happy primes...\n");
 	fflush(stdout);
 	spawn_happy_threads();
@@ -170,6 +173,7 @@ void spawn_prime_threads()
 			puke_and_exit("Error creating thread.\n");
 	}
 
+	/* Wait on threads */
 	for (i = 0; i < num_threads; i++) {
 		pthread_join(thread[i], NULL);
 	}
@@ -194,6 +198,7 @@ void spawn_happy_threads()
 			puke_and_exit("Error creating thread.\n");
 	}
 
+	/* Wait on threads */
 	for (i = 0; i < num_threads; i++) {
 		pthread_join(thread[i], NULL);
 	}
@@ -229,18 +234,10 @@ void *elim_sads(void *vp){
 	    (i ==
 	     num_threads - 1) ? max_prime : min +
 	    (max_prime / num_threads) - 1;
-
-
-	unsigned int j;
+	unsigned int j = min - 1;
 	
-	j = min-1;
-	while ((j = next_prime(j)) <= max) {
-		if(j == 0)
-			break;
-		/* to do: check next_prime function to make sure it doesn't print duplicates */
-		printf("%u\n", j);
+	while (((j = next_prime(j)) <= max) && (j != 0)) {
 		if(!is_happy(j)){
-			//printf("%u is not happy\n");
 			set_not_happy(j);
 		}
 	}
@@ -248,72 +245,83 @@ void *elim_sads(void *vp){
 }
 
 /* Returns 1 if a prime at index n is happy or 0 if not */ 
-int is_happy(unsigned int j)
+ int is_happy(unsigned int j)
 {
-	/* From Wikipedia: All numbers, of the form 10^n + 3 and 10^n + 9 for n greater than 0 are Happy */
-	if(j % 10 == 3 || j % 10 == 9)
-		return 1;
-	unsigned int digit_array[9]; /* Array to hold the digits */
-	split_number(digit_array, j);
-	double nonzero_digit_count = count_nonzero_digits(digit_array); /* The number of nonzero digits in the prime */
-
-	double i;
-	unsigned int sum = sum_digit_squares(digit_array);
-	unsigned int prev_sums[(int) nonzero_digit_count]; /* an array to contain previous sums for comparison */
-	for(i=0; i < pow(9, nonzero_digit_count) + 1; i++){ /* pow(double x, double y) = x^y. +1 for good measure */
-		if(sum == 1)
-			return 1;
-		prev_sums[(int) i] = sum;
-		if(in_sums_array(sum, prev_sums, (int) i))
-			return 1;
-		split_number(digit_array, sum);		
-		sum = sum_digit_squares(digit_array);
-	}
-	return 0;
-}
-
+	unsigned int sum = sum_digit_squares(j);
+	return in_sums_array(sum, convergence_array, 112);
+ }
 
 /* 
 Checks an array of prev_sums for a value. Returns if the array contains it.
 */
-
-int in_sums_array(unsigned int number, unsigned int *prev_sums, int array_size){
+int in_sums_array(unsigned int number, unsigned int *int_array, int max_index){
 	int i;
-	for(i=0; i<array_size; i++){
-		if(prev_sums[i] == number)
+	for(i=0; i<max_index; i++){
+		if(int_array[i] == number)
 			return 1;
 	}
 	return 0;
 }
 
 /* 
-Sums the squares of the digits in the array and returns the sum as an unsigned int.
+Checks an array of prev_sums for a value. Returns if the array contains it.
+*/
+int in_array(unsigned int number, unsigned int *int_array){
+	int i;
+	for(i=0; i<sizeof(int_array); i++){
+		if(int_array[i] == number)
+			return 1;
+	}
+	return 0;
+}
+
+/* 
 Expects a digit array of size 9.
 */
-unsigned int sum_digit_squares(unsigned int *digit_array){
+unsigned int sum_digit_squares(unsigned int number){
+	unsigned int k, l;
+	unsigned int *digit_array = split_number(number);
 	unsigned int sum = 0;
 	unsigned int i;
 	for(i=0; i < 10; i++){
-		sum += digit_array[i] * digit_array[i];
+		sum += (digit_array[i] * digit_array[i]);
 	}
 	return sum;
 }
 
-/* Counts the number of nonzero digits in an array of digits. */
-double count_nonzero_digits(unsigned int *digit_array){
-	double nonzero_digit_count = 0;
-	int i;
-	for(i=0; i<10; i++)
-		if(digit_array[i] != 0)
-			nonzero_digit_count++;
-	return nonzero_digit_count;
+/* Creates an array of numbers that converge to 1. */
+void init_convergence_array(){
+	unsigned int i;
+	unsigned int count = 0;
+	int j = 0; /* index for convergence array */
+	for(i = 2; i < 810; i++){
+		if(converges(i)){
+			convergence_array[j] = i;
+			j++;
+		}
+	}
 }
 
-/* 
-Accepts a number and a pointer to a digit_array[9].
-Splits an unsigned integer into an array of digits.
-*/
-void split_number(unsigned int *digit_array, unsigned int number){
+/* Returns 1 if a number converges to 1. */
+int converges(unsigned int j)
+{
+	int i;
+	unsigned int repeat_array[810];
+	unsigned int sum = j;
+	for(i = 0; i<810; i++){
+		sum = sum_digit_squares(sum);
+		if(sum == 1)
+			return 1;
+		if(in_sums_array(sum, repeat_array, i))
+			return 0;
+		repeat_array[i] = sum;
+	}
+	return 0;
+}
+
+/* Splits an unsigned integer into an array of digits and returns the array. */
+unsigned int *split_number(unsigned int number){
+	unsigned int *digit_array = malloc(10 * sizeof(unsigned int));
 	unsigned int k, l;
 	for(k = 1000000000, l = 9; k >= 1; k /= 10, l--){
 		if(k == 1000000000){
@@ -324,6 +332,7 @@ void split_number(unsigned int *digit_array, unsigned int number){
    			digit_array[l] = (number%(k*10))/k;
 		}
 	}
+	return digit_array;
 }
 
 /* 
