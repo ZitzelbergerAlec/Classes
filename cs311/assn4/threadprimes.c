@@ -30,6 +30,7 @@ void find_primes(unsigned int min, unsigned int max, unsigned int offset);
 void grim_reaper(int s);
 void help();
 int in_array(unsigned int number, unsigned int *int_array, int max_index);
+int in_convergence_array(unsigned int number);
 void init_bitmap();
 void init_convergence_array();
 int is_happy(unsigned int j);
@@ -87,7 +88,7 @@ int main(int argc, char **argv)
 
 	/* Create a shared memory object */
 	void *addr = mount_shmem(SHM_NAME, bitmap_size);
-
+	
 	/* Initialize bitmap */
 	bitmap = (unsigned char *) addr;
 	init_bitmap();
@@ -250,8 +251,29 @@ void *elim_sads(void *vp){
 int is_happy(unsigned int j)
 {
 	unsigned int sum = sum_digit_squares(j);
-	return in_array(sum, convergence_array, 112);
+	return in_convergence_array(sum);
  }
+
+/* 
+Checks an array for a value up to max_index. Returns if the array contains it.
+Uses a binary search algorithm, so assumes array is sorted.
+*/
+int in_convergence_array(unsigned int number){
+	unsigned int min = 0;
+	unsigned int max = 112; //Convergence array size is 112
+	unsigned int midpoint;
+	while((max - min) > 0){
+		midpoint = (max + min)/2;
+		if(convergence_array[midpoint] > number) { //too high
+			max--;
+		} else if (convergence_array[midpoint] < number){ //too low
+			min++;
+		} else { //Found it
+			return 1;
+		}
+	}
+	return 0;
+}
 
 /* 
 Checks an array for a value up to max_index. Returns if the array contains it.
