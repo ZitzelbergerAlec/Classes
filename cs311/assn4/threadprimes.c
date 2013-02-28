@@ -29,9 +29,9 @@ void *elim_sads(void *vp);
 void find_primes(unsigned int min, unsigned int max, unsigned int offset);
 void grim_reaper(int s);
 void help();
+int in_array(unsigned int number, unsigned int *int_array, int max_index);
 void init_bitmap();
 void init_convergence_array();
-int in_sums_array(unsigned int number, unsigned int *prev_sums, int array_size);
 int is_happy(unsigned int j);
 int is_prime(unsigned int n);
 void *mount_shmem(char *path, int object_size);
@@ -48,11 +48,10 @@ void spawn_prime_threads();
 unsigned int *split_number(unsigned int number);
 unsigned int sum_digit_squares(unsigned int number);
 void toggle(unsigned int n);
-int in_array(unsigned int number, unsigned int *int_array);
 
 /* Functions for debugging */
 void print_primes(unsigned int n);
-
+void print_array(unsigned int *num_array, int array_size);
 
 /* 
 Global variables and typedefs.
@@ -104,13 +103,12 @@ int main(int argc, char **argv)
 	spawn_prime_threads();
 
 	/* Count the primes */
-	/*
 	printf("Counting primes...\n");
 	unsigned int num_primes = count_primes();
 	printf("Number of primes found is %u\n", num_primes);
-	*/
 
 	/* Find all the happy primes */
+	/* First, get a list of all potential sums that converge to 1 */
 	init_convergence_array();
 
 	printf("Finding happy primes...\n");
@@ -252,13 +250,13 @@ void *elim_sads(void *vp){
 int is_happy(unsigned int j)
 {
 	unsigned int sum = sum_digit_squares(j);
-	return in_sums_array(sum, convergence_array, 112);
+	return in_array(sum, convergence_array, 112);
  }
 
 /* 
-Checks an array of prev_sums for a value. Returns if the array contains it.
+Checks an array for a value up to max_index. Returns if the array contains it.
 */
-int in_sums_array(unsigned int number, unsigned int *int_array, int max_index){
+int in_array(unsigned int number, unsigned int *int_array, int max_index){
 	int i;
 	for(i=0; i<max_index; i++){
 		if(int_array[i] == number)
@@ -268,19 +266,9 @@ int in_sums_array(unsigned int number, unsigned int *int_array, int max_index){
 }
 
 /* 
-Checks an array of prev_sums for a value. Returns if the array contains it.
-*/
-int in_array(unsigned int number, unsigned int *int_array){
-	int i;
-	for(i=0; i<sizeof(int_array); i++){
-		if(int_array[i] == number)
-			return 1;
-	}
-	return 0;
-}
-
-/* 
 Expects a digit array of size 9.
+To do: optimization: have split_number return an array that only contains nonzero digits.
+If the array index is zero, break.
 */
 unsigned int sum_digit_squares(unsigned int number){
 	unsigned int k, l;
@@ -288,6 +276,8 @@ unsigned int sum_digit_squares(unsigned int number){
 	unsigned int sum = 0;
 	unsigned int i;
 	for(i=0; i < 10; i++){
+		if(digit_array[i] == 0)
+			break;
 		sum += (digit_array[i] * digit_array[i]);
 	}
 	return sum;
@@ -320,7 +310,7 @@ int converges(unsigned int j)
 		sum = sum_digit_squares(sum);
 		if(sum == 1)
 			return 1;
-		if(in_sums_array(sum, repeat_array, i))
+		if(in_array(sum, repeat_array, i))
 			return 0;
 		repeat_array[i] = sum;
 	}
@@ -330,15 +320,21 @@ int converges(unsigned int j)
 /* Splits an unsigned integer into an array of digits and returns the array. */
 unsigned int *split_number(unsigned int number){
 	unsigned int *digit_array = malloc(10 * sizeof(unsigned int));
-	unsigned int k, l;
-	for(k = 1000000000, l = 9; k >= 1; k /= 10, l--){
+	unsigned int k, digit; 
+	unsigned int l = 0; /* l is array index */
+	for(k = 1000000000; k >= 1; k /= 10){
 		if(k == 1000000000){
-  			digit_array[l] = number/k;
+  			digit = number/k;
 		} else if(k==1) {
-  			digit_array[l] = number%10;
+  			digit = number%10;
 		} else {
-   			digit_array[l] = (number%(k*10))/k;
+   			digit = (number%(k*10))/k;
 		}
+		if(digit != 0)
+			digit_array[l++] = digit;
+	}
+	if(l < 10){
+		digit_array[l] = 0; /* 0 acts as a null terminator in the array */
 	}
 	return digit_array;
 }
@@ -361,10 +357,25 @@ unsigned int next_seed(unsigned int cur_seed)
 /* Returns the next prime in the bitmap given the current prime */
 unsigned int next_prime(unsigned int cur_prime)
 {
-	unsigned long i;
-	for (i = (long) cur_prime + 1; i <= max_prime; i++)
-		if (is_prime(i))
-			return (unsigned int) i;
+	/* Count until the end of current word */
+	unsigned long i, j, cur_word_offset;
+	i = (unsigned long) cur_prime + 1;
+	while(i%BITS_PER_WORD != 0){
+		if(is_prime(i))
+			return i;
+		i++;
+	}
+	
+	/* Now iterate through words, starting at current word */
+	for (i = i/BITS_PER_WORD; i < (max_prime / BITS_PER_WORD + 1); i++) {
+		if(bitmap[i] == 0) //Skip empty words 
+			continue; 
+		cur_word_offset = BITS_PER_WORD * i;
+		for(j = 0; j < BITS_PER_WORD; j++){
+			if(is_prime(cur_word_offset + j))
+				return cur_word_offset + j;
+		}
+	}
 	return 0;
 }
 
@@ -445,14 +456,21 @@ void puke_and_exit(char *errormessage)
 	exit(EXIT_FAILURE);
 }
 
-/* Counts number of primes in bitmap */
+/* 
+Counts number of primes in bitmap 
+Skips words that are zero, meaning zero primes.
+*/
 unsigned int count_primes()
 {
 	unsigned int prime_count = 0;
-	unsigned long i;
-	for (i = 2; i <= max_prime; i++) {
-		if (is_prime(i)) {
-			prime_count++;
+	unsigned long i, j, cur_word_offset;
+	for (i = 0; i < (max_prime / BITS_PER_WORD + 1); i++) {
+		if(bitmap[i] == 0) //Skip empty words 
+			continue; 
+		cur_word_offset = BITS_PER_WORD * i;
+		for(j = 0; j < BITS_PER_WORD; j++){
+			if(is_prime(cur_word_offset + j))
+				prime_count++;
 		}
 	}
 	return prime_count;
@@ -467,6 +485,14 @@ void print_primes(unsigned int n)
 		if (is_prime(i)) {
 			printf("%u\n", i);
 		}
+	}
+}
+
+/* For debugging. Prints an array */
+void print_array(unsigned int *num_array, int array_size){
+	unsigned int i;
+	for(i=0; i<array_size; i++){
+		printf("%u\n", num_array[i]);
 	}
 }
 
