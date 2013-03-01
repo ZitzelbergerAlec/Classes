@@ -1,4 +1,10 @@
 /* Compiler directives */
+/*
+The _POSIX_C_SOURCE feature test macro must be defined with a value greater than or
+equal to 199309 in order to make the declaration of the siginfo_t structure visible
+from <signal.h>.
+*/
+#define _POSIX_C_SOURCE 199309
 #define _POSIX_SOURCE
 #define _BSD_SOURCE
 
@@ -27,7 +33,7 @@ int converges(unsigned int j);
 void elim_composites(unsigned int i);
 void elim_sads(unsigned int i);
 void find_primes(unsigned int min, unsigned int max, unsigned int offset);
-void grim_reaper(int s);
+static void grim_reaper(int sig, siginfo_t *siginfo, void *context);
 void help();
 int in_array(unsigned int number, unsigned int *int_array, int max_index);
 int in_process_array(pid_t pid);
@@ -78,8 +84,9 @@ int main(int argc, char **argv)
 	/* Initialize signal handling */
 	struct sigaction act;
 
-	act.sa_handler = grim_reaper;
 	sigemptyset(&act.sa_mask);
+	act.sa_handler = grim_reaper;
+	act.sa_flags = SA_SIGINFO; //To pass extra info about signal, particularly which process invoked it
 	act.sa_flags = 0;
 
 	sigaction(SIGQUIT, &act, NULL);
@@ -113,7 +120,7 @@ int main(int argc, char **argv)
 	time(&prime_end);
 
 	/* Output time required to find primes */
-	printf("Done. Found primes in %.3f sec.\n", difftime(prime_end, prime_start) + difftime(seed_end, seed_start));
+	printf("Done. Found primes in %.2f sec.\n", difftime(prime_end, prime_start) + difftime(seed_end, seed_start));
 
 	/* Count the primes */
 	printf("Counting primes...\n");
@@ -144,33 +151,27 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-void grim_reaper(int s)
+static void grim_reaper(int sig, siginfo_t *siginfo, void *context)
 {
-	pid_t pid = getpid();
-	if (process_array != NULL) {
-		if (!in_process_array(pid)) {
-			/* Delete the shared memory object */
-			if (shm_unlink(SHM_NAME) == -1) {
-				puke_and_exit
-				    ("Error deleting shared memory object");
-			}
-
-			/* Send kill signal to children */
-			int i;
-			for (i = 0; i < num_processes; i++) {
-				kill(process_array[i], SIGQUIT);
-			}
-			/* Wait on child processes */
-			reap_children(num_processes);
-		}
-	} else { //process array is NULL
-		if (shm_unlink(SHM_NAME) == -1) {
-			puke_and_exit
-			    ("Error deleting shared memory object");
-		}
-	}
-	/* Free memory used by process array */
-	free(process_array);
+	printf("siginfo->si_pid = %ld, pid = %ld\n", (long) siginfo->si_pid, (long) getpid());
+	/* Make sure we're in the parent process to free the memory and kill the children. */
+	// if((pid_t) siginfo->si_pid != 1){ 
+	// 	if (process_array != NULL) {
+	// 			/* Send kill signal to children */
+	// 			int i;
+	// 			for (i = 0; i < num_processes; i++) {
+	// 				kill(process_array[i], SIGQUIT);
+	// 			}
+	// 			/* Wait on child processes */
+	// 			reap_children(num_processes);
+	// 	} 
+	// 	/* Free memory used by process array */
+	// 	free(process_array);
+	// 	/* Delete the shared memory object */
+	// 	if (shm_unlink(SHM_NAME) == -1) {
+	// 		puke_and_exit("Error deleting shared memory object");
+	// 	}
+	// }
 	exit(EXIT_FAILURE);
 }
 
