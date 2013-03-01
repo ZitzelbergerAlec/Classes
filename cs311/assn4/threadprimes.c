@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <getopt.h>
 #include <limits.h>
 #include <math.h>
 #include <sys/mman.h>
@@ -67,12 +68,35 @@ enum { BITS_PER_WORD = 8 };
 
 unsigned int num_primes;
 unsigned char *bitmap;
-unsigned int num_threads = 500;
-unsigned int max_prime = UINT_MAX;
+unsigned int num_threads;
+unsigned int max_prime;
 unsigned int convergence_array[112]; /* Array for numbers whose digits converge to 1 when squared and summed */
 
 int main(int argc, char **argv)
 {
+	int c;
+	int tflag = 0;
+	int lflag = 0;
+	/* Usage: tprimes -l limit -t num_threads */
+	while ((c = getopt (argc, argv, "t:l:")) != -1){
+		switch (c){
+			case 't':
+				tflag = 1;
+				num_threads = atoi(optarg);
+				break;
+			case 'l':
+				lflag = 1;
+				max_prime = atoi(optarg);
+				break;
+		}
+	}
+
+	/* Set default values for threads and primes */
+	if(!tflag)
+		num_threads = 500;
+	if(!lflag)
+		max_prime = UINT_MAX;
+
 	/* Initialize signal handling */
 	struct sigaction act;
 
@@ -94,7 +118,7 @@ int main(int argc, char **argv)
 	init_bitmap();
 
 	/* Seed the primes in serial */
-	printf("Seeding primes...\n");
+	printf("Seeding primes in serial...\n");
 	fflush(stdout);
 	
 	/* Seed primes and time operation */
@@ -104,7 +128,7 @@ int main(int argc, char **argv)
 	time(&seed_end);
 
 	/* Find all the primes and time the operation */
-	printf("Eliminating composites...\n");
+	printf("Eliminating composites up to %u with %u threads...\n", max_prime, num_threads);
 	fflush(stdout);
 	time_t prime_start, prime_end;
 	time(&prime_start);
@@ -112,7 +136,7 @@ int main(int argc, char **argv)
 	time(&prime_end);
 
 	/* Output time required to find primes */
-	printf("Done. Found primes in %.3f sec.\n", difftime(prime_end, prime_start) + difftime(seed_end, seed_start));
+	printf("Done. Found primes in %.2f sec.\n", difftime(prime_end, prime_start) + difftime(seed_end, seed_start));
 
 	/* Count the primes */
 	printf("Counting primes...\n");
