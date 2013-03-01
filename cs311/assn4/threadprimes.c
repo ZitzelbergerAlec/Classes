@@ -47,7 +47,7 @@ void set_not_prime(unsigned int n);
 void set_not_happy(unsigned int n);
 void set_prime(unsigned int n);
 void spawn_happy_threads();
-void spawn_prime_threads();
+int spawn_prime_threads();
 unsigned int *split_number(unsigned int number);
 unsigned int sum_digit_squares(unsigned int number);
 void toggle(unsigned int n);
@@ -143,7 +143,7 @@ int main(int argc, char **argv)
 		printf("Eliminating composites up to %u with %u threads...\n", max_prime, num_threads);
 		fflush(stdout);
 	}
-	prime_time += func_timer(&spawn_prime_threads;
+	prime_time += func_timer(&spawn_prime_threads);
 
 	if(!dflag){
 		/* Output time required to find primes */
@@ -215,7 +215,7 @@ int seed_primes()
 Spawns the number of threads specified by num_threads.
 To do: Optimization: Use a function pointer and make spawn_prime_threads and spawn_happy_threads one function.
 */
-void spawn_prime_threads()
+int spawn_prime_threads()
 {
 	/* Spawn 2 threads to find primes */
 	pthread_t *thread;
@@ -238,6 +238,7 @@ void spawn_prime_threads()
 	for (i = 0; i < num_threads; i++) {
 		pthread_join(thread[i], NULL);
 	}
+	return 0;
 }
 
 void spawn_happy_threads()
