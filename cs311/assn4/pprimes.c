@@ -95,16 +95,25 @@ int main(int argc, char **argv)
 	bitmap = (unsigned char *) addr;
 	init_bitmap();
 
-	/* Create the threads */
+	/* Seed the primes in serial and record timing */
 	printf("Seeding primes...\n");
 	fflush(stdout);
+	time_t seed_start, seed_end;
+	time(&seed_start);
 	seed_primes();
+	time(&seed_end);
 
-	/* Find all the primes */
+	/* Find all the primes and time the operation */
 	printf("Eliminating composites...\n");
 	fflush(stdout);
+	time_t prime_start, prime_end;
+	time(&prime_start);
 	spawn_prime_processes();
 	reap_children(num_processes);
+	time(&prime_end);
+
+	/* Output time required to find primes */
+	printf("Done. Found primes in %.3f sec.\n", difftime(prime_end, prime_start) + difftime(seed_end, seed_start));
 
 	/* Count the primes */
 	printf("Counting primes...\n");
@@ -154,7 +163,7 @@ void grim_reaper(int s)
 			/* Wait on child processes */
 			reap_children(num_processes);
 		}
-	} else {
+	} else { //process array is NULL
 		if (shm_unlink(SHM_NAME) == -1) {
 			puke_and_exit
 			    ("Error deleting shared memory object");
