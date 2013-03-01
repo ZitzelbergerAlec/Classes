@@ -12,6 +12,7 @@ from <signal.h>.
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <getopt.h>
 #include <limits.h>
 #include <math.h>
 #include <sys/mman.h>
@@ -57,10 +58,6 @@ unsigned int *split_number(unsigned int number);
 unsigned int sum_digit_squares(unsigned int number);
 void toggle(unsigned int n);
 
-/* Functions for debugging */
-void print_primes(unsigned int n);
-void print_array(unsigned int *num_array, int array_size);
-
 /* 
 Global variables and typedefs.
 Bitmap functions.
@@ -78,9 +75,46 @@ unsigned int num_processes = 500;
 unsigned int max_prime = UINT_MAX;
 unsigned int convergence_array[112];	/* Array for numbers whose digits converge to 1 when squared and summed */
 pid_t *process_array;		/* Array to hold PIDs of child processes */
+pid_t ppid; /* Parent process ID */
 
 int main(int argc, char **argv)
 {
+	ppid = getpid();
+	
+	int c;
+	int pflag, lflag, dflag;
+	pflag = lflag = dflag = 0;
+
+	/* 
+	Usage: tprimes -l limit -t num_threads 
+	-d suppresses output and forces comma-separated output of num_threads, max_prime, time.
+	Used for running tests.
+	*/
+	while ((c = getopt (argc, argv, "p:l:dh")) != -1){
+		switch (c){
+			case 'p':
+				pflag = 1;
+				num_processes = atoi(optarg);
+				break;
+			case 'l':
+				lflag = 1;
+				max_prime = atoi(optarg);
+				break;
+			case 'd':
+				dflag = 1;
+				break;
+			case 'h':
+				help();
+				break;
+		}
+	}
+
+	/* Set default values for processes and primes */
+	if(!pflag)
+		num_processes = 500;
+	if(!lflag)
+		max_prime = UINT_MAX;
+
 	/* Initialize signal handling */
 	struct sigaction act;
 
@@ -103,43 +137,51 @@ int main(int argc, char **argv)
 	init_bitmap();
 
 	/* Seed the primes in serial and record timing */
-	printf("Seeding primes...\n");
-	fflush(stdout);
+	if(!dflag){
+		printf("Seeding primes...\n");
+		fflush(stdout);
+	}
 	time_t seed_start, seed_end;
 	time(&seed_start);
 	seed_primes();
 	time(&seed_end);
 
 	/* Find all the primes and time the operation */
-	printf("Eliminating composites...\n");
-	fflush(stdout);
+	if(!dflag){
+		printf("Eliminating composites up to %u with %u processes...\n", max_prime, num_processes);
+		fflush(stdout);
+	}
 	time_t prime_start, prime_end;
 	time(&prime_start);
 	spawn_prime_processes();
 	reap_children(num_processes);
 	time(&prime_end);
 
-	/* Output time required to find primes */
-	printf("Done. Found primes in %.2f sec.\n", difftime(prime_end, prime_start) + difftime(seed_end, seed_start));
+	if(!dflag){
+		/* Output time required to find primes */
+		printf("Done. Found primes in %.2f sec.\n", difftime(prime_end, prime_start) + difftime(seed_end, seed_start));
 
-	/* Count the primes */
-	printf("Counting primes...\n");
-	unsigned int num_primes = count_primes();
-	printf("Number of primes found is %u\n", num_primes);
+		/* Count the primes */
+		printf("Counting primes...\n");
+		unsigned int num_primes = count_primes();
+		printf("Number of primes found is %u\n", num_primes);
 
-	/* Find all the happy primes */
-	/* First, get a list of all potential sums that converge to 1 */
-	init_convergence_array();
+		/* Find all the happy primes */
+		/* First, get a list of all potential sums that converge to 1 */
+		init_convergence_array();
 
-	printf("Finding happy primes...\n");
-	fflush(stdout);
-	spawn_happy_processes();
-	reap_children(num_processes);
+		printf("Finding happy primes...\n");
+		fflush(stdout);
+		spawn_happy_processes();
+		reap_children(num_processes);
 
-	/* Count the happy primes */
-	printf("Counting happy primes...\n");
-	unsigned int num_happys = count_happys();
-	printf("Number of happy primes found is %u\n", num_happys);
+		/* Count the happy primes */
+		printf("Counting happy primes...\n");
+		unsigned int num_happys = count_happys();
+		printf("Number of happy primes found is %u\n", num_happys);
+	} else {
+		printf("%u, %u, %.2f\n", num_processes, max_prime, difftime(prime_end, prime_start) + difftime(seed_end, seed_start));
+	}
 
 	/* Delete the shared memory object */
 	if (shm_unlink(SHM_NAME) == -1) {
@@ -153,25 +195,24 @@ int main(int argc, char **argv)
 
 static void grim_reaper(int sig, siginfo_t *siginfo, void *context)
 {
-	printf("siginfo->si_pid = %ld, pid = %ld\n", (long) siginfo->si_pid, (long) getpid());
 	/* Make sure we're in the parent process to free the memory and kill the children. */
-	// if((pid_t) siginfo->si_pid != 1){ 
-	// 	if (process_array != NULL) {
-	// 			/* Send kill signal to children */
-	// 			int i;
-	// 			for (i = 0; i < num_processes; i++) {
-	// 				kill(process_array[i], SIGQUIT);
-	// 			}
-	// 			/* Wait on child processes */
-	// 			reap_children(num_processes);
-	// 	} 
-	// 	/* Free memory used by process array */
-	// 	free(process_array);
-	// 	/* Delete the shared memory object */
-	// 	if (shm_unlink(SHM_NAME) == -1) {
-	// 		puke_and_exit("Error deleting shared memory object");
-	// 	}
-	// }
+	if(getpid() == ppid){ 
+		if (process_array != NULL) {
+				/* Send kill signal to children */
+				int i;
+				for (i = 0; i < num_processes; i++) {
+					kill(process_array[i], SIGQUIT);
+				}
+				/* Wait on child processes */
+				reap_children(num_processes);
+		} 
+		/* Free memory used by process array */
+		free(process_array);
+		/* Delete the shared memory object */
+		if (shm_unlink(SHM_NAME) == -1) {
+			puke_and_exit("Error deleting shared memory object");
+		}
+	}
 	exit(EXIT_FAILURE);
 }
 
@@ -430,8 +471,8 @@ unsigned int next_prime(unsigned int cur_prime)
 
 void help()
 {
-	printf
-	    ("Usage: tprimes [number of threads] [max number for primes]");
+	printf("Usage: pprimes -p [num_processes] -l [prime_limit]\n");
+	printf("Optional: -d for testing mode to suppress output and stop after finding primes.\n");
 	exit(1);
 }
 
@@ -523,27 +564,6 @@ unsigned int count_primes()
 		}
 	}
 	return prime_count;
-}
-
-/* For debugging. Prints primes up to a certain point */
-void print_primes(unsigned int n)
-{
-	unsigned int prime_count = 0;
-	unsigned int i;
-	for (i = 2; i <= n; i++) {
-		if (is_prime(i)) {
-			printf("%u\n", i);
-		}
-	}
-}
-
-/* For debugging. Prints an array */
-void print_array(unsigned int *num_array, int array_size)
-{
-	unsigned int i;
-	for (i = 0; i < array_size; i++) {
-		printf("%u\n", num_array[i]);
-	}
 }
 
 /* Counts number of happy primes in bitmap */

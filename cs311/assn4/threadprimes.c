@@ -27,6 +27,7 @@ unsigned int count_happys();
 int converges(unsigned int j);
 void *elim_composites(void *vp);
 void *elim_sads(void *vp);
+double func_timer(int (*function_to_time)());
 void find_primes(unsigned int min, unsigned int max, unsigned int offset);
 void grim_reaper(int s);
 void help();
@@ -41,7 +42,7 @@ unsigned int next_seed(unsigned int cur_seed);
 unsigned int next_prime(unsigned int cur_prime);
 double count_nonzero_digits(unsigned int *digit_array);
 void puke_and_exit(char *errormessage);
-void seed_primes();
+int seed_primes();
 void set_not_prime(unsigned int n);
 void set_not_happy(unsigned int n);
 void set_prime(unsigned int n);
@@ -64,7 +65,7 @@ typedef char word_t;
 enum { BITS_PER_WORD = 8 };
 #define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
 #define BIT_OFFSET(b)  ((b) % BITS_PER_WORD)
-#define SHM_NAME "/merrickd_primes"
+#define SHM_NAME "/merrickd_primes_test"
 
 unsigned int num_primes;
 unsigned char *bitmap;
@@ -75,10 +76,15 @@ unsigned int convergence_array[112]; /* Array for numbers whose digits converge 
 int main(int argc, char **argv)
 {
 	int c;
-	int tflag = 0;
-	int lflag = 0;
-	/* Usage: tprimes -l limit -t num_threads */
-	while ((c = getopt (argc, argv, "t:l:")) != -1){
+	int tflag, lflag, dflag;
+	tflag = lflag = dflag = 0;
+
+	/* 
+	Usage: tprimes -l limit -t num_threads -d 
+	-d suppresses output and forces comma-separated output of num_threads, max_prime, time.
+	Used for running tests.
+	*/
+	while ((c = getopt (argc, argv, "t:l:d")) != -1){
 		switch (c){
 			case 't':
 				tflag = 1;
@@ -87,6 +93,12 @@ int main(int argc, char **argv)
 			case 'l':
 				lflag = 1;
 				max_prime = atoi(optarg);
+				break;
+			case 'd':
+				dflag = 1;
+				break;
+			case 'h':
+				help();
 				break;
 		}
 	}
@@ -118,51 +130,60 @@ int main(int argc, char **argv)
 	init_bitmap();
 
 	/* Seed the primes in serial */
-	//printf("Seeding primes in serial...\n");
-	fflush(stdout);
+	if(!dflag){
+		printf("Seeding primes in serial...\n");
+		fflush(stdout);
+	}
 	
 	/* Seed primes and time operation */
-	time_t seed_start, seed_end;
-	time(&seed_start);
-	seed_primes();
-	time(&seed_end);
+	double prime_time = func_timer(&seed_primes);
 
 	/* Find all the primes and time the operation */
-	//printf("Eliminating composites up to %u with %u threads...\n", max_prime, num_threads);
-	fflush(stdout);
-	time_t prime_start, prime_end;
-	time(&prime_start);
-	spawn_prime_threads();
-	time(&prime_end);
+	if(!dflag){
+		printf("Eliminating composites up to %u with %u threads...\n", max_prime, num_threads);
+		fflush(stdout);
+	}
+	prime_time += func_timer(&spawn_prime_threads;
 
-	/* Output time required to find primes */
-	//printf("Done. Found primes in %.2f sec.\n", difftime(prime_end, prime_start) + difftime(seed_end, seed_start));
-	printf("%u, %u, %.2f\n", num_threads, max_prime, difftime(prime_end, prime_start) + difftime(seed_end, seed_start));
+	if(!dflag){
+		/* Output time required to find primes */
+		printf("Done. Found primes in %.2f sec.\n", prime_time);
 
-	/* Count the primes */
-	// printf("Counting primes...\n");
-	// unsigned int num_primes = count_primes();
-	// printf("Number of primes found is %u\n", num_primes);
+		/* Count the primes */
+		printf("Counting primes...\n");
+		unsigned int num_primes = count_primes();
+		printf("Number of primes found is %u\n", num_primes);
 
-	// /* Find all the happy primes */
-	// /* First, get a list of all potential sums that converge to 1 */
-	// init_convergence_array();
+		/* Find all the happy primes */
+		/* First, get a list of all potential sums that converge to 1 */
+		init_convergence_array();
 
-	// printf("Finding happy primes...\n");
-	// fflush(stdout);
-	// spawn_happy_threads();
+		printf("Finding happy primes...\n");
+		fflush(stdout);
+		spawn_happy_threads();
 
-	// /* Count the happy primes */
-	// printf("Counting happy primes...\n");
-	// unsigned int num_happys = count_happys();
-	// printf("Number of happy primes found is %u\n", num_happys);
-
+		/* Count the happy primes */
+		printf("Counting happy primes...\n");
+		unsigned int num_happys = count_happys();
+		printf("Number of happy primes found is %u\n", num_happys);
+	} else {
+		printf("%u, %u, %.2f\n", num_threads, max_prime, prime_time);
+	}
 	/* Delete the shared memory object */
 	if (shm_unlink(SHM_NAME) == -1) {
 		puke_and_exit("Error deleting shared memory object");
 	}
 
 	return 0;
+}
+
+/* Times a function and returns a double */
+double func_timer(int (*function_to_time)()){
+	time_t start, end;
+	time(&start);
+	function_to_time();
+	time(&end);
+	return difftime(end, start);
 }
 
 void grim_reaper(int s)
@@ -178,7 +199,7 @@ void grim_reaper(int s)
 Uses Sieve of Eratosthenes to seed the bitmap with primes up until sqrt(max_prime). 
 Every number from sqrt(max_prime) to max_prime will either be prime or a multiple of them.
 */
-void seed_primes()
+int seed_primes()
 {
 	unsigned int limit = sqrt(max_prime);
 	unsigned int i, j;
@@ -187,6 +208,7 @@ void seed_primes()
 			for (j = 3; (i * j) <= limit; j++)
 				set_not_prime(i * j);
 	}
+	return 0;
 }
 
 /*
@@ -439,8 +461,8 @@ unsigned int next_prime(unsigned int cur_prime)
 
 void help()
 {
-	printf
-	    ("Usage: tprimes [number of threads] [max number for primes]");
+	printf("Usage: pprimes -t [num_processes] -l [prime_limit]\n");
+	printf("Optional: -d for testing mode to suppress output and stop after finding primes.\n");
 	exit(1);
 }
 
