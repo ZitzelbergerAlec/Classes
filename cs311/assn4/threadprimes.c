@@ -65,7 +65,6 @@ typedef char word_t;
 enum { BITS_PER_WORD = 8 };
 #define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
 #define BIT_OFFSET(b)  ((b) % BITS_PER_WORD)
-#define SHM_NAME "/merrickd_primes_test"
 
 unsigned int num_primes;
 unsigned char *bitmap;
@@ -122,11 +121,8 @@ int main(int argc, char **argv)
 
 	unsigned int bitmap_size = max_prime / BITS_PER_WORD + 1;
 
-	/* Create a shared memory object */
-	void *addr = mount_shmem(SHM_NAME, bitmap_size);
-	
-	/* Initialize bitmap */
-	bitmap = (unsigned char *) addr;
+	/* Allocate memory for the bitmap */
+	bitmap = malloc(bitmap_size * sizeof(unsigned char));
 	init_bitmap();
 
 	/* Seed the primes in serial */
@@ -169,10 +165,8 @@ int main(int argc, char **argv)
 	} else {
 		printf("%u, %u, %.2f\n", num_threads, max_prime, prime_time);
 	}
-	/* Delete the shared memory object */
-	if (shm_unlink(SHM_NAME) == -1) {
-		puke_and_exit("Error deleting shared memory object");
-	}
+	/* Free memory used by bitmap */
+	free(bitmap);
 
 	return 0;
 }
@@ -188,10 +182,8 @@ double func_timer(int (*function_to_time)()){
 
 void grim_reaper(int s)
 {
-	/* Delete the shared memory object */
-	if (shm_unlink(SHM_NAME) == -1) {
-		puke_and_exit("Error deleting shared memory object");
-	}
+	/* Free memory used by bitmap */
+	free(bitmap);
 	exit(EXIT_FAILURE);
 }
 
