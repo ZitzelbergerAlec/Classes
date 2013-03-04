@@ -163,8 +163,6 @@ int main(int argc, char **argv)
 		printf("Counting happy primes...\n");
 		unsigned int num_happys = count_happys();
 		printf("Number of happy primes found is %u\n", num_happys);
-
-		print_primes(100);
 	} else {
 		printf("%u, %u, %.2f\n", num_threads, max_prime, prime_time);
 	}
