@@ -1,4 +1,4 @@
-This is pdfTeXk, Version 3.141592-1.40.3 (Web2C 7.5.6) (format=latex 2012.7.12)  2 MAR 2013 12:17
+This is pdfTeXk, Version 3.141592-1.40.3 (Web2C 7.5.6) (format=latex 2012.7.12)  3 MAR 2013 12:11
 entering extended mode
  %&-line parsing enabled.
 **mywriteup.tex
@@ -396,14 +396,18 @@ Overfull \hbox (38.3572pt too wide) in paragraph at lines 124--126
 [][] [] 
  []
 
-[2] [3] (./mywriteup.aux) ) 
+[2] [3]
+Overfull \vbox (4.29964pt too high) has occurred while \output is active []
+
+
+[4] [5] (./mywriteup.aux) ) 
 Here is how much of TeX's memory you used:
- 5637 strings out of 256217
- 72299 string characters out of 1917095
- 161824 words of memory out of 1500000
- 8874 multiletter control sequences out of 10000+200000
- 4285 words of font info for 16 fonts, out of 1200000 for 2000
+ 5641 strings out of 256217
+ 72340 string characters out of 1917095
+ 176824 words of memory out of 1500000
+ 8877 multiletter control sequences out of 10000+200000
+ 4739 words of font info for 18 fonts, out of 1200000 for 2000
  645 hyphenation exceptions out of 8191
  30i,7n,37p,952b,448s stack positions out of 5000i,500n,6000p,200000b,15000s
 
-Output written on mywriteup.dvi (3 pages, 10944 bytes).
+Output written on mywriteup.dvi (5 pages, 34784 bytes).

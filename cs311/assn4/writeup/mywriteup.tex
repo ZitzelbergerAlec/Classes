@@ -124,8 +124,115 @@ My design was initially very black-box and modular, as I was not sure which algo
   \includegraphics[width=4in]{tplot}
   \includegraphics[width=4in]{pplot}
 \end{figure}
+\begin{tabular}{| l | l | l | l | l | l |}
+\hline Number of Threads & Prime Limit & Time (s) & Number of Processes & Prime Limit & Time (s) \\ 
+\hline 1 & 500000000 & 19.00 & 1 & 500000000 & 22.00 \\
+\hline 50 & 500000000 & 2.00 & 50 & 500000000 & 1.00 \\
+\hline 100 & 500000000 & 1.00 & 100 & 500000000 & 1.00 \\
+\hline 150 & 500000000 & 2.00 & 150 & 500000000 & 2.00 \\
+\hline 200 & 500000000 & 1.00 & 200 & 500000000 & 2.00 \\
+\hline 250 & 500000000 & 2.00 & 250 & 500000000 & 1.00 \\
+\hline 300 & 500000000 & 1.00 & 300 & 500000000 & 1.00 \\
+\hline 350 & 500000000 & 2.00 & 350 & 500000000 & 2.00 \\
+\hline 400 & 500000000 & 1.00 & 400 & 500000000 & 1.00 \\
+\hline 450 & 500000000 & 1.00 & 450 & 500000000 & 1.00 \\
+\hline 500 & 500000000 & 2.00 & 500 & 500000000 & 2.00 \\
+\hline 1 & 1000000000 & 53.00 & 1 & 1000000000 & 48.00 \\
+\hline 50 & 1000000000 & 6.00 & 50 & 1000000000 & 6.00 \\
+\hline 100 & 1000000000 & 3.00 & 100 & 1000000000 & 4.00 \\
+\hline 150 & 1000000000 & 3.00 & 150 & 1000000000 & 3.00 \\
+\hline 200 & 1000000000 & 3.00 & 200 & 1000000000 & 3.00 \\
+\hline 250 & 1000000000 & 3.00 & 250 & 1000000000 & 3.00 \\
+\hline 300 & 1000000000 & 3.00 & 300 & 1000000000 & 3.00 \\
+\hline 350 & 1000000000 & 3.00 & 350 & 1000000000 & 3.00 \\
+\hline 400 & 1000000000 & 3.00 & 400 & 1000000000 & 3.00 \\
+\hline 450 & 1000000000 & 3.00 & 450 & 1000000000 & 3.00 \\
+\hline 500 & 1000000000 & 3.00 & 500 & 1000000000 & 3.00 \\
+\hline 1 & 1500000000 & 64.00 & 1 & 1500000000 & 73.00 \\
+\hline 50 & 1500000000 & 19.00 & 50 & 1500000000 & 18.00 \\
+\hline 100 & 1500000000 & 5.00 & 100 & 1500000000 & 6.00 \\
+\hline 150 & 1500000000 & 4.00 & 150 & 1500000000 & 5.00 \\
+\hline 200 & 1500000000 & 4.00 & 200 & 1500000000 & 4.00 \\
+\hline 250 & 1500000000 & 4.00 & 250 & 1500000000 & 5.00 \\
+\hline 300 & 1500000000 & 4.00 & 300 & 1500000000 & 5.00 \\
+\hline 350 & 1500000000 & 4.00 & 350 & 1500000000 & 5.00 \\
+\hline 400 & 1500000000 & 4.00 & 400 & 1500000000 & 5.00 \\
+\hline 450 & 1500000000 & 3.00 & 450 & 1500000000 & 4.00 \\
+\hline 500 & 1500000000 & 4.00 & 500 & 1500000000 & 5.00 \\
+\hline 1 & 2000000000 & 82.00 & 1 & 2000000000 & 87.00 \\
+\hline 50 & 2000000000 & 28.00 & 50 & 2000000000 & 28.00 \\
+\hline 100 & 2000000000 & 14.00 & 100 & 2000000000 & 14.00 \\
+\hline 150 & 2000000000 & 6.00 & 150 & 2000000000 & 7.00 \\
+\hline 200 & 2000000000 & 6.00 & 200 & 2000000000 & 6.00 \\
+\hline 250 & 2000000000 & 5.00 & 250 & 2000000000 & 5.00 \\
+\hline 300 & 2000000000 & 6.00 & 300 & 2000000000 & 6.00 \\
+\hline 350 & 2000000000 & 6.00 & 350 & 2000000000 & 6.00 \\
+\hline 400 & 2000000000 & 6.00 & 400 & 2000000000 & 6.00 \\
+\hline 450 & 2000000000 & 5.00 & 450 & 2000000000 & 6.00 \\
+\hline 500 & 2000000000 & 5.00 & 500 & 2000000000 & 6.00 \\
+\hline 1 & 2500000000 & 104.00 & 1 & 2500000000 & 134.00 \\
+\hline 50 & 2500000000 & 36.00 & 50 & 2500000000 & 37.00 \\
+\hline 100 & 2500000000 & 28.00 & 100 & 2500000000 & 25.00 \\
+\hline 150 & 2500000000 & 9.00 & 150 & 2500000000 & 9.00 \\
+\hline 200 & 2500000000 & 8.00 & 200 & 2500000000 & 9.00 \\
+\hline 250 & 2500000000 & 7.00 & 250 & 2500000000 & 8.00 \\
+\hline 300 & 2500000000 & 7.00 & 300 & 2500000000 & 7.00 \\
+\hline 350 & 2500000000 & 7.00 & 350 & 2500000000 & 8.00 \\
+\hline 400 & 2500000000 & 7.00 & 400 & 2500000000 & 8.00 \\
+\hline 450 & 2500000000 & 6.00 & 450 & 2500000000 & 7.00 \\
+\hline 500 & 2500000000 & 7.00 & 500 & 2500000000 & 8.00 \\
+\hline 1 & 3000000000 & 134.00 & 1 & 3000000000 & 131.00 \\
+\hline 50 & 3000000000 & 45.00 & 50 & 3000000000 & 46.00 \\
+\hline 100 & 3000000000 & 38.00 & 100 & 3000000000 & 38.00 \\
+\hline
+\end{tabular}
+\newpage
+\begin{tabular}{| l | l | l | l | l | l |}
+\hline Number of Threads & Prime Limit & Time (s) & Number of Processes & Prime Limit & Time (s) \\ 
+\hline 150 & 3000000000 & 20.00 & 150 & 3000000000 & 20.00 \\
+\hline 200 & 3000000000 & 10.00 & 200 & 3000000000 & 10.00 \\
+\hline 250 & 3000000000 & 9.00 & 250 & 3000000000 & 9.00 \\
+\hline 300 & 3000000000 & 9.00 & 300 & 3000000000 & 9.00 \\
+\hline 350 & 3000000000 & 9.00 & 350 & 3000000000 & 9.00 \\
+\hline 400 & 3000000000 & 8.00 & 400 & 3000000000 & 9.00 \\
+\hline 450 & 3000000000 & 8.00 & 450 & 3000000000 & 9.00 \\
+\hline 500 & 3000000000 & 7.00 & 500 & 3000000000 & 9.00 \\
+\hline 1 & 3500000000 & 144.00 & 1 & 3500000000 & 156.00 \\
+\hline 50 & 3500000000 & 55.00 & 50 & 3500000000 & 55.00 \\
+\hline 100 & 3500000000 & 49.00 & 100 & 3500000000 & 48.00 \\
+\hline 150 & 3500000000 & 38.00 & 150 & 3500000000 & 37.00 \\
+\hline 200 & 3500000000 & 14.00 & 200 & 3500000000 & 14.00 \\
+\hline 250 & 3500000000 & 11.00 & 250 & 3500000000 & 12.00 \\
+\hline 300 & 3500000000 & 11.00 & 300 & 3500000000 & 11.00 \\
+\hline 350 & 3500000000 & 10.00 & 350 & 3500000000 & 10.00 \\
+\hline 400 & 3500000000 & 10.00 & 400 & 3500000000 & 10.00 \\
+\hline 450 & 3500000000 & 10.00 & 450 & 3500000000 & 10.00 \\
+\hline 500 & 3500000000 & 9.00 & 500 & 3500000000 & 11.00 \\
+\hline 1 & 4000000000 & 176.00 & 1 & 4000000000 & 209.00 \\
+\hline 50 & 4000000000 & 66.00 & 50 & 4000000000 & 66.00 \\
+\hline 100 & 4000000000 & 59.00 & 100 & 4000000000 & 59.00 \\
+\hline 150 & 4000000000 & 49.00 & 150 & 4000000000 & 49.00 \\
+\hline 200 & 4000000000 & 27.00 & 200 & 4000000000 & 27.00 \\
+\hline 250 & 4000000000 & 13.00 & 250 & 4000000000 & 15.00 \\
+\hline 300 & 4000000000 & 13.00 & 300 & 4000000000 & 13.00 \\
+\hline 350 & 4000000000 & 12.00 & 350 & 4000000000 & 12.00 \\
+\hline 400 & 4000000000 & 13.00 & 400 & 4000000000 & 12.00 \\
+\hline 450 & 4000000000 & 12.00 & 450 & 4000000000 & 12.00 \\
+\hline 500 & 4000000000 & 12.00 & 500 & 4000000000 & 12.00 \\
+\hline 50 & 4294967295 & 72.00 & 50 & 4294967295 & 70.00 \\
+\hline 100 & 4294967295 & 65.00 & 100 & 4294967295 & 64.00 \\
+\hline 150 & 4294967295 & 54.00 & 150 & 4294967295 & 55.00 \\
+\hline 200 & 4294967295 & 39.00 & 200 & 4294967295 & 38.00 \\
+\hline 250 & 4294967295 & 18.00 & 250 & 4294967295 & 17.00 \\
+\hline 300 & 4294967295 & 14.00 & 300 & 4294967295 & 15.00 \\
+\hline 350 & 4294967295 & 13.00 & 350 & 4294967295 & 14.00 \\
+\hline 400 & 4294967295 & 13.00 & 400 & 4294967295 & 14.00 \\
+\hline 450 & 4294967295 & 13.00 & 450 & 4294967295 & 13.00 \\
+\hline 500 & 4294967295 & 12.00 & 500 & 4294967295 & 14.00 \\
+\hline
+\end{tabular}
 
-The threads and processes performed with very similar timings on varied numbers of primes and varied numbers of processes. With 500 threads, my program found the primes up to 4294967295 in approximately 14 seconds. With 500 processes on this same limit, it took approximately 12 seconds. This variation could easily be explained by a difference in a system state, such as another user running their program concurrently.
+The threads and processes performed with very similar timings on varied numbers of primes and varied numbers of processes. With 500 processes, my program found the primes up to 4294967295 in approximately 14 seconds. With 500 threads on this same limit, it took approximately 12 seconds. This variation could easily be explained by a difference in a system state, such as another user running their program concurrently.
 
 \item \emph{Challenges:}
 The biggest challenge was debugging. I was not able to figure out how to step into the threads with GDB, so my threads were like a black box after they started. I got around this by using print statements within the threads to ensure they were calculating the correct ranges and that there were no infinite loops. I tested my program\'s performance on relatively small numbers of primes. Once I got this working, I increased the number of threads to make sure it still worked correctly. Then I steadily increased the number of primes. Another challenge was using the bitmap. Initially, I was very confused about how to set it up and why we were using one. Once I realized how efficient it was, and how easy it was to set and unset bits, I created the functions "set\_prime", "set\_not\_prime", and "is\_prime" to abstract setting, unsetting, and checking bits in the bitmap, respectively.
