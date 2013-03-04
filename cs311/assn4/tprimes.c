@@ -37,7 +37,6 @@ void init_bitmap();
 void init_convergence_array();
 int is_happy(unsigned int j);
 int is_prime(unsigned int n);
-void *mount_shmem(char *path, int object_size);
 unsigned int next_seed(unsigned int cur_seed);
 unsigned int next_prime(unsigned int cur_prime);
 double count_nonzero_digits(unsigned int *digit_array);
@@ -71,6 +70,8 @@ unsigned char *bitmap;
 unsigned int num_threads;
 unsigned int max_prime;
 unsigned int convergence_array[112]; /* Array for numbers whose digits converge to 1 when squared and summed */
+/* A lookup table for squares from 1-9, used for quickly squaring digits. Got this idea from Jordan Bayles. */
+unsigned int squares[9] = {1, 4, 9, 16, 25, 36, 49, 64, 81}; 
 
 int main(int argc, char **argv)
 {
@@ -162,6 +163,8 @@ int main(int argc, char **argv)
 		printf("Counting happy primes...\n");
 		unsigned int num_happys = count_happys();
 		printf("Number of happy primes found is %u\n", num_happys);
+
+		print_primes(100);
 	} else {
 		printf("%u, %u, %.2f\n", num_threads, max_prime, prime_time);
 	}
@@ -351,7 +354,7 @@ unsigned int sum_digit_squares(unsigned int number){
 	for(i=0; i < 10; i++){
 		if(digit_array[i] == 0)
 			break;
-		sum += (digit_array[i] * digit_array[i]);
+		sum += squares[digit_array[i] - 1]; /* Lookup square in lookup table */
 	}
 	return sum;
 }
@@ -457,31 +460,6 @@ void help()
 	printf("Usage: pprimes -t [num_processes] -l [prime_limit]\n");
 	printf("Optional: -d for testing mode to suppress output and stop after finding primes.\n");
 	exit(1);
-}
-
-/* Mounts a shared memory object. Copied from code from class */
-void *mount_shmem(char *path, int object_size)
-{
-	int shmem_fd;
-	void *addr;
-
-	shmem_fd = shm_open(path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-
-	if (shmem_fd == -1)
-		puke_and_exit("Failed to open shared memory object\n");
-
-	if (ftruncate(shmem_fd, object_size) == -1)
-		puke_and_exit("Failed to resize shared memory object\n");
-
-	/* map the shared memory object */
-	addr =
-	    mmap(NULL, object_size, PROT_READ | PROT_WRITE, MAP_SHARED,
-		 shmem_fd, 0);
-
-	if (addr == MAP_FAILED)
-		puke_and_exit("Failed to map shared memory object\n");
-
-	return addr;
 }
 
 /* Returns 1 if the index of num_primes at n is prime, 0 otherwise */

@@ -76,6 +76,8 @@ unsigned int max_prime = UINT_MAX;
 unsigned int convergence_array[112];	/* Array for numbers whose digits converge to 1 when squared and summed */
 pid_t *process_array;		/* Array to hold PIDs of child processes */
 pid_t ppid; /* Parent process ID */
+/* A lookup table for squares from 1-9, used for quickly squaring digits. Got this idea from Jordan Bayles. */
+unsigned int squares[9] = {1, 4, 9, 16, 25, 36, 49, 64, 81}; 
 
 int main(int argc, char **argv)
 {
@@ -365,7 +367,7 @@ unsigned int sum_digit_squares(unsigned int number)
 	for (i = 0; i < 10; i++) {
 		if (digit_array[i] == 0)
 			break;
-		sum += (digit_array[i] * digit_array[i]);
+		sum += squares[digit_array[i] - 1]; /* Lookup square in lookup table */
 	}
 	return sum;
 }
