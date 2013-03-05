@@ -22,8 +22,8 @@
 #include <sys/wait.h>
 
 /* Function prototypes */
-unsigned int count_primes();
-unsigned int count_happys();
+int count_primes();
+int count_happys();
 int converges(unsigned int j);
 void *elim_composites(void *vp);
 void *elim_sads(void *vp);
@@ -45,8 +45,9 @@ int seed_primes();
 void set_not_prime(unsigned int n);
 void set_not_happy(unsigned int n);
 void set_prime(unsigned int n);
-void spawn_happy_threads();
+int spawn_happy_threads();
 int spawn_prime_threads();
+int spawn_threads(void *(*func)(void *));
 unsigned int *split_number(unsigned int number);
 unsigned int sum_digit_squares(unsigned int number);
 void toggle(unsigned int n);
@@ -65,11 +66,12 @@ enum { BITS_PER_WORD = 8 };
 #define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
 #define BIT_OFFSET(b)  ((b) % BITS_PER_WORD)
 
-unsigned int num_primes;
+static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER; /* Mutex for prime_count */
 unsigned char *bitmap;
 unsigned int num_threads;
 unsigned int max_prime;
 unsigned int convergence_array[112]; /* Array for numbers whose digits converge to 1 when squared and summed */
+unsigned int prime_count;
 /* A lookup table for squares from 1-9, used for quickly squaring digits. Got this idea from Jordan Bayles. */
 unsigned int squares[9] = {1, 4, 9, 16, 25, 36, 49, 64, 81}; 
 
@@ -148,8 +150,8 @@ int main(int argc, char **argv)
 
 		/* Count the primes */
 		printf("Counting primes...\n");
-		unsigned int num_primes = count_primes();
-		printf("Number of primes found is %u\n", num_primes);
+		double count_time = func_timer(&count_primes);
+		printf("Number of primes found is %u. Counted primes in %.2f sec.\n", prime_count, count_time);
 
 		/* Find all the happy primes */
 		/* First, get a list of all potential sums that converge to 1 */
@@ -157,17 +159,19 @@ int main(int argc, char **argv)
 
 		printf("Finding happy primes...\n");
 		fflush(stdout);
-		spawn_happy_threads();
+		double happy_time = func_timer(&spawn_happy_threads);
+		printf("Done. Found happy primes in %.2f sec.\n", happy_time);
 
 		/* Count the happy primes */
 		printf("Counting happy primes...\n");
-		unsigned int num_happys = count_happys();
-		printf("Number of happy primes found is %u\n", num_happys);
+		count_time = func_timer(&count_happys);
+		printf("Number of primes found is %u. Counted primes in %.2f sec.\n", prime_count, count_time);
 	} else {
 		printf("%u, %u, %.2f\n", num_threads, max_prime, prime_time);
 	}
 	/* Free memory used by bitmap */
-	free(bitmap);
+	if(bitmap != NULL)
+		free(bitmap);
 
 	return 0;
 }
@@ -184,7 +188,8 @@ double func_timer(int (*function_to_time)()){
 void grim_reaper(int s)
 {
 	/* Free memory used by bitmap */
-	free(bitmap);
+	if(bitmap != NULL)
+		free(bitmap);
 	exit(EXIT_FAILURE);
 }
 
@@ -206,9 +211,8 @@ int seed_primes()
 
 /*
 Spawns the number of threads specified by num_threads.
-To do: Optimization: Use a function pointer and make spawn_prime_threads and spawn_happy_threads one function.
 */
-int spawn_prime_threads()
+int spawn_threads(void *(*func)(void *))
 {
 	/* Spawn 2 threads to find primes */
 	pthread_t *thread;
@@ -223,7 +227,7 @@ int spawn_prime_threads()
 	unsigned int i;
 	for (i = 0; i < num_threads; i++) {
 		if (pthread_create
-		    (&thread[i], &attr, elim_composites, (void *) i) != 0)
+		    (&thread[i], &attr, func, (void *) i) != 0)
 			puke_and_exit("Error creating thread.\n");
 	}
 
@@ -234,31 +238,17 @@ int spawn_prime_threads()
 	return 0;
 }
 
-void spawn_happy_threads()
+int spawn_prime_threads()
 {
-	/* Spawn 2 threads to find primes */
-	pthread_t *thread;
-	pthread_attr_t attr;
-
-	/* Allocate the number of pthreads given by num_proc */
-	thread = malloc(num_threads * sizeof(pthread_t));
-
-	/* initialize thread attribute with defaults */
-	pthread_attr_init(&attr);
-
-	unsigned int i;
-	for (i = 0; i < num_threads; i++) {
-		if (pthread_create
-		    (&thread[i], &attr, elim_sads, (void *) i) != 0)
-			puke_and_exit("Error creating thread.\n");
-	}
-
-	/* Wait on threads */
-	for (i = 0; i < num_threads; i++) {
-		pthread_join(thread[i], NULL);
-	}
+	return spawn_threads(&elim_composites);
 }
 
+int spawn_happy_threads()
+{
+	return spawn_threads(&elim_sads);
+}
+
+/*  Thread function to eliminate composites. */
 void *elim_composites(void *vp)
 {
 	unsigned int i = (unsigned int) vp;
@@ -341,7 +331,6 @@ int in_array(unsigned int number, unsigned int *int_array, int max_index){
 
 /* 
 Expects a digit array of size 9.
-To do: optimization: have split_number return an array that only contains nonzero digits.
 If the array index is zero, break.
 */
 unsigned int sum_digit_squares(unsigned int number){
@@ -417,12 +406,11 @@ unsigned int *split_number(unsigned int number){
 This function is an iterator for the seed primes.
 Given the current seed prime, it will return the next one. 
 Will return 0 if none were found.
-To do: optimization: Could increment by 2 instead of 1.
 */
 unsigned int next_seed(unsigned int cur_seed)
 {
 	unsigned int i;
-	for (i = cur_seed + 1; i <= sqrt(max_prime); i++)
+	for (i = cur_seed + 2; i <= sqrt(max_prime); i+=2)
 		if (is_prime(i))
 			return i;
 	return 0;
@@ -509,20 +497,25 @@ void puke_and_exit(char *errormessage)
 Counts number of primes in bitmap 
 Skips words that are zero, meaning zero primes.
 */
-unsigned int count_primes()
+int count_primes()
 {
-	unsigned int prime_count = 0;
+	prime_count = 0;
 	unsigned long i, j, cur_word_offset;
-	for (i = 0; i < (max_prime / BITS_PER_WORD + 1); i++) {
+	/* Special case: First word */
+	for(j = 1; j < BITS_PER_WORD; j++){
+		if(is_prime(j))
+				prime_count++;
+	}
+	for (i = 1; i < (max_prime / BITS_PER_WORD + 1); i++) {
 		if(bitmap[i] == 0) //Skip empty words 
 			continue; 
 		cur_word_offset = BITS_PER_WORD * i;
-		for(j = 0; j < BITS_PER_WORD; j++){
+		for(j = 1; j < BITS_PER_WORD; j+=2){ //Skip even numbers
 			if(is_prime(cur_word_offset + j))
 				prime_count++;
 		}
 	}
-	return prime_count;
+	return 0;
 }
 
 /* For debugging. Prints primes up to a certain point */
@@ -546,7 +539,7 @@ void print_array(unsigned int *num_array, int array_size){
 }
 
 /* Counts number of happy primes in bitmap */
-unsigned int count_happys()
+int count_happys()
 {
 	return count_primes();
 }
