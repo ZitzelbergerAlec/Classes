@@ -26,7 +26,7 @@
 #define MAXSOCKADDR 128
 #define BUFFSIZE 4096
 
-#define SERV_PORT 3283 // "DAVE" in keypad numbers
+#define SERV_PORT 43283 // "4DAVE" in keypad numbers
 #define SERV_PORT_STR "3283"
 
 /* Function prototypes */
@@ -49,21 +49,14 @@ int main(int argc, char **argv)
 	inet_pton(AF_INET, "127.0.0.1", &servaddr.sin_addr); //Segfaults here because no argv
 
 	connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
-	
-	while(fgets(sendline, MAXLINE, stdin) != NULL){
-		
-		bzero(recvline, MAXLINE);
+	write(sockfd, "<request type=\"kill\"><client name=\"test\"/></request>", 52);
 
-		write(sockfd, sendline, strlen(sendline) + 1);
-
-		if(read(sockfd, recvline, MAXLINE) == 0){
-			perror("Something broke");
-			exit(-1);
-		}
-		
-		fputs(recvline, stdout);
-
+	if(read(sockfd, recvline, MAXLINE) == 0){
+		perror("Something broke");
+		exit(-1);
 	}
+	
+	fputs(recvline, stdout);
 
 	/* End socket setup code */
 	return 0;
