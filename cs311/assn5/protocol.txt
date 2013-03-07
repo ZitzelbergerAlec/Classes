@@ -1,0 +1,14 @@
+Packet structure:
+
+
+<request type="request_type">
+    <sender name="sender_name"/>
+    <data>
+        <item type="item_type">value</item>
+        ...
+        <item type="item_type">value</item>
+    </data>
+</request>
+
+Request can be of types: "query" (from report process), "terminate" (from manage process or report process), etc. See Dataflow Diagram.
+Sender name can be "compute," "compute-c" (compute controller), "manage" or "report."
