@@ -25,13 +25,13 @@ s.listen(1)
 conn, addr = s.accept()
 print 'Connected by', addr
 while 1:
-    data = conn.recv(1024)
-    if not data: break
-    data = data.strip() #remove trailing and leading whitespace
-    xmldoc = minidom.parseString(str(data))
-    x = xmldoc.getElementsByTagName('client')[0]
-    client = x.attributes['name'].value
-    x = xmldoc.getElementsByTagName('request')[0]
-    request_type = x.attributes['type'].value
-    print "client:", client, "request_type:", request_type
+	data = conn.recv(1024)
+	if not data: break
+	data = data.strip() #remove trailing and leading whitespace
+	xmldoc = minidom.parseString(str(data))
+	x = xmldoc.getElementsByTagName('sender')[0]
+	client = x.attributes['name'].value
+	x = xmldoc.getElementsByTagName('request')[0]
+	request_type = x.attributes['type'].value
+	print "client:", client, "request_type:", request_type	
 conn.close()

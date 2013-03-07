@@ -32,15 +32,15 @@
 #define SERV_PORT 43283 // "4DAVE" in keypad numbers
 #define SERV_PORT_STR "3283"
 
-struct {
-	char *request_type
-	char *sender_name
-	float mods_per_sec
+typedef struct {
+	char request_type[15];
+	char sender_name[15];
+	float mods_per_sec;
 } compute_packet;
 
 /* Function prototypes */
 int is_perfect(int test_number);
-void send_packet(struct *compute_packet, int sockfd);
+void send_packet(compute_packet *out_packet, int sockfd);
 
 int main(int argc, char **argv)
 {
@@ -60,12 +60,11 @@ int main(int argc, char **argv)
 
 	connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
 	
-	struct compute_packet mypacket;
-	strcpy(mypacket.request_type, "query");
+	compute_packet mypacket;
+	strcpy(mypacket.request_type, "query"); //segfaults here
 	strcpy(mypacket.sender_name, "compute");
 	mypacket.mods_per_sec = 5000;
-	send_packet(&mypacket);
-	write(sockfd, "<request type=\"kill\"><client name=\"test\"/></request>", 52);
+	send_packet(&mypacket, sockfd);
 
 	if(read(sockfd, recvline, MAXLINE) == 0){
 		perror("Something broke");
@@ -93,9 +92,10 @@ int is_perfect(int test_number)
 }
 
 
-void send_packet(struct *compute_packet, int sockfd)
+/* Assembles a packet out of the packet data structure and sends it over the socket */
+void send_packet(compute_packet *out_packet, int sockfd)
 {
-	
-
-	write(sockfd, "<request type=\"kill\"><client name=\"test\"/></request>", 52);
+	char temp[MAXLINE]; /* A temp string buffer for the packet */ 
+	snprintf(temp, MAXLINE, "<request type=\"%s\"><sender name=\"%s\"/><performance mods_per_sec=\"%f\"/></request>",  out_packet->request_type, out_packet->sender_name, out_packet->mods_per_sec);
+	write(sockfd, temp, strlen(temp));
 }
