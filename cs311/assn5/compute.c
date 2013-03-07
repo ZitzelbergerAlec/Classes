@@ -11,6 +11,7 @@
 #include	<netinet/in.h>	/* sockaddr_in{} and other Internet defns */
 #include	<arpa/inet.h>	/* inet(3) functions */
 #include	<fcntl.h>		/* for nonblocking */
+#include 	<math.h> /* for sqrt */
 #include	<netdb.h>
 #include	<signal.h>
 #include	<stdio.h>
@@ -30,16 +31,17 @@
 #define BUFFSIZE 4096
 
 #define SERV_PORT 43283 // "4DAVE" in keypad numbers
-#define SERV_PORT_STR "3283"
+#define SERV_PORT_STR "43283"
 
 typedef struct {
 	char request_type[15];
 	char sender_name[15];
-	float mods_per_sec;
+	double mods_per_sec;
 } compute_packet;
 
 /* Function prototypes */
 int is_perfect(int test_number);
+double mods_per_sec(int prev_max);
 void send_packet(compute_packet *out_packet, int sockfd);
 
 int main(int argc, char **argv)
@@ -48,7 +50,6 @@ int main(int argc, char **argv)
 	int i;
 	int sockfd;
 	struct sockaddr_in servaddr;
-	char sendline[MAXLINE];
 	char recvline[MAXLINE];
 
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -60,6 +61,10 @@ int main(int argc, char **argv)
 
 	connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
 	
+	double test_mod_function = mods_per_sec(100000000);
+	printf("I can do %f mods per sec\n", test_mod_function);
+
+	/* Assemble and send test packet */
 	compute_packet mypacket;
 	strcpy(mypacket.request_type, "query"); //segfaults here
 	strcpy(mypacket.sender_name, "compute");
@@ -77,6 +82,11 @@ int main(int argc, char **argv)
 	return 0;
 }
 
+
+/* 
+Returns 1 if a test_number is a perfect number.
+To do: write this to only do sqrt(test_number) mods
+*/
 int is_perfect(int test_number)
 {	
 	int i;
@@ -89,6 +99,23 @@ int is_perfect(int test_number)
 	if(sum == test_number)
 		return 1;
 	return 0;
+}
+
+/* 
+Calculates the number of mod operations capable of per sec.
+Uses the previous max and the square root of that number for better accuracy.
+To do: maybe make an average using an array.
+*/
+double mods_per_sec(int prev_max)
+{
+	int sqrt_prev_max = sqrt(prev_max);
+	clock_t start, stop;
+	start = clock();
+	int i;
+	for(i=0;i<5000000;i++) //5000000 minimum time I could measure
+		prev_max % sqrt_prev_max; /* Time the mod operation */
+	stop = clock();
+	return (1/(stop - start)) * 5000000; /* mods per sec */
 }
 
 
