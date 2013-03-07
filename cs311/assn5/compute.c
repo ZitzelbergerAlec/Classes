@@ -1,3 +1,5 @@
+/* Compiler directives */
+
 /* Includes */
 #include 	<ctype.h>
 #include 	<errno.h>
@@ -21,6 +23,7 @@
 #include	<unistd.h>
 #include	<sys/wait.h>
 
+/* Global variables and definitions */
 #define LISTENQ 1024
 #define MAXLINE 4096
 #define MAXSOCKADDR 128
@@ -29,8 +32,15 @@
 #define SERV_PORT 43283 // "4DAVE" in keypad numbers
 #define SERV_PORT_STR "3283"
 
+struct {
+	char *request_type
+	char *sender_name
+	float mods_per_sec
+} compute_packet;
+
 /* Function prototypes */
 int is_perfect(int test_number);
+void send_packet(struct *compute_packet, int sockfd);
 
 int main(int argc, char **argv)
 {
@@ -49,6 +59,12 @@ int main(int argc, char **argv)
 	inet_pton(AF_INET, "127.0.0.1", &servaddr.sin_addr); //Segfaults here because no argv
 
 	connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
+	
+	struct compute_packet mypacket;
+	strcpy(mypacket.request_type, "query");
+	strcpy(mypacket.sender_name, "compute");
+	mypacket.mods_per_sec = 5000;
+	send_packet(&mypacket);
 	write(sockfd, "<request type=\"kill\"><client name=\"test\"/></request>", 52);
 
 	if(read(sockfd, recvline, MAXLINE) == 0){
@@ -74,4 +90,12 @@ int is_perfect(int test_number)
 	if(sum == test_number)
 		return 1;
 	return 0;
+}
+
+
+void send_packet(struct *compute_packet, int sockfd)
+{
+	
+
+	write(sockfd, "<request type=\"kill\"><client name=\"test\"/></request>", 52);
 }
