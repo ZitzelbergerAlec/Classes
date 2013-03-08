@@ -1,0 +1,13 @@
+Important stuff for my purposes:
+
+
+/* This returns a property of a node. */
+xmlGetProp(cur, "property");
+
+/* 
+For example:
+root_element = xmlDocGetRootElement(doc);
+printf("Root element type = %s\n", xmlGetProp(root_element, "type"));
+*/
+
+
