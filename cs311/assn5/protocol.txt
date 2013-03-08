@@ -1,8 +1,7 @@
 Packet structure:
 
 
-<request type="request_type">
-    <sender name="sender_name"/>
+<request type="request_type" sender="sender_name">
     <data>
         <item type="item_type">value</item>
         ...
