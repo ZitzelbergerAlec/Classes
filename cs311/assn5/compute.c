@@ -49,13 +49,12 @@ typedef struct {
 } compute_packet;
 
 typedef struct {
-	char request_type[15];
-	char sender_name[15];
 	int min;
 	int max;
-} range_packet;
+} range;
 
 /* Function prototypes */
+range *get_range(char *packet_string);
 int is_perfect(int test_number);
 int mods_per_sec(int prev_max);
 packet *parse_packet(char *packet_string);
@@ -86,10 +85,10 @@ int main(int argc, char **argv)
 			printf("%d is perfect\n", i);
 	}
 
-	packet *test_packet = parse_packet("<request type=\"hello\" sender=\"world\"></request>");
+	range *test_range = get_range("<request type=\"hello\" sender=\"world\"><min value=\"5\"/><max value=\"10\"/></request>");
 	
-	printf("Test packet request_type = %s\n", test_packet->request_type);
-	printf("Test packet sender_name = %s\n", test_packet->sender_name);
+	printf("range min = %d\n", test_range->min);
+	printf("range min = %d\n", test_range->max);
 	
 	if(read(sockfd, recvline, MAXLINE) == 0){
 		perror("Something broke");
@@ -155,6 +154,9 @@ Returns a packet struct containing sender name and request type
 */
 packet *parse_packet(char *packet_string)
 {
+	/* Reference: 
+		libxml tutorial: www.xmlsoft.org/tutorial/xmltutorial.pdf
+	*/
 	xmlDoc *doc = NULL; 
 	packet *new_packet = malloc(sizeof(packet));
 	xmlNode *request = NULL;
@@ -170,6 +172,39 @@ packet *parse_packet(char *packet_string)
 
 	return new_packet;
 }
+
+/* 
+Extracts the range out of a range packet and returns it as a struct.
+*/
+range *get_range(char *packet_string)
+{
+	/* Reference: 
+		libxml tutorial: www.xmlsoft.org/tutorial/xmltutorial.pdf
+	*/
+	xmlDoc *doc = NULL; 
+	range *new_range = malloc(sizeof(range));
+	xmlNode *request = NULL;
+	xmlNodePtr cur = NULL;
+	
+	doc = xmlReadMemory(packet_string, strlen(packet_string), "noname.xml", NULL, 0);
+	request = xmlDocGetRootElement(doc);
+	if(request == NULL)
+		return NULL;
+	cur = request->xmlChildrenNode;
+	
+	while (cur != NULL) {
+		if ((!xmlStrcmp(cur->name, (const xmlChar *) "min"))) {
+			new_range->min = atoi((char *) xmlGetProp(cur, "value"));
+		}
+		if ((!xmlStrcmp(cur->name, (const xmlChar *) "max"))) {
+			new_range->max = atoi((char *) xmlGetProp(cur, "value"));
+		}
+		cur = cur->next;
+	}
+	xmlFreeDoc(doc);
+	return new_range;
+}
+
 
 #else
 int main(void) {
