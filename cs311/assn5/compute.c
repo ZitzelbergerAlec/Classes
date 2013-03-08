@@ -41,7 +41,7 @@ typedef struct {
 
 /* Function prototypes */
 int is_perfect(int test_number);
-double mods_per_sec(int prev_max);
+int mods_per_sec(int prev_max);
 void send_packet(compute_packet *out_packet, int sockfd);
 
 int main(int argc, char **argv)
@@ -61,8 +61,8 @@ int main(int argc, char **argv)
 
 	connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
 	
-	double test_mod_function = mods_per_sec(100000000);
-	printf("I can do %f mods per sec\n", test_mod_function);
+	int test_mod_function = mods_per_sec(100000000);
+	printf("I can do %d mods per sec\n", test_mod_function);
 
 	/* Assemble and send test packet */
 	compute_packet mypacket;
@@ -103,19 +103,23 @@ int is_perfect(int test_number)
 
 /* 
 Calculates the number of mod operations capable of per sec.
+AKA FLOPS (Floating Point Operations Per Second).
 Uses the previous max and the square root of that number for better accuracy.
 To do: maybe make an average using an array.
 */
-double mods_per_sec(int prev_max)
+int mods_per_sec(int prev_max)
 {
 	int sqrt_prev_max = sqrt(prev_max);
 	clock_t start, stop;
 	start = clock();
-	int i;
-	for(i=0;i<5000000;i++) //5000000 minimum time I could measure
-		prev_max % sqrt_prev_max; /* Time the mod operation */
 	stop = clock();
-	return (1/(stop - start)) * 5000000; /* mods per sec */
+	int i = 0;
+	while((stop-start)/CLOCKS_PER_SEC < 0.05){
+		prev_max % sqrt_prev_max; /* Time the mod operation */
+		stop = clock();
+		i+=2; //Because each loop also divides by CLOCKS_PER_SEC
+	}
+	return i*20; /* mods per sec */
 }
 
 
