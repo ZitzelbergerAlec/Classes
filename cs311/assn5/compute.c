@@ -61,8 +61,13 @@ int main(int argc, char **argv)
 
 	connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
 	
-	int test_mod_function = mods_per_sec(100000000);
+	/*int test_mod_function = mods_per_sec(100000000);
 	printf("I can do %d mods per sec\n", test_mod_function);
+	*/
+	for(i=1; i<100; i++){
+		if(is_perfect(i))
+			printf("%d is perfect\n", i);
+	}
 
 	/* Assemble and send test packet */
 	compute_packet mypacket;
@@ -85,18 +90,18 @@ int main(int argc, char **argv)
 
 /* 
 Returns 1 if a test_number is a perfect number.
-To do: write this to only do sqrt(test_number) mods
 */
 int is_perfect(int test_number)
 {	
 	int i;
 	int sum = 1;
-	for(i=2; i<test_number; i++){
+	for(i=2; i<sqrt(test_number); i++){
 		if((test_number % i) == 0){
 			sum += i;
+			sum += test_number/i;
 		}
 	}
-	if(sum == test_number)
+	if(sum == test_number && test_number != 1) //1 works, but is not a perfect number
 		return 1;
 	return 0;
 }
