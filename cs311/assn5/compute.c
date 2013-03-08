@@ -4,6 +4,8 @@
 #include 	<ctype.h>
 #include 	<errno.h>
 #include 	<getopt.h>
+#include 	<libxml/parser.h>
+#include 	<libxml/tree.h>
 #include	<sys/types.h>	/* basic system data types */
 #include	<sys/socket.h>	/* basic socket definitions */
 #include	<sys/time.h>	/* timeval{} for select() */
@@ -25,6 +27,8 @@
 #include	<sys/wait.h>
 
 /* Global variables and definitions */
+#ifdef LIBXML_TREE_ENABLED
+
 #define LISTENQ 1024
 #define MAXLINE 4096
 #define MAXSOCKADDR 128
@@ -35,13 +39,26 @@
 
 typedef struct {
 	char request_type[15];
+	char sender_name[15];	
+} packet;
+
+typedef struct {
+	char request_type[15];
 	char sender_name[15];
 	double mods_per_sec;
 } compute_packet;
 
+typedef struct {
+	char request_type[15];
+	char sender_name[15];
+	int min;
+	int max;
+} range_packet;
+
 /* Function prototypes */
 int is_perfect(int test_number);
 int mods_per_sec(int prev_max);
+packet *parse_packet(char *packet_string);
 void send_packet(compute_packet *out_packet, int sockfd);
 
 int main(int argc, char **argv)
@@ -69,13 +86,11 @@ int main(int argc, char **argv)
 			printf("%d is perfect\n", i);
 	}
 
-	/* Assemble and send test packet */
-	compute_packet mypacket;
-	strcpy(mypacket.request_type, "query"); //segfaults here
-	strcpy(mypacket.sender_name, "compute");
-	mypacket.mods_per_sec = 5000;
-	send_packet(&mypacket, sockfd);
-
+	packet *test_packet = parse_packet("<request type=\"hello\"><sender name=\"world\"/></request>");
+	
+	printf("Test packet request_type = %s\n", test_packet->request_type);
+	printf("Test packet sender_name = %s\n", test_packet->sender_name);
+	
 	if(read(sockfd, recvline, MAXLINE) == 0){
 		perror("Something broke");
 		exit(-1);
@@ -127,7 +142,6 @@ int mods_per_sec(int prev_max)
 	return i*20; /* mods per sec */
 }
 
-
 /* Assembles a packet out of the packet data structure and sends it over the socket */
 void send_packet(compute_packet *out_packet, int sockfd)
 {
@@ -135,3 +149,37 @@ void send_packet(compute_packet *out_packet, int sockfd)
 	snprintf(temp, MAXLINE, "<request type=\"%s\"><sender name=\"%s\"/><performance mods_per_sec=\"%f\"/></request>",  out_packet->request_type, out_packet->sender_name, out_packet->mods_per_sec);
 	write(sockfd, temp, strlen(temp));
 }
+
+/*
+Returns a packet struct containing sender name and request type
+*/
+packet *parse_packet(char *packet_string)
+{
+	xmlDoc *doc = NULL; 
+	packet *new_packet = malloc(sizeof(packet));
+	xmlNode *request = NULL;
+	xmlNodePtr sender;
+	
+	doc = xmlReadMemory(packet_string, strlen(packet_string), "noname.xml", NULL, 0);
+	request = xmlDocGetRootElement(doc);
+	if(request == NULL)
+		return NULL;
+		
+	strcpy(new_packet->request_type, (char *) xmlGetProp(request, "type"));
+	
+	sender = request->xmlChildrenNode;
+	if ((!xmlStrcmp(sender->name, (const xmlChar *) "sender"))){
+		strcpy(new_packet->sender_name, (char *) xmlGetProp(sender, "name"));
+	} else {
+		return NULL;
+	}
+	
+	return new_packet;
+}
+
+#else
+int main(void) {
+    fprintf(stderr, "Tree support not compiled in\n");
+    exit(1);
+}
+#endif
