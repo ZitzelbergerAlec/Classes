@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+#include <string.h>
 
 #ifdef LIBXML_TREE_ENABLED
 
@@ -51,10 +52,10 @@ main(int argc, char **argv)
 {
     xmlDoc *doc = NULL;
     xmlNode *root_element = NULL;
-
+/*
     if (argc != 2)
         return(1);
-
+*/
     /*
      * this initialize the library and check potential ABI mismatches
      * between the version it was compiled for and the actual shared
@@ -63,7 +64,7 @@ main(int argc, char **argv)
     LIBXML_TEST_VERSION
 
     /*parse the file and get the DOM */
-    doc = xmlReadFile(argv[1], NULL, 0);
+    doc = xmlReadMemory("<request type=\"hello\"><item name=\"world\"/></request>", strlen("<request type=\"hello\"><item name=\"world\"/></request>"), "noname.xml", NULL, 0);
 
     if (doc == NULL) {
         printf("error: could not parse file %s\n", argv[1]);
@@ -71,7 +72,9 @@ main(int argc, char **argv)
 
     /*Get the root element node */
     root_element = xmlDocGetRootElement(doc);
-
+	
+	printf("Root element type = %s\n", xmlGetProp(root_element, "type"));
+	
     print_element_names(root_element);
 
     /*free the document */
