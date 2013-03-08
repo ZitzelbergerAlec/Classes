@@ -86,7 +86,7 @@ int main(int argc, char **argv)
 			printf("%d is perfect\n", i);
 	}
 
-	packet *test_packet = parse_packet("<request type=\"hello\"><sender name=\"world\"/></request>");
+	packet *test_packet = parse_packet("<request type=\"hello\" sender=\"world\"></request>");
 	
 	printf("Test packet request_type = %s\n", test_packet->request_type);
 	printf("Test packet sender_name = %s\n", test_packet->sender_name);
@@ -166,14 +166,8 @@ packet *parse_packet(char *packet_string)
 		return NULL;
 		
 	strcpy(new_packet->request_type, (char *) xmlGetProp(request, "type"));
-	
-	sender = request->xmlChildrenNode;
-	if ((!xmlStrcmp(sender->name, (const xmlChar *) "sender"))){
-		strcpy(new_packet->sender_name, (char *) xmlGetProp(sender, "name"));
-	} else {
-		return NULL;
-	}
-	
+	strcpy(new_packet->sender_name, (char *) xmlGetProp(request, "sender"));
+
 	return new_packet;
 }
 
