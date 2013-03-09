@@ -56,8 +56,9 @@ typedef struct {
 /* Function prototypes */
 range *get_range(char *packet_string);
 int is_perfect(int test_number);
-int mods_per_sec(int prev_max);
+int mods_per_sec();
 packet *parse_packet(char *packet_string);
+void request_range(int sockfd);
 void send_packet(compute_packet *out_packet, int sockfd);
 
 int main(int argc, char **argv)
@@ -77,30 +78,24 @@ int main(int argc, char **argv)
 
 	connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
 	
-	/*int test_mod_function = mods_per_sec(100000000);
-	printf("I can do %d mods per sec\n", test_mod_function);
-	*/
-	for(i=1; i<100; i++){
-		if(is_perfect(i))
-			printf("%d is perfect\n", i);
-	}
-
-	range *test_range = get_range("<request type=\"hello\" sender=\"world\"><min value=\"5\"/><max value=\"10\"/></request>");
-	
-	printf("range min = %d\n", test_range->min);
-	printf("range min = %d\n", test_range->max);
+	request_range(sockfd);	
 	
 	if(read(sockfd, recvline, MAXLINE) == 0){
 		perror("Something broke");
 		exit(-1);
 	}
 	
-	fputs(recvline, stdout);
-
+	packet *recv_packet = parse_packet(recvline);
+	if(!strcmp(recv_packet->sender_name, "manage") && !strcmp(recv_packet->request_type, "new_range")){
+		printf("manage sent us new range.\n");
+		range *new_range = get_range(recvline);
+		printf("min is %d\n", new_range->min);
+		printf("max is %d\n", new_range->max);
+	}
+		
 	/* End socket setup code */
 	return 0;
 }
-
 
 /* 
 Returns 1 if a test_number is a perfect number.
@@ -124,17 +119,18 @@ int is_perfect(int test_number)
 Calculates the number of mod operations capable of per sec.
 AKA FLOPS (Floating Point Operations Per Second).
 Uses the previous max and the square root of that number for better accuracy.
-To do: maybe make an average using an array.
+To do: maybe generate a random number between 0 and sqrt(test_max)
 */
-int mods_per_sec(int prev_max)
+int mods_per_sec()
 {
-	int sqrt_prev_max = sqrt(prev_max);
+	int test_max = 100000000;
+	int sqrt_test_max = sqrt(test_max);
 	clock_t start, stop;
 	start = clock();
 	stop = clock();
 	int i = 0;
 	while((stop-start)/CLOCKS_PER_SEC < 0.05){
-		prev_max % sqrt_prev_max; /* Time the mod operation */
+		test_max % sqrt_test_max; /* Time the mod operation */
 		stop = clock();
 		i+=2; //Because each loop also divides by CLOCKS_PER_SEC
 	}
@@ -172,6 +168,16 @@ packet *parse_packet(char *packet_string)
 
 	return new_packet;
 }
+
+/* sends a request for a range then  waits for the response */
+void request_range(int sockfd)
+{
+	char temp[MAXLINE]; /* A temp string buffer for the packet */ 
+	snprintf(temp, MAXLINE, "<request type=\"query\" sender=\"compute\"><performance mods_per_sec=\"9000\"/></request>");
+	write(sockfd, temp, strlen(temp));
+
+}
+
 
 /* 
 Extracts the range out of a range packet and returns it as a struct.
