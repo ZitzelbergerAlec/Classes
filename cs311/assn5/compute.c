@@ -59,6 +59,7 @@ int is_perfect(int test_number);
 int mods_per_sec();
 packet *parse_packet(char *packet_string);
 void request_range(int sockfd);
+void send_new_perfect(int n, int sockfd);
 void send_packet(compute_packet *out_packet, int sockfd);
 
 int main(int argc, char **argv)
@@ -78,19 +79,9 @@ int main(int argc, char **argv)
 
 	connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
 	
-	request_range(sockfd);	
-	
-	if(read(sockfd, recvline, MAXLINE) == 0){
-		perror("Something broke");
-		exit(-1);
-	}
-	
-	packet *recv_packet = parse_packet(recvline);
-	if(!strcmp(recv_packet->sender_name, "manage") && !strcmp(recv_packet->request_type, "new_range")){
-		printf("manage sent us new range.\n");
-		range *new_range = get_range(recvline);
-		printf("min is %d\n", new_range->min);
-		printf("max is %d\n", new_range->max);
+	for(i=2;i<100;i++){
+		if(is_perfect(i))
+			send_new_perfect(i, sockfd);
 	}
 		
 	/* End socket setup code */
@@ -146,6 +137,16 @@ void send_packet(compute_packet *out_packet, int sockfd)
 }
 
 /*
+Sends a new perfect number n to the manage process 
+*/
+void send_new_perfect(int n, int sockfd)
+{
+	char temp[MAXLINE]; /* A temp string buffer for the packet */ 
+	snprintf(temp, MAXLINE, "<request type=\"new_perfect\" sender=\"compute\"><new_perfect value=\"%d\"/></request>", n);
+	write(sockfd, temp, strlen(temp));
+}
+
+/*
 Returns a packet struct containing sender name and request type
 */
 packet *parse_packet(char *packet_string)
@@ -177,7 +178,6 @@ void request_range(int sockfd)
 	write(sockfd, temp, strlen(temp));
 
 }
-
 
 /* 
 Extracts the range out of a range packet and returns it as a struct.
