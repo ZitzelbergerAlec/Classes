@@ -3,73 +3,89 @@
 #include	<stdlib.h>
 #include 	<math.h> /* for sqrt */
 #include	<time.h> /* timespec{} for pselect() */
+#include <limits.h>
 
 
-
-int mods_per_sec();
+unsigned int mods_per_sec();
 int is_perfect(int test_number);
 
-int main(int argc, const char *argv[])
+int main()
 {
 	/* 
  * 	Test out mods per sec to see if actually takes 15 sec */
-	int i;
-	int min = 3;
-	int num_mods = 0;
-	int j = 3;
-	int mod_ceiling = 15 * mods_per_sec();
+	
+	unsigned int i;
+	unsigned int num_mods = 0;
+	unsigned int min = 3;
+	unsigned int j = 3;
+	
+	unsigned int mod_ceiling = mods_per_sec();
+	mod_ceiling *= 15;
+	printf("mod ceiling = %u\n", mod_ceiling);
 	while(num_mods < mod_ceiling){
-		num_mods += floor(sqrt(i));
+		num_mods += (sqrt(j)/2);
 		j++;
 	}
 	
-	int test_max = j;
-	printf("Can calculate in the range of %d to %d\n", min, test_max);
+	unsigned int test_max = j;
+	printf("Mods per sec: %u\n", mod_ceiling);
+	printf("Can calculate in the range of %u to %u. This is off by %u.\n", min, test_max, 3357779-test_max);
 	
+	/*
 	clock_t start, stop;
-	printf("running calculations...\n");
+	printf("running calculations from 3 to %u\n", UINT_MAX);
 	start = clock();
-	for(i=1; i<test_max; i++){
-		if(is_perfect(i))
-			printf("%d is perfect\n", i);
+	i=3;
+	double time_spent = 0;
+	while(time_spent < 15){
+		if(is_perfect((int) i))
+			printf("%d is perfect\n", (int) i);
+		i++;
+		stop = clock();
+		time_spent = (double)(stop-start) / CLOCKS_PER_SEC;
 	}
 
-	stop = clock();
-	printf("Calculations took %f sec", ((double) stop - (double) start)/CLOCKS_PER_SEC);
+	
+	printf("Calculations took %f sec\n", ((double) stop - (double) start)/CLOCKS_PER_SEC);
+	printf("counted up to %u\n", i);
+	*/
 	return 0;
 }
 
 
-int mods_per_sec()
+unsigned int mods_per_sec()
 {
-	int test_max = 100000000;
-	int sqrt_test_max = sqrt(test_max);
-	clock_t start, stop;
-	start = clock();
-	stop = clock();
-	int i = 0;
-	while((stop-start)/CLOCKS_PER_SEC < 0.05){
-		test_max % sqrt_test_max; /* Time the mod operation */
-		stop = clock();
-		i+=2; //Because each loop also divides by CLOCKS_PER_SEC
-	}
-	return i*20; /* mods per sec */
+    double time_spent=0;
+    clock_t begin, end;
+    int result, count=0, mod_max, low, high;
+
+	/* VB's Timing Loop */
+    while(time_spent < 1){
+        result = count % 7;
+        count++;
+        end = clock();
+        time_spent = (double)(end-begin) / CLOCKS_PER_SEC;
+    }
+    mod_max = count;
+    return (unsigned int) mod_max;
 }
 
 /* 
  * Returns 1 if a test_number is a perfect number.
  * */
-int is_perfect(int test_number)
+int is_perfect(int n)
 {	
+	if(n == 1)
+		return 0;
 	int i;
 	int sum = 1;
-	for(i=2; i<sqrt(test_number); i++){
-		if((test_number % i) == 0){
+	for(i=2; i<sqrt(n); i++){
+		if((n % i) == 0){
 			sum += i;
-			sum += test_number/i;
+			sum += n/i;
 		}
 	}
-	if(sum == test_number && test_number != 1) //1 works, but is not a perfect number
+	if(sum == n) //1 works, but is not a perfect number
 		return 1;
 	return 0;
 }
