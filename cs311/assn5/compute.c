@@ -75,15 +75,21 @@ int main(int argc, char **argv)
 	bzero(&servaddr, sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(SERV_PORT);
-	inet_pton(AF_INET, "127.0.0.1", &servaddr.sin_addr); //Segfaults here because no argv
+	inet_pton(AF_INET, "127.0.0.1", &servaddr.sin_addr); 
 
 	connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
+	
+	if (read(sockfd, recvline, MAXLINE) == 0){
+        perror("Connecting error");
+        exit(-1);
+    }
+    printf("%s\n", recvline);
 	
 	for(i=2;i<100;i++){
 		if(is_perfect(i))
 			send_new_perfect(i, sockfd);
 	}
-		
+	
 	/* End socket setup code */
 	return 0;
 }
@@ -176,7 +182,6 @@ void request_range(int sockfd)
 	char temp[MAXLINE]; /* A temp string buffer for the packet */ 
 	snprintf(temp, MAXLINE, "<request type=\"query\" sender=\"compute\"><performance mods_per_sec=\"9000\"/></request>");
 	write(sockfd, temp, strlen(temp));
-
 }
 
 /* 
