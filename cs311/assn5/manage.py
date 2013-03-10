@@ -10,7 +10,8 @@ import sys
 conn = 0
 perfect_numbers = []
 compute_processes = dict() #Dictionary to hold compute processes by hostname->mods_per_sec
-compute_cnc_sock = 0 #Tracks compute command and control socket
+compute_cnc_sock = []  #Tracks compute command and control (CnC) socket
+
 
 #signal handler
 def handler(signum, frame):
@@ -50,11 +51,10 @@ def get_handshake(sock):
 			mods_per_sec = x.attributes['mods_per_sec'].value
 			compute_processes[host] = mods_per_sec
 		elif(client == "compute_cnc"):
-			print "Compute CNC client joined from", host,":",port
-			compute_cnc_sock = sock
+			print "Compute CnC client joined from", host,":",port
+			compute_cnc_sock.append(sock)
 		elif(client == "report"):
 			print "Report client joined from", host,":",port
-
 
 #Returns an array of packet data split by newline
 def get_data(sock):
@@ -88,12 +88,26 @@ while 1:
 						client = x.attributes['sender'].value
 						request_type = x.attributes['type'].value
 						if(client == "compute"):
-							if(request_type == "query"):
+							if(request_type == "request_range"):
 								x = xmldoc.getElementsByTagName('performance')[0]
 								mods_per_sec = x.attributes['mods_per_sec'].value
 								compute_processes[addr] = mods_per_sec
+								x = xmldoc.getElementsByTagName('prev_max')[0]
+								prev_max = x.attributes['value'].value
 								print "Client requested new range. Client can compute", mods_per_sec, "mods per second"
-								sock.send("<request type=\"new_range\" sender=\"manage\"><min value=\"1\"/><max value=\"9500\"/></request>")
+								send_string = "<request type=\"new_range\" sender=\"manage\">"
+								#Special case: Initial request
+								if(prev_max != 0):
+									send_string += "<min value=\""
+									send_string += prev_max + 1
+									send_string += "\"/>"
+									send_string += prev_max * 500
+									send_string += "<max value=\""
+									send_string += "\"/>"
+								else: 
+									send_string += "<min value=\"2\"/><max value=\"3000000\"/>"
+								send_string += "</request>"
+								sock.send(send_string)
 							elif(request_type == "new_perfect"):
 								x = xmldoc.getElementsByTagName('new_perfect')[0]
 								new_perfect = x.attributes['value'].value
@@ -101,8 +115,6 @@ while 1:
 								if new_perfect not in perfect_numbers:
 									perfect_numbers.append(new_perfect)
 								print "Found a new perfect number. Appended it to the list. Currently, perfect numbers are:", perfect_numbers
-						elif(client == "compute_cnc"):
-							print "Client is compute command and control"
 						elif(client == "report"):
 							if(request_type == "query"):
 								print "Sending performance characteristics of clients to report process."
@@ -127,6 +139,10 @@ while 1:
 							elif(request_type == "terminate"):
 								#To do: need to keep track of sockets that compute processes use and issue terminate signal over those sockets.
 								print "Report sent terminate request. Terminate compute processes"
-								#compute_cnc_sock.send("<request type=\"terminate\" sender=\"manage\"></request>")
+								if(compute_cnc_sock):
+									print "Sending terminate packet"
+									(cnc_read, cnc_write, cnc_exc) = select.select([], compute_cnc_sock, [])
+									cnc_write[0].send("<request type=\"terminate\" sender=\"manage\"></request>")
+									sys.exit(0)
 
 

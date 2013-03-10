@@ -1,4 +1,5 @@
 /* Compiler directives */
+#define _POSIX_SOURCE		//for kill
 
 /* Includes */
 #include 	<ctype.h>
@@ -24,6 +25,7 @@
 #include	<sys/select.h>
 #include	<sys/uio.h>		/* for iovec{} and readv/writev */
 #include	<unistd.h>
+#include 	<sys/types.h>
 #include	<sys/wait.h>
 
 /* Global variables and definitions */
@@ -36,6 +38,8 @@
 
 #define SERV_PORT 43283 // "4DAVE" in keypad numbers
 #define SERV_PORT_STR "43283"
+/* Variable to keep track of compute PID */
+pid_t compute_pid;
 
 typedef struct {
 	char request_type[15];
@@ -54,18 +58,79 @@ typedef struct {
 } range;
 
 /* Function prototypes */
+void compute_process();
 range *get_range(char *packet_string);
 int is_perfect(int test_number);
 int mods_per_sec();
 packet *parse_packet(char *packet_string);
 void puke_and_exit(char *error_message);
-void request_range(int sockfd);
+void request_range(int sockfd, int prev_max);
 void send_handshake(int sockfd);
 void send_new_perfect(int n, int sockfd);
 void send_packet(char *packet_string, int sockfd);
 
 int main(int argc, char **argv)
 {
+	/* 
+	Fork off compute process 
+	Main process will be CnC (Command and Control)
+	*/
+	pid_t pid;
+	switch(pid = fork()){
+		case -1: //Oops case
+			puke_and_exit("Forking error\n");
+		case 0: //Child case
+			compute_process();
+			break;
+		default: //Parent case
+			compute_pid = pid;
+			break;
+
+	}
+
+	/* Compute CNC stuff */
+	int sockfd;
+	struct sockaddr_in servaddr;
+	char recvline[MAXLINE];
+
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	
+	bzero(&servaddr, sizeof(servaddr));
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_port = htons(SERV_PORT);
+	inet_pton(AF_INET, "127.0.0.1", &servaddr.sin_addr); 
+
+	/* Connect to manage server */
+	connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
+	
+	/* Wait for server handshake */
+	if (read(sockfd, recvline, MAXLINE) == 0){
+        	puke_and_exit("Error reading line");
+    	}
+	
+    	/* Send client handshake */
+	send_packet("<request type=\"handshake\" sender=\"compute_cnc\"></request>\n", sockfd);
+
+	/* Wait for terminate packet from server */
+	if (read(sockfd, recvline, MAXLINE) == 0){
+        	puke_and_exit("Error reading line");
+    	}
+
+    	/* Parse packet to make sure it's the correct one */
+    	packet *header = parse_packet(recvline);
+
+    	if(!strcmp(header->sender_name, "manage") && !strcmp(header->request_type, "terminate")){
+    		/* Kill compute process and exit this one */
+    		kill(compute_pid, SIGQUIT);
+    		wait(NULL);
+    		exit(1);
+    	}
+		
+	return 0;
+}
+
+/* The process for computing perfect numbers */
+void compute_process(){
 	/* Set up sockets */
 	int i;
 	int sockfd;
@@ -85,22 +150,33 @@ int main(int argc, char **argv)
 	if (read(sockfd, recvline, MAXLINE) == 0){
         	puke_and_exit("Error reading line");
     	}
-    	printf("%s\n", recvline);
 	
     	/* Send client handshake */
 	send_handshake(sockfd);	
 
+	int prev_max = 0;
+ 	range *cur_range;
+    	printf("Before while loop");
+
     	while(1){
-    		printf("Sending perfect numbers\n");	
-		for(i=2;i<100;i++){
+    		printf("Requesting range from server");
+    		/* Request new range from server */
+    		request_range(sockfd, prev_max);
+
+    		/* Wait for server response */
+    		if (read(sockfd, recvline, MAXLINE) == 0){
+        		puke_and_exit("Error reading line");
+    		}
+    		
+    		cur_range = get_range(recvline);
+    		printf("Calculating perfect numbers from %d to %d\n", cur_range->min, cur_range->max);
+		for(i=cur_range->min;i<cur_range->max;i++){
 			if(is_perfect(i))
 				send_new_perfect(i, sockfd);
 		}
-		sleep(5);
-	}	
-	
-	/* End socket setup code */
-	return 0;
+
+		prev_max = cur_range->max;
+	}
 }
 
 /* 
@@ -189,15 +265,15 @@ packet *parse_packet(char *packet_string)
 		
 	strcpy(new_packet->request_type, (char *) xmlGetProp(request, "type"));
 	strcpy(new_packet->sender_name, (char *) xmlGetProp(request, "sender"));
-
+	xmlFreeDoc(doc);
 	return new_packet;
 }
 
 /* sends a request for a range then  waits for the response */
-void request_range(int sockfd)
+void request_range(int sockfd, int prev_max)
 {
 	char temp[MAXLINE]; /* A temp string buffer for the packet */ 
-	snprintf(temp, MAXLINE, "<request type=\"query\" sender=\"compute\"><performance mods_per_sec=\"9000\"/></request>\n");
+	snprintf(temp, MAXLINE, "<request type=\"query\" sender=\"compute\"><performance mods_per_sec=\"9000\"/><prev_max value=\"%d\"/></request>\n", prev_max);
 	write(sockfd, temp, strlen(temp));
 }
 
@@ -239,6 +315,7 @@ void puke_and_exit(char *error_message)
 	printf("Errno = %d\n", errno);
 	exit(EXIT_FAILURE);
 }
+
 
 #else
 int main(void) {
