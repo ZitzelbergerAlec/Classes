@@ -96,7 +96,7 @@ int main(int argc, char **argv)
 			if(is_perfect(i))
 				send_new_perfect(i, sockfd);
 		}
-		sleep(20);
+		sleep(5);
 	}	
 	
 	/* End socket setup code */

@@ -74,35 +74,47 @@ while 1:
 					descriptors.remove(sock)
 			else:
 				for packet in data:
-					xmldoc = minidom.parseString(packet)
-					x = xmldoc.getElementsByTagName('request')[0]
-					client = x.attributes['sender'].value
-					request_type = x.attributes['type'].value
-					if(client == "compute"):
-						if(request_type == "query"):
-							x = xmldoc.getElementsByTagName('performance')[0]
-							mods_per_sec = x.attributes['mods_per_sec'].value
-							compute_processes[addr] = mods_per_sec
-							print "Client requested new range. Client can compute", mods_per_sec, "mods per second"
-							sock.send("<request type=\"new_range\" sender=\"manage\"><min value=\"1\"/><max value=\"9500\"/></request>")
-						elif(request_type == "new_perfect"):
-							x = xmldoc.getElementsByTagName('new_perfect')[0]
-							perfect_numbers.append(x.attributes['value'].value)
-							print "Found a new perfect number. Appended it to the list. Currently, perfect numbers are:", perfect_numbers
-					elif(client == "compute-d"):
-						print "Client is compute-d"
-					elif(client == "report"):
-						if(request_type == "query"):
-							print "Client is report, request is query"
-							print "Sending performance characteristics of clients. Current clients:", compute_processes
-							querystring = "<request type=\"report_data\" sender=\"manage\">"
-							for hostname in compute_processes:
-								querystring.append("<client addr=\"")
-								querystring.append(host)
-								querystring.append("\" ")
-								querystring.append("mods_per_sec=\"")
-								querystring.append(compute_processes[host])
-								querystring.append("\"/>")
-							querystring.append("</request>")
-							sock.send(querystring)
+					if(packet != ''):
+						xmldoc = minidom.parseString(packet)
+						x = xmldoc.getElementsByTagName('request')[0]
+						client = x.attributes['sender'].value
+						request_type = x.attributes['type'].value
+						if(client == "compute"):
+							if(request_type == "query"):
+								x = xmldoc.getElementsByTagName('performance')[0]
+								mods_per_sec = x.attributes['mods_per_sec'].value
+								compute_processes[addr] = mods_per_sec
+								print "Client requested new range. Client can compute", mods_per_sec, "mods per second"
+								sock.send("<request type=\"new_range\" sender=\"manage\"><min value=\"1\"/><max value=\"9500\"/></request>")
+							elif(request_type == "new_perfect"):
+								x = xmldoc.getElementsByTagName('new_perfect')[0]
+								new_perfect = x.attributes['value'].value
+								#Append this number to the list if it doesn't already exist in it
+								if new_perfect not in perfect_numbers:
+									perfect_numbers.append(new_perfect)
+								print "Found a new perfect number. Appended it to the list. Currently, perfect numbers are:", perfect_numbers
+						elif(client == "compute-d"):
+							print "Client is compute-d"
+						elif(client == "report"):
+							if(request_type == "query"):
+								print "Client is report, request is query"
+								print "Sending performance characteristics of clients. Current clients:", compute_processes
+								querystring = "<request type=\"report_data\" sender=\"manage\">"
+								#Send current compute processes
+								if compute_processes: 
+									for hostname, mods_per_sec in compute_processes.iteritems():
+										querystring += "<client addr=\""
+										querystring += hostname
+										querystring += "\" "
+										querystring += "mods_per_sec=\""
+										querystring += mods_per_sec
+										querystring += "\"/>"
+								#Send found perfect numbers
+								if perfect_numbers: 
+									for perfect_number in perfect_numbers:
+										querystring += "<perfect_number value=\""
+										querystring += perfect_number
+										querystring += "\"/>"
+								querystring += "</request>"
+								sock.send(querystring)
 
