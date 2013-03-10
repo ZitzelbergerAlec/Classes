@@ -58,9 +58,11 @@ range *get_range(char *packet_string);
 int is_perfect(int test_number);
 int mods_per_sec();
 packet *parse_packet(char *packet_string);
+void puke_and_exit(char *error_message);
 void request_range(int sockfd);
+void send_handshake(int sockfd);
 void send_new_perfect(int n, int sockfd);
-void send_packet(compute_packet *out_packet, int sockfd);
+void send_packet(char *packet_string, int sockfd);
 
 int main(int argc, char **argv)
 {
@@ -79,16 +81,23 @@ int main(int argc, char **argv)
 
 	connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
 	
+	/* Wait for server handshake */
 	if (read(sockfd, recvline, MAXLINE) == 0){
-        perror("Connecting error");
-        exit(-1);
-    }
-    printf("%s\n", recvline);
+        	puke_and_exit("Error reading line");
+    	}
+    	printf("%s\n", recvline);
 	
-	for(i=2;i<100;i++){
-		if(is_perfect(i))
-			send_new_perfect(i, sockfd);
-	}
+    	/* Send client handshake */
+	send_handshake(sockfd);	
+
+    	while(1){
+    		printf("Sending perfect numbers\n");	
+		for(i=2;i<100;i++){
+			if(is_perfect(i))
+				send_new_perfect(i, sockfd);
+		}
+		sleep(20);
+	}	
 	
 	/* End socket setup code */
 	return 0;
@@ -134,13 +143,21 @@ int mods_per_sec()
 	return i*20; /* mods per sec */
 }
 
-/* Assembles a packet out of the packet data structure and sends it over the socket */
-void send_packet(compute_packet *out_packet, int sockfd)
+/* Sends a packet string over the socket */
+void send_packet(char *packet_string, int sockfd)
 {
-	char temp[MAXLINE]; /* A temp string buffer for the packet */ 
-	snprintf(temp, MAXLINE, "<request type=\"%s\"><sender name=\"%s\"/><performance mods_per_sec=\"%f\"/></request>",  out_packet->request_type, out_packet->sender_name, out_packet->mods_per_sec);
-	write(sockfd, temp, strlen(temp));
+	write(sockfd, packet_string, strlen(packet_string));
 }
+
+/* 
+Sends initial handshake to server 
+To do: add performance characteristics
+*/
+void send_handshake(int sockfd)
+{
+	send_packet("<request type=\"handshake\" sender=\"compute\"><performance mods_per_sec=\"9000\"/></request>\n", sockfd);
+}
+
 
 /*
 Sends a new perfect number n to the manage process 
@@ -148,7 +165,7 @@ Sends a new perfect number n to the manage process
 void send_new_perfect(int n, int sockfd)
 {
 	char temp[MAXLINE]; /* A temp string buffer for the packet */ 
-	snprintf(temp, MAXLINE, "<request type=\"new_perfect\" sender=\"compute\"><new_perfect value=\"%d\"/></request>", n);
+	snprintf(temp, MAXLINE, "<request type=\"new_perfect\" sender=\"compute\"><new_perfect value=\"%d\"/></request>\n", n);
 	write(sockfd, temp, strlen(temp));
 }
 
@@ -180,7 +197,7 @@ packet *parse_packet(char *packet_string)
 void request_range(int sockfd)
 {
 	char temp[MAXLINE]; /* A temp string buffer for the packet */ 
-	snprintf(temp, MAXLINE, "<request type=\"query\" sender=\"compute\"><performance mods_per_sec=\"9000\"/></request>");
+	snprintf(temp, MAXLINE, "<request type=\"query\" sender=\"compute\"><performance mods_per_sec=\"9000\"/></request>\n");
 	write(sockfd, temp, strlen(temp));
 }
 
@@ -216,6 +233,12 @@ range *get_range(char *packet_string)
 	return new_range;
 }
 
+void puke_and_exit(char *error_message)
+{
+	perror(error_message);
+	printf("Errno = %d\n", errno);
+	exit(EXIT_FAILURE);
+}
 
 #else
 int main(void) {
