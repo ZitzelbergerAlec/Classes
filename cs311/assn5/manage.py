@@ -10,6 +10,7 @@ import sys
 conn = 0
 perfect_numbers = []
 compute_processes = dict() #Dictionary to hold compute processes by hostname->mods_per_sec
+compute_cnc_sock = 0 #Tracks compute command and control socket
 
 #signal handler
 def handler(signum, frame):
@@ -41,11 +42,19 @@ def get_handshake(sock):
 	x = xmldoc.getElementsByTagName('request')[0]
 	client = x.attributes['sender'].value
 	request_type = x.attributes['type'].value
-	if(client == "compute" and request_type == "handshake"):
-		host,port = sock.getpeername()
-		x = xmldoc.getElementsByTagName('performance')[0]
-		mods_per_sec = x.attributes['mods_per_sec'].value
-		compute_processes[host] = mods_per_sec
+	host,port = sock.getpeername()
+	if(request_type == "handshake"):
+		if(client == "compute"):
+			print "New Compute client joined from", host,":",port
+			x = xmldoc.getElementsByTagName('performance')[0]
+			mods_per_sec = x.attributes['mods_per_sec'].value
+			compute_processes[host] = mods_per_sec
+		elif(client == "compute_cnc"):
+			print "Compute CNC client joined from", host,":",port
+			compute_cnc_sock = sock
+		elif(client == "report"):
+			print "Report client joined from", host,":",port
+
 
 #Returns an array of packet data split by newline
 def get_data(sock):
@@ -63,7 +72,6 @@ while 1:
 		if(sock == srvsock): #New connection
 			newsock, (remhost, remport) = srvsock.accept()
 			descriptors.append(newsock)
-			print "New client joined at", remhost
 			send_handshake(newsock)
 			get_handshake(newsock)
 		else:
@@ -93,12 +101,11 @@ while 1:
 								if new_perfect not in perfect_numbers:
 									perfect_numbers.append(new_perfect)
 								print "Found a new perfect number. Appended it to the list. Currently, perfect numbers are:", perfect_numbers
-						elif(client == "compute-d"):
-							print "Client is compute-d"
+						elif(client == "compute_cnc"):
+							print "Client is compute command and control"
 						elif(client == "report"):
 							if(request_type == "query"):
-								print "Client is report, request is query"
-								print "Sending performance characteristics of clients. Current clients:", compute_processes
+								print "Sending performance characteristics of clients to report process."
 								querystring = "<request type=\"report_data\" sender=\"manage\">"
 								#Send current compute processes
 								if compute_processes: 
@@ -117,4 +124,9 @@ while 1:
 										querystring += "\"/>"
 								querystring += "</request>"
 								sock.send(querystring)
+							elif(request_type == "terminate"):
+								#To do: need to keep track of sockets that compute processes use and issue terminate signal over those sockets.
+								print "Report sent terminate request. Terminate compute processes"
+								#compute_cnc_sock.send("<request type=\"terminate\" sender=\"manage\"></request>")
+
 

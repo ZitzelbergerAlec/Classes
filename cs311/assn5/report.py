@@ -53,4 +53,7 @@ if(kflag == 0):
 		x = xmldoc.getElementsByTagName('perfect_number')
 		for perfect_number in x:
 			print perfect_number.attributes['value'].value
+else:
+	print "Sending terminate packet to server"
+	sockfd.send("<request type=\"terminate\" sender=\"report\"></request>\n") 
 sockfd.close() 
