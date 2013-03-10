@@ -1,4 +1,4 @@
-# Echo server program
+#!/usr/bin/env python 
 import socket
 from xml.dom import minidom
 import signal
@@ -50,24 +50,26 @@ while 1:
 				print newstr
 				#Retrieve headers from data
 				data = data.strip() #remove trailing and leading whitespace
-				xmldoc = minidom.parseString(str(data))
-				x = xmldoc.getElementsByTagName('request')[0]
-				client = x.attributes['sender'].value
-				request_type = x.attributes['type'].value
-				if(client == "compute"):
-					if(request_type == "query"):
-						x = xmldoc.getElementsByTagName('performance')[0]
-						mods_per_sec = x.attributes['mods_per_sec'].value
-						compute_processes[addr] = mods_per_sec
-						print "Client requested new range. Client can compute", mods_per_sec, "mods per second"
-						sock.send("<request type=\"new_range\" sender=\"manage\"><min value=\"1\"/><max value=\"9500\"/></request>")
-					elif(request_type == "new_perfect"):
-						x = xmldoc.getElementsByTagName('new_perfect')[0]
-						perfect_numbers.append(x.attributes['value'].value)
-						print "Found a new perfect number. Appended it to the list. Currently, perfect numbers are:", perfect_numbers
-				elif(client == "compute-d"):
-					print "Client is compute-d"
-				elif(client == "report"):
-					if(request_type == "query"):
-						print "Client is report, request is query"
-						print "Sending performance characteristics of clients. Current clients:", compute_processes
+				data = data.split('\n')
+				for packet in data:
+					xmldoc = minidom.parseString(packet)
+					x = xmldoc.getElementsByTagName('request')[0]
+					client = x.attributes['sender'].value
+					request_type = x.attributes['type'].value
+					if(client == "compute"):
+						if(request_type == "query"):
+							x = xmldoc.getElementsByTagName('performance')[0]
+							mods_per_sec = x.attributes['mods_per_sec'].value
+							compute_processes[addr] = mods_per_sec
+							print "Client requested new range. Client can compute", mods_per_sec, "mods per second"
+							sock.send("<request type=\"new_range\" sender=\"manage\"><min value=\"1\"/><max value=\"9500\"/></request>")
+						elif(request_type == "new_perfect"):
+							x = xmldoc.getElementsByTagName('new_perfect')[0]
+							perfect_numbers.append(x.attributes['value'].value)
+							print "Found a new perfect number. Appended it to the list. Currently, perfect numbers are:", perfect_numbers
+					elif(client == "compute-d"):
+						print "Client is compute-d"
+					elif(client == "report"):
+						if(request_type == "query"):
+							print "Client is report, request is query"
+							print "Sending performance characteristics of clients. Current clients:", compute_processes
