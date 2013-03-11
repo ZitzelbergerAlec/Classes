@@ -18,9 +18,15 @@ compute_cnc_sock = []  #Tracks compute command and control (CnC) socket
 def handler(signum, frame):
 	conn.close()
 	sys.exit()
+
+#Handles client taking too long to respond
+def timeout(signum, frame):
+	print "Client took too long to respond. Exiting"
+	terminate_computes()
 	
-# Set the signal handler
+# Set the signal handlers
 signal.signal(signal.SIGQUIT, handler)
+signal.signal(signal.SIGALRM, timeout) # for timeout
 
 
 # to do: bump HOST and PORT into a lib file and have report and manage pull from that
@@ -86,7 +92,6 @@ while 1:
 	#reference: http://stackoverflow.com/questions/9306412/python-socket-programming-need-to-do-something-while-listening-for-connections
 	#multiplex the socket. Wait for an event on a readable socket
 	(sread, swrite, sexc) = select.select(descriptors, [], [])
-	
 	for sock in sread:
 		if(sock == srvsock): #New connection
 			newsock, (remhost, remport) = srvsock.accept()
@@ -133,6 +138,7 @@ while 1:
 									send_string += "\"/>"
 									send_string += "</request>"
 									sock.send(send_string)
+									signal.alarm(45) #Set timeout for packet
 								else:
 									terminate_computes()
 							elif(request_type == "new_perfect"):
