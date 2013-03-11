@@ -5,6 +5,7 @@ import signal
 import os
 import select
 import sys
+from math import sqrt
 
 #Global variables
 conn = 0
@@ -56,6 +57,16 @@ def get_handshake(sock):
 		elif(client == "report"):
 			print "Report client joined from", host,":",port
 
+def next_max(prev_max, mods_per_sec):
+	mod_ceiling = 0.6 * (mods_per_sec * 15)
+	num_mods = 0
+	i = prev_max + 1
+	while(num_mods < mod_ceiling):
+		num_mods += sqrt(i)
+		i += 1
+	return i
+
+
 #Returns an array of packet data split by newline
 def get_data(sock):
 	data = sock.recv(BUFFSIZE)
@@ -90,22 +101,23 @@ while 1:
 						if(client == "compute"):
 							if(request_type == "request_range"):
 								x = xmldoc.getElementsByTagName('performance')[0]
-								mods_per_sec = x.attributes['mods_per_sec'].value
-								compute_processes[addr] = mods_per_sec
+								mods_per_sec = int(x.attributes['mods_per_sec'].value)
+								host,port = sock.getpeername()
+								compute_processes[host] = mods_per_sec
 								x = xmldoc.getElementsByTagName('prev_max')[0]
-								prev_max = x.attributes['value'].value
-								print "Client requested new range. Client can compute", mods_per_sec, "mods per second"
+								prev_max = int(x.attributes['value'].value)
+								print "Client requested new range. Prev_max was", prev_max, "Client can compute", mods_per_sec, "mods per second"
 								send_string = "<request type=\"new_range\" sender=\"manage\">"
 								#Special case: Initial request
 								if(prev_max != 0):
 									send_string += "<min value=\""
-									send_string += prev_max + 1
-									send_string += "\"/>"
-									send_string += prev_max * 500
-									send_string += "<max value=\""
+									send_string += str(prev_max + 1)
 									send_string += "\"/>"
 								else: 
-									send_string += "<min value=\"2\"/><max value=\"3000000\"/>"
+									send_string += "<min value=\"2\"/>"
+								send_string += "<max value=\""
+								send_string += str(next_max(prev_max, mods_per_sec))
+								send_string += "\"/>"
 								send_string += "</request>"
 								sock.send(send_string)
 							elif(request_type == "new_perfect"):

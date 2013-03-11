@@ -59,9 +59,10 @@ typedef struct {
 
 /* Function prototypes */
 void compute_process();
+void do_nothing(unsigned long *k);
 range *get_range(char *packet_string);
 int is_perfect(int test_number);
-int mods_per_sec();
+unsigned int mods_per_sec();
 packet *parse_packet(char *packet_string);
 void puke_and_exit(char *error_message);
 void request_range(int sockfd, int prev_max);
@@ -103,7 +104,7 @@ int main(int argc, char **argv)
 	/* Connect to manage server */
 	connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
 	
-	/* Wait for server handshake */
+	  /* Wait for server handshake */
 	if (read(sockfd, recvline, MAXLINE) == 0){
         	puke_and_exit("Error reading line");
     	}
@@ -156,43 +157,46 @@ void compute_process(){
 
 	int prev_max = 0;
  	range *cur_range;
-    	printf("Before while loop");
 
-    	while(1){
-    		printf("Requesting range from server");
-    		/* Request new range from server */
-    		request_range(sockfd, prev_max);
+    	clock_t start, stop;
+     	while(prev_max < 1000000000){
+     		/* Request new range from server */
+     		request_range(sockfd, prev_max);
 
-    		/* Wait for server response */
-    		if (read(sockfd, recvline, MAXLINE) == 0){
-        		puke_and_exit("Error reading line");
-    		}
+     		/* Wait for server response */
+     		if (read(sockfd, recvline, MAXLINE) == 0){
+         		puke_and_exit("Error reading line");
+     		}
     		
-    		cur_range = get_range(recvline);
-    		printf("Calculating perfect numbers from %d to %d\n", cur_range->min, cur_range->max);
-		for(i=cur_range->min;i<cur_range->max;i++){
-			if(is_perfect(i))
-				send_new_perfect(i, sockfd);
-		}
-
-		prev_max = cur_range->max;
-	}
+     		cur_range = get_range(recvline);
+	 	printf("Calculating perfect numbers from %d to %d\n", cur_range->min, cur_range->max);
+	 	start = clock();
+	 	for(i=cur_range->min; i<=cur_range->max; i++){
+	 		if(is_perfect(i))
+	 			send_new_perfect(i, sockfd);
+	 	}
+	 	stop = clock();
+	 	printf("Calculation took %ld sec\n", (stop-start)/CLOCKS_PER_SEC);
+	 	prev_max = cur_range->max;
+	 }
 }
 
 /* 
 Returns 1 if a test_number is a perfect number.
 */
-int is_perfect(int test_number)
+int is_perfect(int n)
 {	
+	if(n == 1) //1 works, but is not a perfect number
+		return 0;
 	int i;
 	int sum = 1;
-	for(i=2; i<sqrt(test_number); i++){
-		if((test_number % i) == 0){
+	for(i=2; i<sqrt(n); i++){
+		if((n % i) == 0){
 			sum += i;
-			sum += test_number/i;
+			sum += n/i;
 		}
 	}
-	if(sum == test_number && test_number != 1) //1 works, but is not a perfect number
+	if(sum == n) 
 		return 1;
 	return 0;
 }
@@ -203,20 +207,27 @@ AKA FLOPS (Floating Point Operations Per Second).
 Uses the previous max and the square root of that number for better accuracy.
 To do: maybe generate a random number between 0 and sqrt(test_max)
 */
-int mods_per_sec()
-{
-	int test_max = 100000000;
-	int sqrt_test_max = sqrt(test_max);
+unsigned int mods_per_sec()
+{	
+	unsigned int i, j = 7;
+	unsigned long k = 0;
 	clock_t start, stop;
 	start = clock();
-	stop = clock();
-	int i = 0;
-	while((stop-start)/CLOCKS_PER_SEC < 0.05){
-		test_max % sqrt_test_max; /* Time the mod operation */
-		stop = clock();
-		i+=2; //Because each loop also divides by CLOCKS_PER_SEC
+	for(i = 1; i < 100000000; i++){
+	        k += j % i;
 	}
-	return i*20; /* mods per sec */
+	stop = clock();
+	//do_nothing(&k); //This doesn't help. 
+	double time_elapsed = (double)(stop-start) / CLOCKS_PER_SEC;
+	printf("k = %ul\n", k);
+	unsigned int multiply_coeff = (int) 1.00/time_elapsed;
+	return (i-1) * multiply_coeff;
+}
+
+/* Literally does nothing */
+void do_nothing(unsigned long *k)
+{
+	k++;
 }
 
 /* Sends a packet string over the socket */
@@ -233,7 +244,6 @@ void send_handshake(int sockfd)
 {
 	send_packet("<request type=\"handshake\" sender=\"compute\"><performance mods_per_sec=\"9000\"/></request>\n", sockfd);
 }
-
 
 /*
 Sends a new perfect number n to the manage process 
@@ -273,7 +283,7 @@ packet *parse_packet(char *packet_string)
 void request_range(int sockfd, int prev_max)
 {
 	char temp[MAXLINE]; /* A temp string buffer for the packet */ 
-	snprintf(temp, MAXLINE, "<request type=\"query\" sender=\"compute\"><performance mods_per_sec=\"9000\"/><prev_max value=\"%d\"/></request>\n", prev_max);
+	snprintf(temp, MAXLINE, "<request type=\"request_range\" sender=\"compute\"><performance mods_per_sec=\"%u\"/><prev_max value=\"%d\"/></request>\n", mods_per_sec(), prev_max);
 	write(sockfd, temp, strlen(temp));
 }
 
