@@ -3,6 +3,7 @@ import socket
 from xml.dom import minidom
 import signal
 import os
+import time
 import select
 import sys
 from math import sqrt
@@ -125,15 +126,20 @@ while 1:
 									send_string = "<request type=\"new_range\" sender=\"manage\">"
 									#Special case: Initial request
 									if(prev_max != 0):
+										signal.alarm(0) #Disable timeout
 										send_string += "<min value=\""
 										send_string += str(prev_max + 1)
 										send_string += "\"/>"
 									else: 
-										send_string += "<min value=\"2\"/>"
+										#send_string += "<min value=\"2\"/>"
+										send_string += "<min value=\"4294967000\"/>"
 									send_string += "<max value=\""
-									new_max = next_max(prev_max, mods_per_sec)
-									if(new_max == 4294967295): #bigger than client can handle
+									#new_max = next_max(prev_max, mods_per_sec)
+									new_max = next_max(4294967000, mods_per_sec)
+									print "new_max = ", new_max
+									if(new_max > 4294967295): #bigger than client can handle
 										new_max = 4294967295
+									print "Sending new max as: ", new_max
 									send_string += str(new_max)
 									send_string += "\"/>"
 									send_string += "</request>"
