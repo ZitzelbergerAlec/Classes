@@ -41,9 +41,11 @@ srvsock.bind((HOST, PORT))
 srvsock.listen(5) #5 is the maximum number of queued connections
 descriptors = [srvsock] #array of sockets
 
+#Sends a handshake to a client
 def send_handshake(sock):
 	sock.send("<request type=\"handshake\" sender=\"manage\"></request>")
 
+#Gets a handshake from a client
 def get_handshake(sock):
 	data = get_data(sock)
 	packet = data[0]
@@ -64,6 +66,7 @@ def get_handshake(sock):
 		elif(client == "report"):
 			print "Report client joined from", host,":",port
 
+#Finds the next maximum based on the number of mods per second the client can handle
 def next_max(prev_max, mods_per_sec):
 	mod_ceiling = 0.6 * (mods_per_sec * 15)
 	num_mods = 0
@@ -72,7 +75,6 @@ def next_max(prev_max, mods_per_sec):
 		num_mods += sqrt(i)
 		i += 1
 	return i
-
 
 #Returns an array of packet data split by newline
 def get_data(sock):
@@ -125,27 +127,22 @@ while 1:
 									print "Client requested new range. Prev_max was", prev_max, "Client can compute", mods_per_sec, "mods per second"
 									send_string = "<request type=\"new_range\" sender=\"manage\">"
 									#Special case: Initial request
-									if(prev_max != 0):
-										signal.alarm(0) #Disable timeout
+									if(prev_max == 0):
+										send_string += "<min value=\"2\"/>"
+									else: 
 										send_string += "<min value=\""
 										send_string += str(prev_max + 1)
 										send_string += "\"/>"
-									else: 
-										#send_string += "<min value=\"2\"/>"
-										send_string += "<min value=\"4294967000\"/>"
 									send_string += "<max value=\""
-									#new_max = next_max(prev_max, mods_per_sec)
-									new_max = next_max(4294967000, mods_per_sec)
-									print "new_max = ", new_max
+									new_max = next_max(prev_max, mods_per_sec)
 									if(new_max > 4294967295): #bigger than client can handle
 										new_max = 4294967295
-									print "Sending new max as: ", new_max
 									send_string += str(new_max)
 									send_string += "\"/>"
 									send_string += "</request>"
 									sock.send(send_string)
 									signal.alarm(45) #Set timeout for packet
-								else:
+								else: #If it has reached upper limits, terminate it
 									terminate_computes()
 							elif(request_type == "new_perfect"):
 								x = xmldoc.getElementsByTagName('new_perfect')[0]

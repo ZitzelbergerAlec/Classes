@@ -35,7 +35,6 @@ data = get_data(sockfd)
 #Send our handshake
 send_handshake(sockfd)
 
-
 #Send query for data
 sockfd.send("<request type=\"query\" sender=\"report\"></request>\n") 
 data = get_data(sockfd)

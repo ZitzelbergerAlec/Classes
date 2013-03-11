@@ -61,7 +61,7 @@ typedef struct {
 void compute_process();
 void do_nothing(unsigned long *k);
 range *get_range(char *packet_string);
-int is_perfect(int test_number);
+int is_perfect(unsigned int n);
 unsigned int mods_per_sec();
 packet *parse_packet(char *packet_string);
 void puke_and_exit(char *error_message);
@@ -89,7 +89,7 @@ int main(int argc, char **argv)
 
 	}
 
-	/* Compute CNC stuff */
+	/* Compute CnC stuff */
 	int sockfd;
 	struct sockaddr_in servaddr;
 	char recvline[MAXLINE];
@@ -107,9 +107,9 @@ int main(int argc, char **argv)
 	  /* Wait for server handshake */
 	if (read(sockfd, recvline, MAXLINE) == 0){
         	puke_and_exit("Error reading line");
-    	}
+    }
 	
-    	/* Send client handshake */
+    /* Send client handshake */
 	send_packet("<request type=\"handshake\" sender=\"compute_cnc\"></request>\n", sockfd);
 
 	/* Wait for terminate packet from server */
@@ -117,15 +117,15 @@ int main(int argc, char **argv)
         	puke_and_exit("Error reading line");
     	}
 
-    	/* Parse packet to make sure it's the correct one */
-    	packet *header = parse_packet(recvline);
+	/* Parse packet to make sure it's the correct one */
+	packet *header = parse_packet(recvline);
 
-    	if(!strcmp(header->sender_name, "manage") && !strcmp(header->request_type, "terminate")){
-    		/* Kill compute process and exit this one */
-    		kill(compute_pid, SIGQUIT);
-    		wait(NULL);
-    		exit(1);
-    	}
+	if(!strcmp(header->sender_name, "manage") && !strcmp(header->request_type, "terminate")){
+		/* Kill compute process and exit this one */
+		kill(compute_pid, SIGQUIT);
+		wait(NULL);
+		exit(1);
+	}
 		
 	return 0;
 }
@@ -149,42 +149,41 @@ void compute_process(){
 	
 	/* Wait for server handshake */
 	if (read(sockfd, recvline, MAXLINE) == 0){
-        	puke_and_exit("Error reading line");
-    	}
+        puke_and_exit("Error reading line");
+    }
 	
-    	/* Send client handshake */
+    /* Send client handshake */
 	send_handshake(sockfd);	
 
 	int prev_max = 0;
  	range *cur_range;
+	clock_t start, stop;
+	while(1){
+		/* Request new range from server */
+		request_range(sockfd, prev_max);
 
-    	clock_t start, stop;
-     	while(1){
-     		/* Request new range from server */
-     		request_range(sockfd, prev_max);
-
-     		/* Wait for server response */
-     		if (read(sockfd, recvline, MAXLINE) == 0){
-         		puke_and_exit("Error reading line");
-     		}
-    		
-     		cur_range = get_range(recvline);
-	 	printf("Calculating perfect numbers from %d to %d\n", cur_range->min, cur_range->max);
-	 	start = clock();
-	 	for(i=cur_range->min; i<=cur_range->max; i++){
-	 		if(is_perfect(i))
-	 			send_new_perfect(i, sockfd);
-	 	}
-	 	stop = clock();
-	 	printf("Calculation took %ld sec\n", (stop-start)/CLOCKS_PER_SEC);
-	 	prev_max = cur_range->max;
-	 }
+		/* Wait for server response */
+		if (read(sockfd, recvline, MAXLINE) == 0){
+			puke_and_exit("Error reading line");
+		}
+		
+		cur_range = get_range(recvline);
+		printf("Calculating perfect numbers from %u to %u\n", cur_range->min, cur_range->max);
+		start = clock();
+		for(i=cur_range->min; i<=cur_range->max; i++){
+			if(is_perfect(i))
+				send_new_perfect(i, sockfd);
+		}
+		stop = clock();
+		printf("Calculation took %ld sec\n", (stop-start)/CLOCKS_PER_SEC);
+		prev_max = cur_range->max;
+	}
 }
 
 /* 
 Returns 1 if a test_number is a perfect number.
 */
-int is_perfect(int n)
+int is_perfect(unsigned int n)
 {	
 	if(n == 1) //1 works, but is not a perfect number
 		return 0;
@@ -308,10 +307,10 @@ range *get_range(char *packet_string)
 	
 	while (cur != NULL) {
 		if ((!xmlStrcmp(cur->name, (const xmlChar *) "min"))) {
-			new_range->min = atoi((char *) xmlGetProp(cur, "value"));
+			new_range->min = strtoul((char *) xmlGetProp(cur, "value"), NULL, 0);
 		}
 		if ((!xmlStrcmp(cur->name, (const xmlChar *) "max"))) {
-			new_range->max = atoi((char *) xmlGetProp(cur, "value"));
+			new_range->max = strtoul((char *) xmlGetProp(cur, "value"), NULL, 0);
 		}
 		cur = cur->next;
 	}
