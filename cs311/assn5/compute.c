@@ -53,8 +53,8 @@ typedef struct {
 } compute_packet;
 
 typedef struct {
-	int min;
-	int max;
+	unsigned int min;
+	unsigned int max;
 } range;
 
 /* Function prototypes */
@@ -65,7 +65,7 @@ int is_perfect(int test_number);
 unsigned int mods_per_sec();
 packet *parse_packet(char *packet_string);
 void puke_and_exit(char *error_message);
-void request_range(int sockfd, int prev_max);
+void request_range(int sockfd, unsigned int prev_max);
 void send_handshake(int sockfd);
 void send_new_perfect(int n, int sockfd);
 void send_packet(char *packet_string, int sockfd);
@@ -133,7 +133,7 @@ int main(int argc, char **argv)
 /* The process for computing perfect numbers */
 void compute_process(){
 	/* Set up sockets */
-	int i;
+	unsigned int i;
 	int sockfd;
 	struct sockaddr_in servaddr;
 	char recvline[MAXLINE];
@@ -159,7 +159,7 @@ void compute_process(){
  	range *cur_range;
 
     	clock_t start, stop;
-     	while(prev_max < 1000000000){
+     	while(1){
      		/* Request new range from server */
      		request_range(sockfd, prev_max);
 
@@ -280,7 +280,7 @@ packet *parse_packet(char *packet_string)
 }
 
 /* sends a request for a range then  waits for the response */
-void request_range(int sockfd, int prev_max)
+void request_range(int sockfd, unsigned int prev_max)
 {
 	char temp[MAXLINE]; /* A temp string buffer for the packet */ 
 	snprintf(temp, MAXLINE, "<request type=\"request_range\" sender=\"compute\"><performance mods_per_sec=\"%u\"/><prev_max value=\"%d\"/></request>\n", mods_per_sec(), prev_max);

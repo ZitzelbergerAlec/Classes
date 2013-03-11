@@ -74,6 +74,14 @@ def get_data(sock):
 	data = data.split('\n')
 	return data
 
+#Sends terminate packet to Compute CnC and then exits
+def terminate_computes():
+	if(compute_cnc_sock):
+		print "Sending terminate packet"
+		(cnc_read, cnc_write, cnc_exc) = select.select([], compute_cnc_sock, [])
+		cnc_write[0].send("<request type=\"terminate\" sender=\"manage\"></request>")
+	sys.exit(0)
+
 while 1:
 	#reference: http://stackoverflow.com/questions/9306412/python-socket-programming-need-to-do-something-while-listening-for-connections
 	#multiplex the socket. Wait for an event on a readable socket
@@ -106,20 +114,27 @@ while 1:
 								compute_processes[host] = mods_per_sec
 								x = xmldoc.getElementsByTagName('prev_max')[0]
 								prev_max = int(x.attributes['value'].value)
-								print "Client requested new range. Prev_max was", prev_max, "Client can compute", mods_per_sec, "mods per second"
-								send_string = "<request type=\"new_range\" sender=\"manage\">"
-								#Special case: Initial request
-								if(prev_max != 0):
-									send_string += "<min value=\""
-									send_string += str(prev_max + 1)
+								#Make sure the client hasn't reached the upper limit on calculations it can handle
+								if(prev_max != 4294967295):
+									print "Client requested new range. Prev_max was", prev_max, "Client can compute", mods_per_sec, "mods per second"
+									send_string = "<request type=\"new_range\" sender=\"manage\">"
+									#Special case: Initial request
+									if(prev_max != 0):
+										send_string += "<min value=\""
+										send_string += str(prev_max + 1)
+										send_string += "\"/>"
+									else: 
+										send_string += "<min value=\"2\"/>"
+									send_string += "<max value=\""
+									new_max = next_max(prev_max, mods_per_sec)
+									if(new_max == 4294967295): #bigger than client can handle
+										new_max = 4294967295
+									send_string += str(new_max)
 									send_string += "\"/>"
-								else: 
-									send_string += "<min value=\"2\"/>"
-								send_string += "<max value=\""
-								send_string += str(next_max(prev_max, mods_per_sec))
-								send_string += "\"/>"
-								send_string += "</request>"
-								sock.send(send_string)
+									send_string += "</request>"
+									sock.send(send_string)
+								else:
+									terminate_computes()
 							elif(request_type == "new_perfect"):
 								x = xmldoc.getElementsByTagName('new_perfect')[0]
 								new_perfect = x.attributes['value'].value
@@ -138,7 +153,7 @@ while 1:
 										querystring += hostname
 										querystring += "\" "
 										querystring += "mods_per_sec=\""
-										querystring += mods_per_sec
+										querystring += str(mods_per_sec)
 										querystring += "\"/>"
 								#Send found perfect numbers
 								if perfect_numbers: 
@@ -151,10 +166,6 @@ while 1:
 							elif(request_type == "terminate"):
 								#To do: need to keep track of sockets that compute processes use and issue terminate signal over those sockets.
 								print "Report sent terminate request. Terminate compute processes"
-								if(compute_cnc_sock):
-									print "Sending terminate packet"
-									(cnc_read, cnc_write, cnc_exc) = select.select([], compute_cnc_sock, [])
-									cnc_write[0].send("<request type=\"terminate\" sender=\"manage\"></request>")
-									sys.exit(0)
+								terminate_computes()
 
 
