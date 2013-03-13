@@ -9,7 +9,6 @@ import sys
 from math import sqrt
 
 #Global variables
-conn = 0
 perfect_numbers = []
 compute_processes = dict() #Dictionary to hold compute processes by hostname->mods_per_sec
 compute_cnc_sock = []  #Tracks compute command and control (CnC) socket
@@ -17,7 +16,7 @@ compute_cnc_sock = []  #Tracks compute command and control (CnC) socket
 
 #signal handler
 def handler(signum, frame):
-	conn.close()
+	terminate_computes()
 	sys.exit()
 
 #Handles client taking too long to respond
@@ -26,13 +25,15 @@ def timeout(signum, frame):
 	terminate_computes()
 	
 # Set the signal handlers
+signal.signal(signal.SIGHUP, handler)
+signal.signal(signal.SIGINT, handler)
 signal.signal(signal.SIGQUIT, handler)
 signal.signal(signal.SIGALRM, timeout) # for timeout
 
 
 # to do: bump HOST and PORT into a lib file and have report and manage pull from that
 HOST = "localhost"                 # Symbolic name meaning all available interfaces
-PORT = 43283              # Arbitrary non-privileged port
+PORT = 43283              # "4DAVE"
 BUFFSIZE = 4096
 
 srvsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -176,5 +177,3 @@ while 1:
 								#To do: need to keep track of sockets that compute processes use and issue terminate signal over those sockets.
 								print "Report sent terminate request. Terminate compute processes"
 								terminate_computes()
-
-

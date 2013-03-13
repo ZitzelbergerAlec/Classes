@@ -1,5 +1,8 @@
 /* Compiler directives */
-#define _POSIX_SOURCE		//for kill
+#define _POSIX_C_SOURCE 199309 // For kill
+#define _POSIX_SOURCE
+#define _BSD_SOURCE
+
 
 /* Includes */
 #include 	<ctype.h>
@@ -39,7 +42,8 @@
 #define SERV_PORT 43283 // "4DAVE" in keypad numbers
 #define SERV_PORT_STR "43283"
 /* Variable to keep track of compute PID */
-pid_t compute_pid;
+pid_t compute_pid = 0;
+pid_t ppid; // Parent process ID
 
 typedef struct {
 	char request_type[15];
@@ -61,6 +65,7 @@ typedef struct {
 void compute_process();
 void do_nothing(unsigned long *k);
 range *get_range(char *packet_string);
+static void grim_reaper(int sig, siginfo_t *siginfo, void *context);
 int is_perfect(unsigned int n);
 unsigned int mods_per_sec();
 packet *parse_packet(char *packet_string);
@@ -72,6 +77,19 @@ void send_packet(char *packet_string, int sockfd);
 
 int main(int argc, char **argv)
 {
+	ppid = getpid();
+	/* Initialize signal handling */
+	struct sigaction act;
+
+	sigemptyset(&act.sa_mask);
+	act.sa_handler = grim_reaper;
+	act.sa_flags = SA_SIGINFO; //To pass extra info about signal, particularly which process invoked it
+	act.sa_flags = 0;
+
+	sigaction(SIGQUIT, &act, NULL);
+	sigaction(SIGINT, &act, NULL);
+	sigaction(SIGHUP, &act, NULL);
+
 	/* 
 	Fork off compute process 
 	Main process will be CnC (Command and Control)
@@ -86,7 +104,6 @@ int main(int argc, char **argv)
 		default: //Parent case
 			compute_pid = pid;
 			break;
-
 	}
 
 	/* Compute CnC stuff */
@@ -133,7 +150,7 @@ int main(int argc, char **argv)
 /* The process for computing perfect numbers */
 void compute_process(){
 	/* Set up sockets */
-	unsigned int i;
+	long i;
 	int sockfd;
 	struct sockaddr_in servaddr;
 	char recvline[MAXLINE];
@@ -170,7 +187,7 @@ void compute_process(){
 		cur_range = get_range(recvline);
 		printf("Calculating perfect numbers from %u to %u\n", cur_range->min, cur_range->max);
 		start = clock();
-		for(i=cur_range->min; i<=cur_range->max; i++){
+		for(i = cur_range->min; i <= cur_range->max; i++){
 			if(is_perfect(i))
 				send_new_perfect(i, sockfd);
 		}
@@ -178,6 +195,18 @@ void compute_process(){
 		printf("Calculation took %ld sec\n", (stop-start)/CLOCKS_PER_SEC);
 		prev_max = cur_range->max;
 	}
+}
+
+/* Signal handler */
+static void grim_reaper(int sig, siginfo_t *siginfo, void *context)
+{
+	if(getpid() == ppid){ 
+		if (compute_pid != 0){
+			kill(compute_pid, SIGQUIT);
+			wait(NULL);
+		}
+	}
+	exit(EXIT_FAILURE);
 }
 
 /* 
@@ -200,6 +229,7 @@ int is_perfect(unsigned int n)
 	return 0;
 }
 
+
 /* 
 Calculates the number of mod operations capable of per sec.
 AKA FLOPS (Floating Point Operations Per Second).
@@ -218,7 +248,7 @@ unsigned int mods_per_sec()
 	stop = clock();
 	//do_nothing(&k); //This doesn't help. 
 	double time_elapsed = (double)(stop-start) / CLOCKS_PER_SEC;
-	printf("k = %ul\n", k);
+	fprintf(stderr, "k = %ul\n", k);
 	unsigned int multiply_coeff = (int) 1.00/time_elapsed;
 	return (i-1) * multiply_coeff;
 }
@@ -307,10 +337,10 @@ range *get_range(char *packet_string)
 	
 	while (cur != NULL) {
 		if ((!xmlStrcmp(cur->name, (const xmlChar *) "min"))) {
-			new_range->min = strtoul((char *) xmlGetProp(cur, "value"), NULL, 0);
+			new_range->min = atol((char *) xmlGetProp(cur, "value"));
 		}
 		if ((!xmlStrcmp(cur->name, (const xmlChar *) "max"))) {
-			new_range->max = strtoul((char *) xmlGetProp(cur, "value"), NULL, 0);
+			new_range->max = atol((char *) xmlGetProp(cur, "value"));
 		}
 		cur = cur->next;
 	}
@@ -324,7 +354,6 @@ void puke_and_exit(char *error_message)
 	printf("Errno = %d\n", errno);
 	exit(EXIT_FAILURE);
 }
-
 
 #else
 int main(void) {

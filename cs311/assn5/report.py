@@ -4,12 +4,17 @@ from xml.dom import minidom
 import os
 import sys
 import getopt
+import signal
 
 HOST = 'localhost' 
 PORT = 43283
 BUFFSIZE = 4096
 sockfd = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 sockfd.connect((HOST,PORT)) 
+
+#signal handler
+def handler(signum, frame):
+	sys.exit()
 
 #Function definitions
 #Returns an array of packet data split by newline
@@ -21,6 +26,11 @@ def get_data(sock):
 
 def send_handshake(sock):
 	sock.send("<request type=\"handshake\" sender=\"report\"></request>\n") 
+
+# Set the signal handlers
+signal.signal(signal.SIGHUP, handler)
+signal.signal(signal.SIGINT, handler)
+signal.signal(signal.SIGQUIT, handler)
 
 #Reference for getopt(): http://pymotw.com/2/getopt/
 options, remainder = getopt.getopt(sys.argv[1:], 'k')
