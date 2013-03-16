@@ -11,6 +11,9 @@
 \usepackage[TABBOTCAP, tight]{subfigure}
 \usepackage{enumitem}
 
+\newcommand{\ignore}[2]{\hspace{0in}#2} %Used for inline comments
+\newcommand{\tab}{\hspace*{2em}} %For tabbing
+
 \usepackage{pstricks, pst-node}
 \usepackage{geometry}
 \usepackage{graphicx}
@@ -50,143 +53,235 @@ CS 311
 {\LARGE Writeup for Final}
 \end{center}
 
-\begin{enumerate}
+\begin{enumerate} 
 \item \emph{File I/O}
-In this course, one of the central themes was the universality of I/O in the POSIX API. This means that, in essence, "everything is a file." Files, pipes, buffers, devices, sockets, processes, shared memory, et. al. are abstracted to files, appear in the file system, and can all be referred to by file descriptors. The same four system calls--open(), read(), write(), and close()--can all be used to perform I/O on all types of files, including devices such as terminals [from TLPI, pg. 72].
 
-In the POSIX API, every process that runs from the shell opens three standard file descriptors. These are 0 for STDIN, 1 for STDOUT, and 2 for STDERR. The Windows API works similarly. When a program begins execution, it opens standard input, standard output, and standard error. Windows even uses the same file descriptors as POSIX does for these streams [http://www.microsoft.com/resources/documentation/windows/xp/all/proddocs/en-us/redirection.mspx?mfr=true]. 
+\tab In this course, one of the central themes was the universality of I/O in the POSIX API. This means that, in essence, "everything is a file." Files, pipes, buffers, devices, sockets, processes, shared memory, et. al. are abstracted to files, appear in the file system, and can all be referred to by file descriptors. The same four system calls--open(), read(), write(), and close()--can all be used to perform I/O on all types of files, including devices such as terminals. \newline
+%\[from TLPI, pg. 72\].
 
-Open():
-POSIX: 
-int open(const char *pathname, int flags, .../* mode_t mode */);
+\tab In the POSIX API, every process that runs from the shell opens three standard file descriptors. These are 0 for STDIN, 1 for STDOUT, and 2 for STDERR. The Windows API works similarly. When a program begins execution, it opens standard input, standard output, and standard error. Windows even uses the same file descriptors as POSIX does for these streams. \newline
+%\[http://www.microsoft.com/resources/documentation/windows/xp/all/proddocs/en-us/redirection.mspx?mfr=true\]. 
 
-In the POSIX API, the open() system call returns a file descriptor to a file that can then be read from and/or written to, depending on the flags passed into the function. If the file doesn't exist and O_CREAT is specified, it creates the file and then returns the descriptor. The open() function accepts a const char *pathname, flags, and the access mode. The pathname is the file to be opened, the flags argument is a bitmask that specifies the access mode of the file (read, create, etc.), and the mode is the file permissions to open it with [TLPI, pg. 72]. On success, this function returns a file descriptor referring to the open file. On error, it returns -1 and sets the errno variable to indicate what went wrong. [TLPI, pg. 72]
+\textbf{Open():}
 
-Windows:
+\textbf{POSIX:}
+
+int open(const char *pathname, int flags, .../* mode\_t mode */);\newline
+
+\tab In the POSIX API, the open() system call returns a file descriptor to a file that can then be read from and/or written to, depending on the flags passed into the function. If the file doesn't exist and O\_CREAT is specified, it creates the file and then returns the descriptor. The open() function accepts a const char *pathname, flags, and the access mode. The pathname is the file to be opened, the flags argument is a bitmask that specifies the access mode of the file (read, create, etc.), and the mode is the file permissions to open it with\ignore{\[TLPI, pg. 72\]}. On success, this function returns a file descriptor referring to the open file. On error, it returns -1 and sets the errno variable to indicate what went wrong. \newline %\[TLPI, pg. 72\]
+
+\textbf{Windows:}
+
+\begin{quote}
 HANDLE WINAPI CreateFile(
-  _In_      LPCTSTR lpFileName,
-  _In_      DWORD dwDesiredAccess,
-  _In_      DWORD dwShareMode,
-  _In_opt_  LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-  _In_      DWORD dwCreationDisposition,
-  _In_      DWORD dwFlagsAndAttributes,
-  _In_opt_  HANDLE hTemplateFile
+
+\tab\_In\_      LPCTSTR lpFileName,
+
+\tab\_In\_      DWORD dwDesiredAccess,
+
+\tab\_In\_      DWORD dwShareMode,
+
+\tab\_In\_opt\_  LPSECURITY\_ATTRIBUTES lpSecurityAttributes,
+
+\tab\_In\_      DWORD dwCreationDisposition,
+
+\tab\_In\_      DWORD dwFlagsAndAttributes,
+
+\tab\_In\_opt\_  HANDLE hTemplateFile
+
 );
+\end{quote}
 
-In the Windows API, the CreateFile() system call performs similar functionality to POSIX's open(). It accepts a filename, access mode (read, write, both, or neither), a sharing mode (the level of access that other processes have to the file--read, write, none), a pointer to a security attributes structure (that determines whether or not child processes can inherit the file descriptor), a creation disposition (what action to take on a file or device that exists or doesn't exist), flags and attributes (which specify whether the file is hidden, encrypted, readonly, etc.), and an optional file descriptor of a template file (which supplies file attributes for the file that is being created).  [http://msdn.microsoft.com/en-us/library/windows/desktop/aa363858(v=vs.85).aspx].
 
-Close():
-POSIX:
+\tab In the Windows API, the CreateFile() system call performs similar functionality to POSIX's open(). It accepts a filename, access mode (read, write, both, or neither), a sharing mode (the level of access that other processes have to the file--read, write, none), a pointer to a security attributes structure (that determines whether or not child processes can inherit the file descriptor), a creation disposition (what action to take on a file or device that exists or doesn't exist), flags and attributes (which specify whether the file is hidden, encrypted, readonly, etc.), and an optional file descriptor of a template file (which supplies file attributes for the file that is being created). \newline  
+%\[http://msdn.microsoft.com/en-us/library/windows/desktop/aa363858(v=vs.85).aspx\].
+
+
+\textbf{Close():}
+
+\textbf{POSIX:}
+
+\begin{quote}
 int close(int fd);
+\end{quote}
 
-In the POSIX API, the close() system call frees an open file descriptor. It accepts only an integer for the file descriptor. It returns 0 on success, or -1 on error, in which case errno is also set appropriately. When a process terminates, the POSIX API automatically closes all the associated file descriptors [TLPI, pg. 80].
+\tab In the POSIX API, the close() system call frees an open file descriptor. It accepts only an integer for the file descriptor. It returns 0 on success, or -1 on error, in which case errno is also set appropriately. When a process terminates, the POSIX API automatically closes all the associated file descriptors.\newline
+%\[TLPI, pg. 80\].
 
-Windows:
+\textbf{Windows:} 
+
+\begin{quote}
 BOOL WINAPI CloseHandle(
-  _In_  HANDLE hObject
+
+\tab\_In\_  HANDLE hObject
+
 );
+\end{quote}
 
-The Windows API equivalent of close() is CloseHandle(). This function accepts a handle object. A handle can be a pipe, mutex, process, semaphore, thread, file, device, etc. The function returns a nonzero value on success, and zero on failure. [http://msdn.microsoft.com/en-us/library/windows/desktop/ms724211(v=vs.85).aspx].
+\tab The Windows API equivalent of close() is CloseHandle(). This function accepts a handle object. A handle can be a pipe, mutex, process, semaphore, thread, file, device, etc. The function returns a nonzero value on success, and zero on failure. \newline 
+%\[http://msdn.microsoft.com/en-us/library/windows/desktop/ms724211(v=vs.85).aspx\].
 
-Read():
-POSIX: 
-ssize_t read(int fd, void *buffer, size_t count);
+\textbf{Read():}
 
-In the POSIX API, the read() call reads data from an open file descriptor. It accepts an integer for the file descriptor, a character pointer for the buffer to read data into, and size_t type to specify how many characters to read. This function returns the number of bytes actually read, 0 on EOF, or -1 on error, in which case errno is set appropriately. [TLPI, pg. 79]
+\textbf{POSIX:} 
 
-Windows:
+\begin{quote}
+ssize\_t read(int fd, void *buffer, size\_t count);
+\end{quote}
+
+\tab In the POSIX API, the read() call reads data from an open file descriptor. It accepts an integer for the file descriptor, a character pointer for the buffer to read data into, and size\_t type to specify how many characters to read. This function returns the number of bytes actually read, 0 on EOF, or -1 on error, in which case errno is set appropriately.\newline
+%\[TLPI, pg. 79\]
+
+\textbf{Windows:} 
+
+\begin{quote}
 BOOL WINAPI ReadFile(
-  _In_         HANDLE hFile,
-  _Out_        LPVOID lpBuffer,
-  _In_         DWORD nNumberOfBytesToRead,
-  _Out_opt_    LPDWORD lpNumberOfBytesRead,
-  _Inout_opt_  LPOVERLAPPED lpOverlapped
+
+\tab\_In\_         HANDLE hFile,
+
+\tab\_Out\_        LPVOID lpBuffer,
+
+\tab\_In\_         DWORD nNumberOfBytesToRead,
+
+\tab\_Out\_opt\_    LPDWORD lpNumberOfBytesRead,
+
+\tab\_Inout\_opt\_  LPOVERLAPPED lpOverlapped
+
 );
+\end{quote}
 
-In the Windows API, a similar function is ReadFile(). This function accepts a handle to a device (e.g. a file, disk, volume, socket, buffer, etc. This handle must have been created with read access to the resource.), a pointer to a buffer to read the data into, a number of bytes to read, an optional pointer to a variable that receives the number of bytes read, and an optional pointer to an OVERLAPPED structure. [http://msdn.microsoft.com/en-us/library/windows/desktop/aa365467(v=vs.85).aspx]. This function returns a nonzero (TRUE) return value on success, otherwise it returns 0 (FALSE). The error can be obtained with the GetLastError() function.
+
+\tab In the Windows API, a similar function is ReadFile(). This function accepts a handle to a device (e.g. a file, disk, volume, socket, buffer, etc. This handle must have been created with read access to the resource.), a pointer to a buffer to read the data into, a number of bytes to read, an optional pointer to a variable that receives the number of bytes read, and an optional pointer to an OVERLAPPED structure. \ignore{\[http://msdn.microsoft.com/en-us/library/windows/desktop/aa365467(v=vs.85).aspx\]}This function returns a nonzero (TRUE) return value on success, otherwise it returns 0 (FALSE). The error can be obtained with the GetLastError() function.\newline
 
 
-Write():
-POSIX:
-ssize_t write(int fd, void *buffer, size_t count);
+\textbf{Write():}
 
-In the POSIX API, the write() system call writes data to an open file referred to by a file descriptor. This function is very similar to read(); it accepts an integer file descriptor, a pointer to a buffer containing the characters to be written, and a size_t variable with the number of bytes to be written. On success, it returns the number of bytes written (which may be less than the specified number of bytes to be written), and -1 on error, in which case errno is set appropriately. [TLPI, pg. 80]
+\textbf{POSIX:}
 
-Windows:
+\begin{quote}
+ssize\_t write(int fd, void *buffer, size\_t count);
+\end{quote}
+
+\tab In the POSIX API, the write() system call writes data to an open file referred to by a file descriptor. This function is very similar to read(); it accepts an integer file descriptor, a pointer to a buffer containing the characters to be written, and a size\_t variable with the number of bytes to be written. On success, it returns the number of bytes written (which may be less than the specified number of bytes to be written), and -1 on error, in which case errno is set appropriately. \newline%\[TLPI, pg. 80\]
+
+\textbf{Windows:} 
+
+\begin{quote}
 BOOL WINAPI WriteFile(
-  _In_         HANDLE hFile,
-  _In_         LPCVOID lpBuffer,
-  _In_         DWORD nNumberOfBytesToWrite,
-  _Out_opt_    LPDWORD lpNumberOfBytesWritten,
-  _Inout_opt_  LPOVERLAPPED lpOverlapped
+
+\tab\_In\_         HANDLE hFile,
+
+\tab\_In\_         LPCVOID lpBuffer,
+
+\tab\_In\_         DWORD nNumberOfBytesToWrite,
+
+\tab\_Out\_opt\_    LPDWORD lpNumberOfBytesWritten,
+
+\tab\_Inout\_opt\_  LPOVERLAPPED lpOverlapped
+
 );
+\end{quote}
 
-In the Windows API, a similar function is WriteFile(). This function accepts a handle to a device (e.g. a file, disk, volume, socket, buffer, etc. This handle must have been created with write access to the resource.), a pointer to the buffer containing the data to be written, the number of bytes to write, an optional pointer to a variable that receives the number of bytes written, and an optional pointer to an OVERLAPPED structure. [http://msdn.microsoft.com/en-us/library/windows/desktop/aa365747(v=vs.85).aspx]
 
-Error checking:
-In the Win32 API, the last-error code value is maintained on a per-thread basis. The GetLastError() function returns the value of this error. Error codes are 32-bit values that are little-endian. [http://msdn.microsoft.com/en-us/library/windows/desktop/ms679360(v=vs.85).aspx]
+\tab In the Windows API, a similar function is WriteFile(). This function accepts a handle to a device (e.g. a file, disk, volume, socket, buffer, etc. This handle must have been created with write access to the resource.), a pointer to the buffer containing the data to be written, the number of bytes to write, an optional pointer to a variable that receives the number of bytes written, and an optional pointer to an OVERLAPPED structure. \newline %\[http://msdn.microsoft.com/en-us/library/windows/desktop/aa365747(v=vs.85).aspx\]
 
-In the POSIX API, most system calls return -1 on error, and set the global variable errno according to what type of error occurred. This variable is an integer. [TLPI, pg. 50]
 
-\item \emph{Signals}
-Handling Signals:
+\textbf{Error checking:}\newline
 
-The POSIX API uses a wide variety of signals, which are software interrupts that indicate certain events. In contrast, Windows supports only a small set of signals. These include SIGABRT, SIGFPE, SIGILL, SIGINT, SIGSEGV, and SIGTERM. As a substitute for signals, Windows uses Messages or Event Objects to notify processes of the occurrence of events.
 
-Windows and POSIX both handle SIGINT (the interrupt signal) very similarly. Windows even has a signal.h library with a signal() system call that is very similar to POSIX. Signal() is used to assign a handler to a specific signal. If the signal to handle is SIGINT, a POSIX program can be written in almost exactly the same syntax as a Windows program.
+\tab In the Windows API, the last-error code value is maintained on a per-thread basis. The GetLastError() function returns the value of this error. Error codes are 32-bit values that are little-endian.\newline %\[http://msdn.microsoft.com/en-us/library/windows/desktop/ms679360(v=vs.85).aspx\]
 
-The similarity, however, ends with the limited support Windows has for signals. If, for example, you wanted to write a program that would trigger on a timer elapsing, the way that you would go about this differs greatly between Windows and POSIX. In POSIX, you would define a signal handler function alarm_function(), use signal(SIGALRM, alarm_function) to assign this function to be the handler for SIGALRM, spawn a child process that sends the alarm signal to the parent, then the parent would execute alarm_function(). In Windows, there is no SIGALRM. The analogous program in the Windows API would first define a VOID CALLBACK function alarm_function(), would set a 5-second timer in the main() function with SetTimer(0, 0, 5000, (TIMERPROC)alarm_function), then would simply continue executing intil it was interrupted by the timer elapsing. In Windows, there is no need to create a separate process or thread for synchronization to invoke the callback function; that function is invoked in the same thread that calls SetTimer. 
+\tab In the POSIX API, most system calls return -1 on error, and set the global variable errno according to what type of error occurred. This variable is an integer. \newline %\[TLPI, pg. 50\]
 
-Sending Signals:
-For the sake of argument, imagine that we wished to prematurely trigger the alarm_function() in both of the previously-discussed example programs. In POSIX, we would use the kill() function to send the SIGALRM signal to the process, which would then trigger the alarm_function. In Windows, the analogous call would be PostMessage(WM_TIMER). This uses a Windows Message to trigger the callback function (alarm_function in this case).
+\item \emph{Signals} \newline
 
-Summary:
-POSIX uses signals extensively for software interrupts. Windows does not natively support most POSIX-style signals, but similar functionality can be achieved using Windows Messages and Event Objects.
+\textbf{Handling Signals:}\newline
+
+\tab The POSIX API uses a wide variety of signals, which are software interrupts that indicate certain events. In contrast, Windows supports only a small set of signals. These include SIGABRT, SIGFPE, SIGILL, SIGINT, SIGSEGV, and SIGTERM. As a substitute for signals, Windows uses Messages or Event Objects to notify processes of the occurrence of events.\newline
+
+\tab Windows and POSIX both handle SIGINT (the interrupt signal) very similarly. Windows even has a signal.h library with a signal() system call that is very similar to POSIX. Signal() is used to assign a handler to a specific signal. If the signal to handle is SIGINT, a POSIX program can be written in almost exactly the same syntax as a Windows program.\newline
+
+\tab Any similarity, however, ends with the limited support Windows has for signals. If, for example, you wanted to write a program that would trigger on a timer elapsing, the way that you would go about this differs greatly between Windows and POSIX. In POSIX, you would define a signal handler function alarm\_function(), use signal(SIGALRM, alarm\_function) to assign this function to be the handler for SIGALRM, spawn a child process that sends the alarm signal to the parent, then the parent would execute alarm\_function(). In Windows, there is no SIGALRM. The analogous program in the Windows API would first define a VOID CALLBACK function alarm\_function(), would set a 5-second timer in the main() function with SetTimer(0, 0, 5000, (TIMERPROC)alarm\_function), then would simply continue executing intil it was interrupted by the timer elapsing. In Windows, there is no need to create a separate process or thread for synchronization to invoke the callback function; that function is invoked in the same thread that calls SetTimer. \newline
+
+
+\textbf{Sending Signals:} \newline
+
+\tab For the sake of argument, imagine that we wished to prematurely trigger the alarm\_function() in both of the previously-discussed example programs. In POSIX, we would use the kill() function to send the SIGALRM signal to the process, which would then trigger the alarm\_function. In Windows, the analogous call would be PostMessage(WM\_TIMER). This uses a Windows Message to trigger the callback function (alarm\_function in this case). \newline
+
+\textbf{Summary:}
+
+\tab POSIX uses signals extensively for software interrupts. Windows does not natively support most POSIX-style signals, but similar functionality can be achieved using Windows Messages and Event Objects. \newline
 
 \item \emph{Pipes}
-Like POSIX, the Windows API supports several forms of interprocess communication, including pipes, sockets, and shared memory. Much of the functionality is similar in Windows and POSIX pipes, with a few distinct differences. To open a pipe in POSIX, you must first create an integer array of size 2, then pass a pointer to this array into the pipe() function. 
+
+\tab Like POSIX, the Windows API supports several forms of interprocess communication, including pipes, sockets, and shared memory. Much of the functionality is similar in Windows and POSIX pipes, with a few distinct differences. To open a pipe in POSIX, you must first create an integer array of size 2, then pass a pointer to this array into the pipe() function. \newline
 
 \item \emph{Processes}
-Creating Processes:
+Creating Processes: \newline
 
-POSIX:
-pid_t fork(void);
-int execl(const char *path, const char *arg, ...);
-int execlp(const char *file, const char *arg, ...);
-int execle(const char *path, const char *arg, ..., char * const envp[]);
-int execv(const char *path, char *const argv[]);
-int execvp(const char *file, char *const argv[]);
+\textbf{POSIX:} 
 
-In the POSIX API, the fork() system call is used to create a copy of a process. This copy can then be replaced by a new process using the exec() system call. Fork() returns 0 in the child, the process ID in the parent, and -1 on error, in which case errno is set appropriately. In POSIX, this child process is an exact copy of the parent process for all intents and purposes. After the child process is created, the parent has no access to it unless a pipe or other form of IPC has previously been established.
+\begin{quote}
+pid\_t fork(void);
 
-The exec() family of functions replaces the current process image with a new process image. Most of the variations of exec() are variadic functions (meaning that they accept a variable number of arguments) that accept a string referring to the path of the process to be executed and a variable number arguments to pass to those processes at runtime. The exec() functions don't return unless an error occurred, in which case they will return -1.
+int execl(const char \*path, const char \*arg, ...);
+
+int execlp(const char \*file, const char \*arg, ...);
+
+int execle(const char \*path, const char \*arg, ..., char \*const envp[]);
+
+int execv(const char \*path, char \*const argv[]);
+
+int execvp(const char \*file, char \*const argv[]);
+\end{quote}
 
 
-Windows:
+\tab In the POSIX API, the fork() system call is used to create a copy of a process. This copy can then be replaced by a new process using the exec() system call. Fork() returns 0 in the child, the process ID in the parent, and -1 on error, in which case errno is set appropriately. In POSIX, this child process is an exact copy of the parent process for all intents and purposes. After the child process is created, the parent has no access to it unless a pipe or other form of IPC has previously been established. \newline
+
+\tab The exec() family of functions replaces the current process image with a new process image. Most of the variations of exec() are variadic functions (meaning that they accept a variable number of arguments) that accept a string referring to the path of the process to be executed and a variable number arguments to pass to those processes at runtime. The exec() functions don't return unless an error occurred, in which case they will return -1. \newline
+
+
+\textbf{Windows:} 
+
+\begin{quote}
 BOOL WINAPI CreateProcess(
-  _In_opt_     LPCTSTR lpApplicationName,
-  _Inout_opt_  LPTSTR lpCommandLine,
-  _In_opt_     LPSECURITY_ATTRIBUTES lpProcessAttributes,
-  _In_opt_     LPSECURITY_ATTRIBUTES lpThreadAttributes,
-  _In_         BOOL bInheritHandles,
-  _In_         DWORD dwCreationFlags,
-  _In_opt_     LPVOID lpEnvironment,
-  _In_opt_     LPCTSTR lpCurrentDirectory,
-  _In_         LPSTARTUPINFO lpStartupInfo,
-  _Out_        LPPROCESS_INFORMATION lpProcessInformation
+
+\tab\_In\_opt\_     LPCTSTR lpApplicationName,
+
+\tab\_Inout\_opt\_  LPTSTR lpCommandLine,
+
+\tab\_In\_opt\_     LPSECURITY\_ATTRIBUTES lpProcessAttributes,
+
+\tab\_In\_opt\_     LPSECURITY\_ATTRIBUTES lpThreadAttributes,
+
+\tab\_In\_         BOOL bInheritHandles,
+
+\tab\_In\_         DWORD dwCreationFlags,
+
+\tab\_In\_opt\_     LPVOID lpEnvironment,
+
+\tab\_In\_opt\_     LPCTSTR lpCurrentDirectory,
+
+\tab\_In\_         LPSTARTUPINFO lpStartupInfo,
+
+\tab\_Out\_        LPPROCESS\_INFORMATION lpProcessInformation
+
 );
+\end{quote}
 
-The Windows API is very different from POSIX with respect to creating processes. In the Windows API, processes are created in a single step with the CreateProcess function. CreateProcess() creates an operating environment for the child process. This environment includes the working directory, environment variables, and command-line arguments. Unlike in POSIX, where the parent has no way of communicating with the child by default, the CreateProcess function returns a handle which allows the parent application to perform operations on the child process and its environment during execution. Also unlike in POSIX, the child process created is not an exact copy of the parent; it is a brand-new process. The process to be executed also has to be specified explicitly in the CreateProcess() function. 
+\tab The Windows API is very different from POSIX with respect to creating processes. In the Windows API, processes are created in a single step with the CreateProcess function. CreateProcess() creates an operating environment for the child process. This environment includes the working directory, environment variables, and command-line arguments. Unlike in POSIX, where the parent has no way of communicating with the child by default, the CreateProcess function returns a handle which allows the parent application to perform operations on the child process and its environment during execution. Also unlike in POSIX, the child process created is not an exact copy of the parent; it is a brand-new process. The process to be executed also has to be specified explicitly in the CreateProcess() function. \newline
 
-The CreateProcess() function accepts 10 different parameters. The first is optional and is the name of the application to be executed, the second is also optional and is the command line to be executed, the third and fourth parameters are also optional and are the security attributes that determine whether the returned handle to the child or thread can be inherited by that child or thread, the fifth is a boolean value that determines if the child process can inherit the parent process's file descriptors, the sixth is creation flags that control the priority and creation of the process, the seventh is an optional environment specifier if the caller wants the process to inherit a different environment from the calling process, the eighth is an optional argument that specifies the current directory a process will start with, the ninth is a pointer to a STARTUPINFO structure, the tenth is a pointer to a PROCESS_INFORMATION structure that receives identification information about the new process.
+\tab The CreateProcess() function accepts 10 different parameters. The first is optional and is the name of the application to be executed, the second is also optional and is the command line to be executed, the third and fourth parameters are also optional and are the security attributes that determine whether the returned handle to the child or thread can be inherited by that child or thread, the fifth is a boolean value that determines if the child process can inherit the parent process's file descriptors, the sixth is creation flags that control the priority and creation of the process, the seventh is an optional environment specifier if the caller wants the process to inherit a different environment from the calling process, the eighth is an optional argument that specifies the current directory a process will start with, the ninth is a pointer to a STARTUPINFO structure, the tenth is a pointer to a PROCESS\_INFORMATION structure that receives identification information about the new process. \newline
 
-Sharing Memory between Processes:
+\textbf{Sharing Memory between Processes:} \newline
 
-In POSIX, processes can share memory mapped under the /dev/shm virtual filesystem. To set up shared memory, the memory object must first be opened with shm_open(path, flags) function, then truncated, then mapped with mmap() and MAP_SHARED specified. Multiple processes can then write to and read from this shared memory file using a file descriptor. The parent can map this memory with a file descriptor to it, and when it forks, the children will all inherit this file descriptor.
 
-In contrast, in Windows, all processes start execution by default without inheriting the file descriptors of the parent. This presents a problem when the caller wants the processes to share memory. Windows solves this with named shared memory objects. These can be instantiated with the CreateFileMapping() function. Similarly to POSIX, this function returns a handle (in essence, a file descriptor) to a shared memory object specified by a name. Other processes can share access to the same file by using a shared file mapping object or creating a separate object backed by the same file. [http://msdn.microsoft.com/en-us/library/windows/desktop/aa366537(v=vs.85).aspx]
+\tab In POSIX, processes can share memory mapped under the /dev/shm virtual filesystem. To set up shared memory, the memory object must first be opened with shm\_open(path, flags) function, then truncated, then mapped with mmap() and MAP\_SHARED specified. Multiple processes can then write to and read from this shared memory file using a file descriptor. The parent can map this memory with a file descriptor to it, and when it forks, the children will all inherit this file descriptor. \newline
 
-Managing Processes:
+\tab In contrast, in Windows, all processes start execution by default without inheriting the file descriptors of the parent. This presents a problem when the caller wants the processes to share memory. Windows solves this with named shared memory objects. These can be instantiated with the CreateFileMapping() function. Similarly to POSIX, this function returns a handle (in essence, a file descriptor) to a shared memory object specified by a name. Other processes can share access to the same file by using a shared file mapping object or creating a separate object backed by the same file. \newline %\[http://msdn.microsoft.com/en-us/library/windows/desktop/aa366537(v=vs.85).aspx\]
+
+\textbf{Managing Processes:} \newline
+
 The Windows API allows processes to be grouped together using Jobs for easier management. A similar construct in POSIX is process groups. Processes can be assigned to groups with the setpgid() function. Assigning a process to a group allows signals to be sent to the entire group simultaneously.
 
 
@@ -194,5 +289,5 @@ The Windows API allows processes to be grouped together using Jobs for easier ma
 
 %input the pygmentized output of mt19937ar.c, using a (hopefully) unique name
 %this file only exists at compile time. Feel free to change that.
-%\input{__mt.h.tex}
+%\input{\_\_mt.h.tex}
 \end{document}
