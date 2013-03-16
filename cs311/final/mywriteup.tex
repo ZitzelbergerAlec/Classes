@@ -59,6 +59,8 @@ CS 311
 \tab In this course, one of the central themes was the universality of I/O in the POSIX API. This means that, in essence, "everything is a file." Files, pipes, buffers, devices, sockets, processes, shared memory, et. al. are abstracted to files, appear in the file system, and can all be referred to by file descriptors. The same four system calls--open(), read(), write(), and close()--can all be used to perform I/O on all types of files, including devices such as terminals. \newline
 %\[from TLPI, pg. 72\].
 
+\textbf{STDIN, STDOUT, STDERR} \newline
+
 \tab In the POSIX API, every process that runs from the shell opens three standard file descriptors. These are 0 for STDIN, 1 for STDOUT, and 2 for STDERR. The Windows API works similarly. When a program begins execution, it opens standard input, standard output, and standard error. Windows even uses the same file descriptors as POSIX does for these streams. \newline
 %\[http://www.microsoft.com/resources/documentation/windows/xp/all/proddocs/en-us/redirection.mspx?mfr=true\]. 
 
@@ -193,6 +195,13 @@ BOOL WINAPI WriteFile(
 
 \tab In the POSIX API, most system calls return -1 on error, and set the global variable errno according to what type of error occurred. This variable is an integer. \newline %\[TLPI, pg. 50\]
 
+\textbf{Summary:}\newline
+
+In the POSIX API, file I/O can be performed by the open(), close(), read(), and write(). Analogous functionality can be achieved in the Windows API with CreateFile(), CloseHandle(), ReadFile(), and WriteFile(). \newline
+
+In terms of the universality of I/O, POSIX and Windows both refer to files, sockets, pipes, etc with file handles/descriptors. Where they differ is that POSIX actually has virtual filesystems mounted in the filesystem tree that give access to data structures. These virtual filesystems include /dev/shm to access shared memory objects and /proc. Windows, at least as far as I could find, does not have an analogous feature to virtual filesystems for performing I/O. \newline
+
+
 \item \emph{Signals} \newline
 
 \textbf{Handling Signals:}\newline
@@ -208,13 +217,9 @@ BOOL WINAPI WriteFile(
 
 \tab For the sake of argument, imagine that we wished to prematurely trigger the alarm\_function() in both of the previously-discussed example programs. In POSIX, we would use the kill() function to send the SIGALRM signal to the process, which would then trigger the alarm\_function. In Windows, the analogous call would be PostMessage(WM\_TIMER). This uses a Windows Message to trigger the callback function (alarm\_function in this case). \newline
 
-\textbf{Summary:}
+\textbf{Summary:} \newline
 
 \tab POSIX uses signals extensively for software interrupts. Windows does not natively support most POSIX-style signals, but similar functionality can be achieved using Windows Messages and Event Objects. \newline
-
-\item \emph{Pipes}
-
-\tab Like POSIX, the Windows API supports several forms of interprocess communication, including pipes, sockets, and shared memory. Much of the functionality is similar in Windows and POSIX pipes, with a few distinct differences. To open a pipe in POSIX, you must first create an integer array of size 2, then pass a pointer to this array into the pipe() function. \newline
 
 \item \emph{Processes}
 Creating Processes: \newline
@@ -283,6 +288,48 @@ BOOL WINAPI CreateProcess(
 \textbf{Managing Processes:} \newline
 
 The Windows API allows processes to be grouped together using Jobs for easier management. A similar construct in POSIX is process groups. Processes can be assigned to groups with the setpgid() function. Assigning a process to a group allows signals to be sent to the entire group simultaneously.
+
+\textbf{Summary:} \newline
+
+The POSIX and Windows API differ greatly with respect to process creation. In particular, spawning children is completely different. Windows creates children in a single step, and they do not by default inherit from their parent like they do in POSIX. However, by specifiying certain arguments in the CreateProcess() function to set up the same process environment and pass the file handles to the child, similar functionality to POSIX's fork() function can be achieved by CreateProcess(). Processes can also share memory in Windows in a similar fashion to how they do in POSIX. Process management is also similar in the two operating systems. \newline
+
+
+\item \emph{Pipes}
+
+\tab Like POSIX, the Windows API supports several forms of interprocess communication, including pipes, sockets, and shared memory. Much of the functionality is similar in Windows and POSIX pipes, with a few distinct differences. \newline
+
+\textbf{POSIX:}
+
+\begin{quote}
+int pipe(int pipefd[2]);
+\end{quote}
+
+To open a pipe in POSIX, you must first create an integer array of size 2, then pass a pointer to this array into the pipe() function. Index 0 of this array will contain the file descriptor for the read end of the pipe, and index 1 will contain the write end. The pipe's read and write ends can then be read from and written to using the read() and write() functions, respectively.  \newline
+
+\textbf{Windows:} 
+
+\begin{quote}
+BOOL WINAPI CreatePipe(
+
+\tab\_Out\_     PHANDLE hReadPipe,
+
+\tab\_Out\_     PHANDLE hWritePipe,
+
+\tab\_In\_opt\_  LPSECURITY\_ATTRIBUTES lpPipeAttributes,
+
+\tab\_In\_      DWORD nSize
+
+);
+\end{quote}
+
+
+\tab In Windows, the CreatePipe() function takes four parameters. The first is a pointer to a variable for the read handle of the pipe, the second is a pointer to a variable for the write handle of the pipe, the third is an optional specifier for pipe attributes (whether the handles can be inherited, etc), and the size of the pipe buffer, in bytes. The pipe's read and write ends can then be read from and written to using the ReadFile() and WriteFile() functions, respectively.
+
+
+\textbf{Summary:} \newline
+
+\tab Working with pipes in POSIX and Windows is nearly identical. In both operating systems, pipes have different handles/file descriptors for their read and write ends, they are treated like files, and they can even be read from and written to analogously, using read() and write() in POSIX and ReadFile() and WriteFile() in Windows.
+
 
 
 \end{enumerate}
