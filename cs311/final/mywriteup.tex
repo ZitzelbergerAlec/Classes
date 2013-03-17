@@ -56,7 +56,7 @@ CS 311
 \begin{enumerate} 
 \item \emph{File I/O}
 
-\tab In this course, one of the central themes was the universality of I/O in the POSIX API. This means that, in essence, "everything is a file." Files, pipes, buffers, devices, sockets, processes, shared memory, et. al. are abstracted to files, appear in the file system, and can all be referred to by file descriptors. The same four system calls--open(), read(), write(), and close()--can all be used to perform I/O on all types of files, including devices such as terminals. \newline
+\tab In this course, one of the central themes was the universality of I/O in the POSIX API. This means that, in essence, ``everything is a file.'' Files, pipes, buffers, devices, sockets, processes, shared memory, etc. are abstracted to files, sometimes appear in the file system (via virtual filesystems that contain data structures like /proc), and can be referred to by file descriptors. The same four system calls--open(), read(), write(), and close()--can all be used to perform I/O on all types of files, including devices such as terminals. \newline
 %\[from TLPI, pg. 72\].
 
 \textbf{STDIN, STDOUT, STDERR} \newline
@@ -290,7 +290,11 @@ BOOL WINAPI CreateProcess(
 
 \textbf{Managing Processes:} \newline
 
-The Windows API allows processes to be grouped together using Jobs to simplify management. A similar construct in POSIX is process groups. Processes can be assigned to groups with the setpgid() function. Assigning a process to a group allows signals to be sent to the entire group simultaneously.
+The Windows API allows processes to be grouped together using Jobs to simplify management. A similar construct in POSIX is process groups. Processes can be assigned to groups with the setpgid() function. Assigning a process to a group allows signals to be sent to the entire group simultaneously. \newline
+
+\textbf{Zombie Processes:} \newline
+
+\tab In Windows, a process can be killed with the TerminateProcess() function. This immediately stops any user-mode parts of the program from executing. As long as any handles to the process or drivers used by the process are still open, however, the kernel-mode process object will remain open. If a thread of the process was in the middle of an I/O operation, for instance, the kernel signals to the driver responsible for the I/O to cancel the operation\ignore{http://blogs.msdn.com/b/oldnewthing/archive/2004/07/23/192531.aspx}. By default, when a parent process dies in Windows, the child processes are totally separate and keep running. This is different from in POSIX where, if a process dies, its child processes are adopted by the init process, which then calls wait() on them. In Windows, if a Job object is created, and the child processes are assigned to this object along with the parent, the children will terminate when the parent dies\ignore{http://stackoverflow.com/questions/3342941/kill-child-process-when-parent-process-is-killed}. There is not really an analogous construct to zombie processes in Windows because processes in Windows do not inherit in the same way as they do in POSIX. Each child process, by default, operates independently of its parent unless otherwise specified, and even then the processes are not related in the same way as they are in POSIX. \newline
 
 \textbf{Summary:} \newline
 
@@ -324,7 +328,7 @@ BOOL WINAPI CreatePipe(
 );
 \end{quote}
 
-\tab In Windows, the CreatePipe() function accepts four parameters. The first is a pointer to a variable for the read handle of the pipe, the second is a pointer to a variable for the write handle of the pipe, the third is an optional specifier for pipe attributes (whether the handles can be inherited, etc), and the size of the pipe buffer, in bytes. The pipe's read and write ends can then be read from and written to using the ReadFile() and WriteFile() functions, respectively.
+\tab In Windows, the CreatePipe() function accepts four parameters. The first is a pointer to a variable for the read handle of the pipe, the second is a pointer to a variable for the write handle of the pipe, the third is an optional specifier for pipe attributes (whether the handles can be inherited, etc), and the size of the pipe buffer, in bytes. The pipe's read and write ends can then be read from and written to using the ReadFile() and WriteFile() functions, respectively. \newline
 
 \textbf{Summary:} \newline
 
