@@ -1,0 +1,87 @@
+\documentclass[letterpaper,10pt,titlepage]{article}
+
+\usepackage{amsmath}                                         
+\usepackage{amsthm}
+
+\usepackage{alltt}                                           
+\usepackage{float}
+\usepackage{color}
+
+\usepackage{balance}
+\usepackage[TABBOTCAP, tight]{subfigure}
+\usepackage{enumitem}
+
+\newcommand{\ignore}[2]{\hspace{0in}#2} %Used for inline comments
+\newcommand{\tab}{\hspace*{2em}} %For tabbing
+
+\usepackage{pstricks, pst-node}
+\usepackage{geometry}
+\usepackage{graphicx}
+\geometry{textheight=10in, textwidth=7.5in}
+%random comment
+
+\newcommand{\cred}[1]{{\color{red}#1}}
+\newcommand{\cblue}[1]{{\color{blue}#1}}
+
+\usepackage{hyperref}
+
+\def\name{David Merrick}
+
+
+%% The following metadata will show up in the PDF properties
+\hypersetup{
+  colorlinks = true,
+  urlcolor = black,
+  pdfauthor = {\name},
+  pdfkeywords = {cs411 ``operating systems''},
+  pdftitle = {CS 411 Project 1},
+  pdfsubject = {CS 411 Project 1},
+  pdfpagemode = UseNone
+}
+
+\parindent = 0.0 in
+\parskip = 0.2 in
+
+\begin{document}
+David Merrick
+
+CS 411
+
+13 April, 2013
+
+\begin{center}
+{\LARGE Individual Writeup for Project 1}
+\end{center}
+
+\begin{enumerate} 
+\item \emph{What do you think the main point of this assignment is?}
+
+\tab There were several main points to this assignment. The first was to get a sense for kernel programming. In particular, the location of the kernel files, what their functions are, how to properly configure the kernel to match the desired outcome, how to compile the kernel, where to place the compiled kernel, etc. The second was to learn new methods for debugging, as our code was running at a much lower level than any most of us had previously written. The third was to learn how to use SVN for revision control. Most of us had only used Git, so this presented a challenge. The final point was to coordinate a group of randomly-assigned team members to accomplish these tasks.
+
+\item \emph{How did you approach the problem? Design decisions, algorithm, etc.}
+
+\tab Design: We knew that much smarter people than us had written the kernel, so we thought the most efficient approach to the design would be to leverage the data structures, functions, and system calls already in place, as opposed to reinventing the wheel by rewriting these ourselves. We knew that the files we needed to modify would be found under the "kernel" directory in the root of the kernel source tree. This folder contains core subsystems, including the scheduler. Within this directory, we used 'grep "SCHED_RR" ./sched*' and 'grep "SCHED_FIFO" ./sched*' to determine which of the scheduler files we needed to edit. For round-robin scheduling, we knew that we needed processes to be run one after the next, repeating, with a pre-allocated quantum time to run. We found this interval defined in the sched.c file in the constant, DEF_TIMESLICE. From the comments in the file, we knew that this constant was intended for SCHED_RR tasks. By default, it was 100ms per process. We thought this seemed reasonable so we left it defined the way it was. 
+
+We went through several iterations of modifying, compiling, and testing. We tested our system calls and as soon as we found one that was broken we determined why, referencing the full 3.0.4 kernel when necessary. We then started the cycle over again.
+
+\tab Debugging: As far as I could tell, there is not a way to load the kernel into GDB on our architecture, so we were limited to using print statements for debugging. Since the C standard library is not included in the Linux kernel, we had to use printk, the built-in kernel print function, for this.
+
+\item \emph{How did you ensure your solution was correct? Testing details, for instance.}
+
+\tab Testing was one of the most challenging aspects of the project. 
+
+\tab We determined that the best way to test round-robin scheduling would be to write a C program that set itself to a SCHED_RR process using sched_setscheduler(). This program would then fork off 4 child programs. Each of these programs would print their PID, time this print operation, and then busy-wait for the rest of their 100ms timeslice. They would cycle through this four times. If we had implemented our round-robin algorithm successfully, we knew that the processes should print out their respective PIDs one at a time, repeating. One caveat to this was that we had to set the CPU affinity. Initially, we had not correctly implemented the sched_setscheduler() system call, causing our program to exit with an error. Once we fixed this and recompiled the kernel, our program outputted the expected results.
+
+\tab To test FIFO scheduling, we leveraged the program we had used to test round-robin scheduling. This time, however, the program would set itself to SCHED_FIFO using sched_setscheduler() prior to forking off the child programs. The expected output on success would be that the first child would print its PID four times, then the next would print all four, and so on. When we tested this, it also performed as expected.
+
+
+\item \emph{What did you learn?}
+
+\tab Answer for question.
+
+\end{enumerate}
+
+%input the pygmentized output of mt19937ar.c, using a (hopefully) unique name
+%this file only exists at compile time. Feel free to change that.
+%\input{\_\_mt.h.tex}
+\end{document}
