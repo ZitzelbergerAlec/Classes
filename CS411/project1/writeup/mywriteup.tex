@@ -33,9 +33,9 @@
   colorlinks = true,
   urlcolor = black,
   pdfauthor = {\name},
-  pdfkeywords = {cs311 ``operating systems'' portability posix},
-  pdftitle = {CS 311 Final},
-  pdfsubject = {CS 311 Final},
+  pdfkeywords = {cs411 ``operating systems''},
+  pdftitle = {CS 411 Project 1},
+  pdfsubject = {CS 411 Project 1},
   pdfpagemode = UseNone
 }
 
@@ -45,294 +45,39 @@
 \begin{document}
 David Merrick
 
-CS 311
+CS 411
 
-15 March, 2013
+13 April, 2013
 
 \begin{center}
-{\LARGE Writeup for Final}
+{\LARGE Individual Writeup for Project 1}
 \end{center}
 
 \begin{enumerate} 
-\item \emph{File I/O}
+\item \emph{What do you think the main point of this assignment is?}
 
-\tab In this course, one of the central themes was the universality of I/O in the POSIX API. This means that, in essence, ``everything is a file.'' Files, pipes, buffers, devices, sockets, processes, shared memory, etc. are abstracted to files, sometimes appear in the file system (via virtual filesystems that contain data structures like /proc), and can be referred to by file descriptors. The same four system calls--open(), read(), write(), and close()--can all be used to perform I/O on all types of files, including devices such as terminals. \newline
-%\[from TLPI, pg. 72\].
+\tab There were several main points to this assignment. The first was to get a sense for kernel programming. In particular, the location of the kernel files, what their functions are, how to properly configure the kernel to match the desired outcome, how to compile the kernel, where to place the compiled kernel, etc. The second was to learn new methods for debugging, as our code was running at a much lower level than any most of us had previously written. The third was to learn how to use SVN for revision control. Most of us had only used Git, so this presented a challenge. The final point was to coordinate a group of randomly-assigned team members to accomplish these tasks.
 
-\textbf{STDIN, STDOUT, STDERR} \newline
+\item \emph{How did you approach the problem? Design decisions, algorithm, etc.}
 
-\tab In POSIX, every process that runs from the shell opens three standard file descriptors. These are 0 for STDIN, 1 for STDOUT, and 2 for STDERR. The Windows API works similarly. When a program begins execution, it opens standard input, standard output, and standard error. Windows even uses the same file descriptors as POSIX does for these streams. \newline
-%[http://www.microsoft.com/resources/documentation/windows/xp/all/proddocs/en-us/redirection.mspx?mfr=true]. 
+\tab Design: We knew that much smarter people than us had written the kernel, so we thought the most efficient approach to the design would be to leverage the data structures, functions, and system calls already in place, as opposed to reinventing the wheel by rewriting these ourselves. We knew that the files we needed to modify would be found under the "kernel" directory in the root of the kernel source tree. This folder contains core subsystems, including the scheduler. Within this directory, we used 'grep "SCHED_RR" ./sched*' and 'grep "SCHED_FIFO" ./sched*' to determine which of the scheduler files we needed to edit. For round-robin scheduling, we knew that we needed processes to be run one after the next, repeating, with a pre-allocated quantum time to run. We found this interval defined in the sched.c file in the constant, DEF_TIMESLICE. From the comments in the file, we knew that this constant was intended for SCHED_RR tasks. By default, it was 100ms per process. We thought this seemed reasonable so we left it defined the way it was. 
 
-\textbf{Open():}
+We went through several iterations of modifying, compiling, and testing. We tested our system calls and as soon as we found one that was broken we determined why, referencing the full 3.0.4 kernel when necessary. We then started the cycle over again.
 
-\textbf{POSIX:}
+\tab Debugging: As far as I could tell, there is not a way to load the kernel into GDB on our architecture, so we were limited to using print statements for debugging. Since the C standard library is not included in the Linux kernel, we had to use printk, the built-in kernel print function, for this.
 
-int open(const char *pathname, int flags, .../* mode\_t mode */);\newline
+\item \emph{How did you ensure your solution was correct? Testing details, for instance.}
 
-\tab In the POSIX API, the open() system call returns a file descriptor to a file that can then be read from and/or written to, depending on the flags passed into the function. If the file doesn't exist and O\_CREAT is specified, it creates the file and then returns the descriptor. The open() function accepts a const char *pathname, flags, and the access mode. The pathname is the file to be opened, the flags argument is a bitmask that specifies the access mode of the file (read, create, etc.), and the mode is the file permissions to open it with\ignore{\[TLPI, pg. 72\]}. On success, this function returns a file descriptor referring to the open file. On error, it returns -1 and sets the errno variable to indicate what went wrong. \newline 
-%[TLPI, pg. 72]
+\tab Testing was one of the most challenging aspects of the project. 
 
-\textbf{Windows:}
+\tab We determined that the best way to test round-robin scheduling would be to write a C program that set itself to a SCHED_RR process using sched_setscheduler(). This program would then fork off 4 child programs. Each of these programs would print their PID, time this print operation, and then busy-wait for the rest of their 100ms timeslice. They would cycle through this four times. If we had implemented our round-robin algorithm successfully, we knew that the processes should print out their respective PIDs one at a time, repeating. One caveat to this was that we had to set the CPU affinity. Initially, we had not correctly implemented the sched_setscheduler() system call, causing our program to exit with an error. Once we fixed this and recompiled the kernel, our program outputted the expected results.
 
-\begin{quote}
-HANDLE WINAPI CreateFile(
+\tab To test FIFO scheduling, we leveraged the program we had used to test round-robin scheduling. This time, however, the program would set itself to SCHED_FIFO using sched_setscheduler() prior to forking off the child programs. The expected output on success would be that the first child would print its PID four times, then the next would print all four, and so on. When we tested this, it also performed as expected.
 
-\tab\_In\_      LPCTSTR lpFileName,
 
-\tab\_In\_      DWORD dwDesiredAccess,
+\item \emph{What did you learn?}
 
-\tab\_In\_      DWORD dwShareMode,
-
-\tab\_In\_opt\_  LPSECURITY\_ATTRIBUTES lpSecurityAttributes,
-
-\tab\_In\_      DWORD dwCreationDisposition,
-
-\tab\_In\_      DWORD dwFlagsAndAttributes,
-
-\tab\_In\_opt\_  HANDLE hTemplateFile
-
-);
-\end{quote}
-
-
-\tab In Windows, the CreateFile() system call performs similar functionality to POSIX's open(). It accepts a filename, access mode (read, write, both, or neither), a sharing mode (the level of access that other processes have to the file--read, write, none), a pointer to a security attributes structure (that determines whether or not child processes can inherit the file descriptor), a creation disposition (what action to take on a file or device that exists or doesn't exist), flags and attributes (which specify whether the file is hidden, encrypted, readonly, etc.), and an optional file descriptor of a template file (which supplies file attributes for the file that is being created). On success, the function returns a file handle, which is analogous a file descriptor in POSIX. \newline  
-%[http://msdn.microsoft.com/en-us/library/windows/desktop/aa363858(v=vs.85).aspx].
-
-
-\textbf{Close():}
-
-\textbf{POSIX:}
-
-\begin{quote}
-int close(int fd);
-\end{quote}
-
-\tab In POSIX, the close() system call frees an open file descriptor. It accepts only an integer for the file descriptor. It returns 0 on success, or -1 on error, in which case errno is also set appropriately. When a process terminates, the POSIX kernel automatically closes all the associated file descriptors.\newline
-%\[TLPI, pg. 80\].
-
-\textbf{Windows:} 
-
-\begin{quote}
-BOOL WINAPI CloseHandle(
-
-\tab\_In\_  HANDLE hObject
-
-);
-\end{quote}
-
-\tab The Windows kernel equivalent of close() is CloseHandle(). This function accepts a handle object. A handle can refer to a pipe, mutex, process, semaphore, thread, file, device, etc. This construct is similar to the way that POSIX refers to everything as a file. The function returns a nonzero value (TRUE) on success, and zero (FALSE) on failure. \newline 
-%\[http://msdn.microsoft.com/en-us/library/windows/desktop/ms724211(v=vs.85).aspx\].
-
-\textbf{Read():}
-
-\textbf{POSIX:} 
-
-\begin{quote}
-ssize\_t read(int fd, void *buffer, size\_t count);
-\end{quote}
-
-\tab In POSIX, the read() call reads data from an open file descriptor. It accepts an integer for the file descriptor, a character pointer for the buffer to read data into, and size\_t type to specify how many characters to read. This function returns the number of bytes actually read, 0 on EOF, or -1 on error, in which case errno is set appropriately.\newline
-%\[TLPI, pg. 79\]
-
-\textbf{Windows:} 
-
-\begin{quote}
-BOOL WINAPI ReadFile(
-
-\tab\_In\_         HANDLE hFile,
-
-\tab\_Out\_        LPVOID lpBuffer,
-
-\tab\_In\_         DWORD nNumberOfBytesToRead,
-
-\tab\_Out\_opt\_    LPDWORD lpNumberOfBytesRead,
-
-\tab\_Inout\_opt\_  LPOVERLAPPED lpOverlapped
-
-);
-\end{quote}
-
-
-\tab In Windows, a similar function to POSIX's read() is ReadFile(). This function accepts a handle (The handle must have been created with read access to the resource), a pointer to a buffer to read the data into, a number of bytes to read, an optional pointer to a variable that receives the number of bytes read, and an optional pointer to an OVERLAPPED structure. \ignore{[http://msdn.microsoft.com/en-us/library/windows/desktop/aa365467(v=vs.85).aspx]}This function returns a nonzero (TRUE) return value on success, otherwise it returns 0 (FALSE). The error can be obtained with the GetLastError() function.\newline
-
-
-\textbf{Write():}
-
-\textbf{POSIX:}
-
-\begin{quote}
-ssize\_t write(int fd, void *buffer, size\_t count);
-\end{quote}
-
-\tab In POSIX, the write() system call prints data to an open file referred to by a file descriptor. This function is very similar to read(); it accepts an integer file descriptor, a pointer to a buffer containing the characters to be written, and a size\_t variable with the number of bytes to be written. On success, it returns the number of bytes written (which may be less than the specified number of bytes to be written), and -1 on error, in which case errno is set appropriately. \newline%\[TLPI, pg. 80\]
-
-\textbf{Windows:} 
-
-\begin{quote}
-BOOL WINAPI WriteFile(
-
-\tab\_In\_         HANDLE hFile,
-
-\tab\_In\_         LPCVOID lpBuffer,
-
-\tab\_In\_         DWORD nNumberOfBytesToWrite,
-
-\tab\_Out\_opt\_    LPDWORD lpNumberOfBytesWritten,
-
-\tab\_Inout\_opt\_  LPOVERLAPPED lpOverlapped
-
-);
-\end{quote}
-
-
-\tab In Windows, a similar function to POSIX's write() is WriteFile(). This function accepts a handle (This handle must have been created with write access to the resource), a pointer to a buffer containing the data to be written, the number of bytes to write, an optional pointer to a variable that receives the number of bytes written, and an optional pointer to an OVERLAPPED structure. \newline 
-%[http://msdn.microsoft.com/en-us/library/windows/desktop/aa365747(v=vs.85).aspx]
-
-
-\textbf{Error checking:}\newline
-
-
-\tab In Windows, the last-error code value is maintained on a per-thread basis. The GetLastError() function returns the value of this error. Error codes are 32-bit values that are little-endian.\newline 
-%[http://msdn.microsoft.com/en-us/library/windows/desktop/ms679360(v=vs.85).aspx]
-
-\tab In POSIX, most system calls return -1 on error, and set the global variable errno according to what type of error occurred. This variable is an integer. \newline 
-%[TLPI, pg. 50]
-
-\textbf{Summary:}\newline
-
-\tab In POSIX, file I/O can be performed by open(), close(), read(), and write(). Analogous functionality can be achieved in the Windows API with CreateFile(), CloseHandle(), ReadFile(), and WriteFile(). \newline
-
-\tab In terms of the universality of I/O, POSIX and Windows both refer to files, sockets, pipes, etc with file handles/descriptors. Where they differ is that POSIX actually has virtual filesystems mounted in the filesystem tree that give access to data structures. These virtual filesystems include /dev/shm to access shared memory objects and /proc. Windows, at least as far as I could find, does not have an analogous feature to virtual filesystems for performing I/O. \newline
-
-\item \emph{Signals} \newline
-
-\textbf{Handling Signals:}\newline
-
-\tab POSIX uses a wide variety of signals, which are software interrupts that indicate certain events. In contrast, Windows supports only a small set of signals. These include SIGABRT, SIGFPE, SIGILL, SIGINT, SIGSEGV, and SIGTERM. As a substitute for signals, Windows uses Messages or Event Objects to notify processes of the occurrence of events.\newline
-
-\tab Windows and POSIX both handle SIGINT (the interrupt signal) very similarly. Windows even has a signal.h library with a signal() system call that is very similar to POSIX. Signal() is used to assign a handler to a specific signal. If the signal to handle is SIGINT, a POSIX program can be written in almost exactly the same syntax as a Windows program.\newline
-
-\tab Any similarity, however, ends with the limited support Windows has for signals. If, for example, you wanted to write a program that would trigger on a timer elapsing, the way that you would go about this differs greatly between Windows and POSIX. In POSIX, you would define a signal handler function alarm\_function(), use signal(SIGALRM, alarm\_function) to assign this function to be the handler for SIGALRM, spawn a child process that sends the alarm signal to the parent, then the parent would execute alarm\_function(). In Windows, there is no SIGALRM. The analogous program in the Windows API would first define a VOID CALLBACK function alarm\_function(), would set a 5-second timer in the main() function with SetTimer(0, 0, 5000, (TIMERPROC)alarm\_function), then would simply continue executing intil it was interrupted by the timer elapsing. In Windows, there is no need to create a separate process or thread for synchronization to invoke the callback function; that function is invoked in the same thread that calls SetTimer. \newline
-
-
-\textbf{Sending Signals:} \newline
-
-\tab For the sake of argument, imagine that we wished to prematurely trigger the alarm\_function() in both of the previously-discussed example programs. In POSIX, we would use the kill() function to send the SIGALRM signal to the process, which would then trigger the alarm\_function. In Windows, the analogous call would be PostMessage(WM\_TIMER). This uses a Windows Message to trigger the callback function (alarm\_function in this case). \newline
-
-\textbf{Summary:} \newline
-
-\tab POSIX uses signals extensively for software interrupts. Windows does not natively support most POSIX-style signals, but similar functionality can be achieved using Windows Messages and Event Objects. \newline
-
-\item \emph{Processes}
-
-\textbf{Creating Processes:} \newline
-
-\textbf{POSIX:} 
-
-\begin{quote}
-pid\_t fork(void);
-
-int execl(const char \*path, const char \*arg, ...);
-
-int execlp(const char \*file, const char \*arg, ...);
-
-int execle(const char \*path, const char \*arg, ..., char \*const envp[]);
-
-int execv(const char \*path, char \*const argv[]);
-
-int execvp(const char \*file, char \*const argv[]);
-\end{quote}
-
-\tab In POSIX, the fork() system call is used to create a copy of a process. This copy can then be replaced by a new process using the exec() system call. Fork() returns 0 in the child, the process ID in the parent, and -1 on error, in which case errno is set appropriately. In POSIX, this child process is an exact copy of the parent process for all intents and purposes. After the child process is created, the parent has no access to it unless a pipe or other form of IPC has previously been established. \newline
-
-\tab The exec() family of functions replaces the current process image with a new process image. Most of the variations of exec() are variadic functions (meaning that they accept a variable number of arguments) that accept a string referring to the path of the process to be executed and a variable number arguments to pass to those processes at runtime. The exec() functions don't return unless an error occurred, in which case they will return -1. \newline
-
-\textbf{Windows:} 
-
-\begin{quote}
-BOOL WINAPI CreateProcess(
-
-\tab\_In\_opt\_     LPCTSTR lpApplicationName,
-
-\tab\_Inout\_opt\_  LPTSTR lpCommandLine,
-
-\tab\_In\_opt\_     LPSECURITY\_ATTRIBUTES lpProcessAttributes,
-
-\tab\_In\_opt\_     LPSECURITY\_ATTRIBUTES lpThreadAttributes,
-
-\tab\_In\_         BOOL bInheritHandles,
-
-\tab\_In\_         DWORD dwCreationFlags,
-
-\tab\_In\_opt\_     LPVOID lpEnvironment,
-
-\tab\_In\_opt\_     LPCTSTR lpCurrentDirectory,
-
-\tab\_In\_         LPSTARTUPINFO lpStartupInfo,
-
-\tab\_Out\_        LPPROCESS\_INFORMATION lpProcessInformation
-
-);
-\end{quote}
-
-\tab Windows is very different from POSIX with respect to creating processes. In Windows, processes are created in a single step with the CreateProcess() function. CreateProcess() creates an operating environment for the child process. This environment includes the working directory, environment variables, and command-line arguments. Unlike in POSIX, where the parent has no way of communicating with the child by default, the CreateProcess function returns a handle which allows the parent application to perform operations on the child process and its environment during execution. Also unlike in POSIX, the child process created is not an exact copy of the parent; it is a brand-new process. The process to be executed also has to be specified explicitly in the CreateProcess() function. \newline
-
-\tab The CreateProcess() function accepts 10 different parameters. The first is optional and is the name of the process to be executed, the second is also optional and is the command line to be executed, the third and fourth parameters are also optional and are the security attributes that determine whether the returned handle to the child or thread can be inherited by that child or thread, the fifth is a boolean value that determines if the child process can inherit the parent process's file descriptors, the sixth is creation flags that control the priority and creation of the process, the seventh is an optional environment specifier if the caller wants the process to inherit a different environment from the calling process, the eighth is an optional argument that specifies the current directory a process will start with, the ninth is a pointer to a STARTUPINFO structure, the tenth is a pointer to a PROCESS\_INFORMATION structure that receives identification information about the new process. \newline
-
-\textbf{Sharing Memory between Processes:} \newline
-
-
-\tab In POSIX, processes can share memory mapped under the /dev/shm virtual filesystem. To set up shared memory, the memory object must first be opened with shm\_open(path, flags) function, then truncated, then mapped with mmap() and MAP\_SHARED specified. Multiple processes can then write to and read from this shared memory file using a file descriptor. The parent can map this memory with a file descriptor to it, and when it forks, the children will all inherit this file descriptor. \newline
-
-\tab In contrast, in Windows, all processes start execution by default without inheriting the file descriptors of the parent. This presents a problem when the caller wants the processes to share memory. Windows solves this with named shared memory objects. These can be instantiated with the CreateFileMapping() function. Similarly to POSIX, this function returns a handle to a shared memory object specified by a name. Other processes can share access to the same file by using a shared file mapping object or creating a separate object backed by the same file. \newline 
-%[http://msdn.microsoft.com/en-us/library/windows/desktop/aa366537(v=vs.85).aspx]
-
-\textbf{Managing Processes:} \newline
-
-The Windows API allows processes to be grouped together using Jobs to simplify management. A similar construct in POSIX is process groups. Processes can be assigned to groups with the setpgid() function. Assigning a process to a group allows signals to be sent to the entire group simultaneously. \newline
-
-\textbf{Zombie Processes:} \newline
-
-\tab In Windows, a process can be killed with the TerminateProcess() function. This immediately stops any user-mode parts of the program from executing. As long as any handles to the process or drivers used by the process are still open, however, the kernel-mode process object will remain open. If a thread of the process was in the middle of an I/O operation, for instance, the kernel signals to the driver responsible for the I/O to cancel the operation\ignore{http://blogs.msdn.com/b/oldnewthing/archive/2004/07/23/192531.aspx}. By default, when a parent process dies in Windows, the child processes are totally separate and keep running. This is different from in POSIX where, if a process dies, its child processes are adopted by the init process, which then calls wait() on them. In Windows, if a Job object is created, and the child processes are assigned to this object along with the parent, the children will terminate when the parent dies\ignore{http://stackoverflow.com/questions/3342941/kill-child-process-when-parent-process-is-killed}. There is not really an analogous construct to zombie processes in Windows because processes in Windows do not inherit in the same way as they do in POSIX. Each child process, by default, operates independently of its parent unless otherwise specified, and even then the processes are not related in the same way as they are in POSIX. \newline
-
-\textbf{Summary:} \newline
-
-The POSIX and Windows API differ greatly with respect to process creation. In particular, spawning children is completely different. Windows creates children in a single step, and they do not by default inherit from their parent like they do in POSIX. However, by specifiying certain arguments in the CreateProcess() function to set up the same process environment and pass the file handles to the child, similar functionality to POSIX's fork() function can be achieved by CreateProcess(). Processes can share memory in Windows in a similar fashion to the way they do in POSIX. Process management is similar in the two kernels. \newline
-
-\item \emph{Pipes}
-
-\tab Like POSIX, Windows supports several forms of interprocess communication, including pipes, sockets, and shared memory. Much of the functionality is similar in Windows and POSIX pipes. \newline
-
-\textbf{POSIX:}
-
-\begin{quote}
-int pipe(int pipefd[2]);
-\end{quote}
-
-To open a pipe in POSIX, you must first create an integer array of size 2, then pass a pointer to this array into the pipe() function. Index 0 of this array will contain the file descriptor for the read end of the pipe, and index 1 will contain the write end. The pipe's read and write ends can then be read from and written to using the read() and write() functions, respectively.  \newline
-
-\textbf{Windows:} 
-
-\begin{quote}
-BOOL WINAPI CreatePipe(
-
-\tab\_Out\_     PHANDLE hReadPipe,
-
-\tab\_Out\_     PHANDLE hWritePipe,
-
-\tab\_In\_opt\_  LPSECURITY\_ATTRIBUTES lpPipeAttributes,
-
-\tab\_In\_      DWORD nSize
-
-);
-\end{quote}
-
-\tab In Windows, the CreatePipe() function accepts four parameters. The first is a pointer to a variable for the read handle of the pipe, the second is a pointer to a variable for the write handle of the pipe, the third is an optional specifier for pipe attributes (whether the handles can be inherited, etc), and the size of the pipe buffer, in bytes. The pipe's read and write ends can then be read from and written to using the ReadFile() and WriteFile() functions, respectively. \newline
-
-\textbf{Summary:} \newline
-
-\tab Working with pipes in POSIX and Windows is nearly identical. In both kernels, pipes have different handles/file descriptors for their read and write ends, they are treated like files, and they can even be read from and written to analogously, using read() and write() in POSIX and ReadFile() and WriteFile() in Windows.
+\tab Answer for question.
 
 \end{enumerate}
 
