@@ -25,6 +25,27 @@
 
 \usepackage{hyperref}
 
+%Used for code snippets
+\usepackage{listings}
+\lstset{ %
+	language=C,                % choose the language of the code
+	basicstyle=\footnotesize,       % the size of the fonts that are used for the code
+	numbers=left,                   % where to put the line-numbers
+	numberstyle=\footnotesize,      % the size of the fonts that are used for the line-numbers
+	stepnumber=1,                   % the step between two line-numbers. If it is 1 each line will be numbered
+	numbersep=5pt,                  % how far the line-numbers are from the code
+	backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+	showspaces=false,               % show spaces adding particular underscores
+	showstringspaces=false,         % underline spaces within strings
+	showtabs=false,                 % show tabs within strings adding particular underscores
+	frame=single,           % adds a frame around the code
+	tabsize=4,          % sets default tabsize to 2 spaces
+	captionpos=b,           % sets the caption-position to bottom
+	breaklines=true,        % sets automatic line breaking
+	breakatwhitespace=false,    % sets if automatic breaks should only happen at whitespace
+	escapeinside={\%*}{*)}          % if you want to add a comment within your code
+}
+
 \def\name{David Merrick}
 
 
@@ -43,7 +64,7 @@
 \parskip = 0.2 in
 
 \begin{document}
-David Merrick
+\name
 
 CS 411
 
@@ -56,32 +77,43 @@ CS 411
 \begin{enumerate} 
 \item \emph{What do you think the main point of this assignment is?}
 
-\tab There were several points to this assignment. The first was to get a sense for kernel programming. In particular, the location of the kernel files, what their functions are, how to properly configure the kernel to match the desired outcome, how to compile the kernel, where to place the compiled kernel, etc. The second was to learn new methods for debugging, as our code was running at a much lower level than any most of us had previously written. The third was to learn how to use SVN for revision control. Most of us had only used Git, so this presented a challenge. The final point was to coordinate a group of randomly-assigned team members to accomplish these tasks. Overall, though, I think the main point of the assignment was to get an understanding of how process scheduling in Linux works.
+\tab There were several points to this assignment. The first was to get a sense for how to do kernel development. In particular, the location of the kernel files, what their functions are, how to properly configure the kernel to match the desired outcome, how to compile the kernel, where to place the compiled kernel, booting into the new kernel etc. The second was to learn new methods for debugging and testing, as our code was running at a much lower level than any most of us had previously written. The third was to learn how to use SVN for revision control. Most of us had only used Git, so this presented a challenge. The final point was to coordinate a group of randomly-assigned team members to accomplish these tasks. Overall, though, I think the main point of the assignment was to get an understanding of how process scheduling in Linux works at the kernel level.
 
 \item \emph{How did you approach the problem? Design decisions, algorithm, etc.}
 
-\tab Design: We knew that much smarter people than us had written the kernel, so we thought the most efficient approach to the design would be to leverage the data structures, functions, and system calls already in place, as opposed to reinventing the wheel by rewriting these ourselves. We knew that the files we needed to modify would be found under the "kernel" directory in the root of the kernel source tree. This folder contains core subsystems, including the scheduler. Within this directory, we used 'grep "SCHED_RR" ./sched*' and 'grep "SCHED_FIFO" ./sched*' to determine which of the scheduler files we needed to edit. For round-robin scheduling, we knew that we needed processes to be run one after the next, repeating, with a pre-allocated quantum time to run. We found this interval defined in the sched.c file in the constant, DEF_TIMESLICE. From the comments in the file, we knew that this constant was intended for SCHED_RR tasks. By default, it was 100ms per process. We thought this seemed reasonable so we left it defined the way it was. 
+\tab Background: Real-time scheduling means to schedule processes within timing deadlines. The Linux scheduler provides soft real-time behavior, meaning that it tries to schedule processes within timing deadlines but doesn't make guarantees to always achieve this. Linux provides two real-time scheduling policies, FIFO (SCHED\_FIFO) and round-robin (SCHED\_RR)\ignore{[Source: Linux Kernel Development, pg. 64]}. Round-robin scheduling puts the process descriptor at the end of the runqueue, granting each SCHED\_RR process of the same priority an equal timeslice. FIFO scheduling runs each SCHED\_FIFO process of the same priority until it is finished, then runs the next process in the runqueue. \ignore{[Source: http://oreilly.com/catalog/linuxkernel/chapter/ch10.html]}
 
-We went through several iterations of modifying, compiling, and testing. We tested our system calls and as soon as we found one that was broken we determined why, referencing the full 3.0.4 kernel when necessary. We then started the cycle over again.
+\tab \textbf{Design decisions:} We thought the most efficient approach to the design would be to leverage the data structures, functions, and system calls already in place, as opposed to reinventing the wheel by rewriting these ourselves. We decided to first track down the relevant files for real-time scheduling, then narrow these down to the functions we would need to modify or implement within these files. We knew that the files we needed to modify would be found under the "kernel" directory in the root of the kernel source tree. This folder contains core subsystems, including the scheduler. Within this directory, we used 'grep "SCHED\_RR" ./sched\*' and 'grep "SCHED\_FIFO" ./sched\*' to determine which of the scheduler files we needed to edit. The first file we edited was sched.c. This file contains the definitions for the base scheduler code, which iterates over each scheduler class in order of priority to select which process runs next. \ignore{[Linux Kernel Development, pg. 47]}
 
-\tab Debugging: As far as I could tell, there is not a way to load the kernel into GDB on our architecture, so we were limited to using print statements for debugging. Since the C standard library is not included in the Linux kernel, we had to use printk, the built-in kernel print function, for this.
+\tab \textbf{Data structures and functions related to real-time scheduling in sched.c:} rt\_rq is the runqueue data structure for real-time tasks. enqueue\_task(), dequeue\_task(), and activate\_task() are all functions related to adding and removing tasks from the runqueue, all of which had been implemented for us. prepare\_task\_switch(), finish\_task\_switch() both pertain to switching between tasks. rt\_policy(), task\_has\_rt\_policy(), init\_rt\_bandwidth(), rt\_prio(), rt\_mutex\_setprio(), rt\_mutex\_adjust\_pi(), init\_rt\_rq(), init\_tg\_rt\_entry(), normalize\_rt\_tasks(), free\_rt\_sched\_group(), alloc\_rt\_sched\_group(), free\_rt\_sched\_group(), alloc\_rt\_sched\_group(), tg\_has\_rt\_tasks(), rt\_bandwidth\_enabled(), \_\_rt\_schedulable(), sched\_group\_set\_rt\_runtime(), sched\_group\_rt\_runtime(), sched\_group\_set\_rt\_period(), sched\_group\_rt\_period(), sched\_rt\_global\_constraints(), sched\_rt\_can\_attach(), sched\_rt\_global\_constraints(), sched\_rt\_handler(), cpu\_rt\_runtime\_write(), cpu\_rt\_runtime\_read(), cpu\_rt\_period\_write\_uint(), cpu\_rt\_period\_read\_uint() are all functions in sched.c related to real-time tasks. Of these, we only had to modify rt\_policy() to enable real-time scheduling.
+
+\tab \textbf{Implementing round-robin scheduling:} For round-robin scheduling, we knew that we needed processes to be run one after the next, repeating, with a pre-defined timeslice to run. We found this interval defined in the sched.c file in the constant, DEF\_TIMESLICE. From the comments in the file, we knew that this constant was intended for SCHED\_RR tasks (FIFO tasks do not use a timeslice in theory; In practice they essentially have an infinite timeslice). By default, this value was set to be 100ms. Without the knowledge of the overhead of switching cost of tasks on this particular architecture, we left it defined the way it was. This value is critical to the operation of the scheduler. If it is too high, the system may not be as responsive and processes will not appear to be executing concurrently. If it is too low, the system will be very inefficient. For example, if the cost of switching tasks is 10ms and the timeslice is 10ms, then 50\% of CPU cycles will be dedicated to switching between tasks. \ignore{[http://oreilly.com/catalog/linuxkernel/chapter/ch10.html]}
+
+\tab To implement round-robin and FIFO scheduling, we edited the sched\_rt.c file. This file contains the definitions related to real-time scheduling policies.
+
+\tab \textbf{Data structures and functions related to SCHED\_RR task scheduling in sched\_rt.c:} task\_tick\_rt() and get\_rr\_interval\_rt(). We modified both of these functions to implement our round-robin scheduling algorithm. get\_rr\_interval\_rt() returns the timeslice for round-robin tasks.
+ 
+\tab \textbf{Data structures and functions related to SCHED\_FIFO task scheduling in sched\_rt.c:} task\_tick\_rt() and get\_rr\_interval\_rt(). These functions were critical to the implementation of both SCHED\_RR and SCHED\_FIFO policies. We modified task\_tick\_rt() to basically not do anything if the task policy is set to SCHED\_FIFO; this function was meant to act on SCHED\_RR tasks. We modified get\_rr\_interval\_rt() so that if the task policy is set to FIFO, it returns 0 because FIFO tasks do not have timeslices (they run until completion or they block and yield the CPU). A value of zero is interpreted by sched\_rr\_get\_interval in sched.c to mean an infinite timeslice. Interestingly, SCHED\_FIFO and SCHED\_RR share much of the same functions to implement them. SCHED\_FIFO is essentially implemented using a round-robin policy with infinite timeslices for each task.
+
+\tab \textbf{The development process:} We went through several iterations of modifying, compiling, and testing. We tested our system calls and as soon as we found one that was broken we determined why, referencing the full 3.0.4 kernel when necessary. We then started the cycle over again.
+
+\tab \textbf{Debugging:} As far as I could tell, there was not a way to load the kernel into GDB on our architecture, so we were limited to using print statements for debugging. Since the C standard library is not included in the Linux kernel, we had to use printk, the built-in kernel print function, for this.
 
 \item \emph{How did you ensure your solution was correct? Testing details, for instance.}
 
 \tab Testing was one of the most challenging aspects of the project. 
 
-\tab We determined that the best way to test round-robin scheduling would be to write a C program that set itself to a SCHED_RR process using sched_setscheduler(). This program would then fork off 4 child programs. Each of these programs would print their PID, time this print operation, and then busy-wait for the rest of their 100ms timeslice. They would cycle through this four times. If we had implemented our round-robin algorithm successfully, we knew that the processes should print out their respective PIDs one at a time, repeating. One caveat to this was that we had to set the CPU affinity. We also had to make sure that the processes did not call sleep() for the duration of their timeslice, as this would cause the scheduler to run the next task and interfere with our results. We used clock() with polling in a while loop to count up to 100ms, and added assembly code to prevent the compiler from potentially optimizing out this while loop. Initially, we had not correctly implemented the sched_setscheduler() system call, causing our program to exit with an error. Once we fixed this and recompiled the kernel, our program outputted the expected results.
+\tab We determined that the best way to test round-robin scheduling would be to write a C program that set itself to a SCHED\_RR process using sched\_setscheduler(). This program would then fork off 4 child programs. Each of these programs would print their PID, time this print operation, and then busy-wait for the rest of their 100ms timeslice. They would cycle through this four times. If we had implemented our round-robin algorithm successfully, we knew that the processes should print out their respective PIDs one at a time, repeating. One caveat to this was that we had to set the CPU affinity. We also had to make sure that the processes did not call sleep() for the duration of their timeslice, as this would cause the scheduler to run the next task and interfere with our results. We used clock() with polling in a while loop to count up to 100ms, and added assembly code to prevent the compiler from potentially optimizing out this while loop. Initially, we had not correctly implemented the sched\_setscheduler() system call, causing our program to exit with an error. Once we fixed this and recompiled the kernel, our program outputted the expected results.
 
-\tab To test FIFO scheduling, we leveraged the program we had used to test round-robin scheduling. This time, however, the program would set itself to SCHED_FIFO using sched_setscheduler() prior to forking off the child programs. The expected output on success would be that the first child would print its PID four times, then the next would print all four, and so on. Even though FIFO scheduling does not use timeslices, we left these intervals in because it would produce the same results and allowed us to reuse code. When we tested this, it also performed as expected.
-
+\tab To test FIFO scheduling, we leveraged the program we had used to test round-robin scheduling. This time, however, the program would set itself to SCHED\_FIFO using sched\_setscheduler() prior to forking off the child programs. The expected output on success would be that the first child would print its PID four times, then the next would print all four, and so on. Even though FIFO scheduling does not use timeslices, we left these intervals in because it would produce the same results and allowed us to reuse code. When we tested this, it also performed as expected.
 
 \item \emph{What did you learn?}
 
-\tab Answer for question.
+\tab In completing this project, I gained a much greater understanding for how Linux operates "under the hood" in kernel space. I learned about the performance trade-offs with scheduling tasks in FIFO vs round-robin. I learned about task prioritization. I learned that my perception of a computer multitasking and process concurrency is really just an illusion; processes are run sequentially in a prioritized fashion by the scheduler, but all of this happens so quickly that it appears as though many processes are running on each core of the CPU simultaneously. I learned the purpose of the files within the kernel directory tree. I learned how to configure and compile a new kernel. I learned how to boot into a newly-compiled kernel and debug it.
 
 \end{enumerate}
 
 %input the pygmentized output of mt19937ar.c, using a (hopefully) unique name
 %this file only exists at compile time. Feel free to change that.
-%\input{\_\_mt.h.tex}
+%\input{\\_\\_mt.h.tex}
 \end{document}
