@@ -1,0 +1,81 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PY{c+cp}{\PYZsh{}}\PY{c+cp}{include \PYZlt{}unistd.h\PYZgt{}}
+\PY{c+cp}{\PYZsh{}}\PY{c+cp}{include \PYZlt{}sched.h\PYZgt{}}
+\PY{c+cp}{\PYZsh{}}\PY{c+cp}{include \PYZlt{}time.h\PYZgt{}}
+\PY{c+cp}{\PYZsh{}}\PY{c+cp}{include \PYZlt{}stdio.h\PYZgt{}}
+\PY{c+cp}{\PYZsh{}}\PY{c+cp}{include \PYZlt{}stdlib.h\PYZgt{}}
+
+\PY{c+cp}{\PYZsh{}}\PY{c+cp}{define SCHEDULER SCHED\PYZus{}RR}
+\PY{c+cp}{\PYZsh{}}\PY{c+cp}{define TIMESLICE 0.1}
+
+\PY{k}{struct} \PY{n}{sched\PYZus{}param} \PY{n}{param}\PY{p}{;}
+
+
+\PY{k+kt}{void} \PY{n}{main} \PY{p}{(}\PY{p}{)}\PY{p}{\PYZob{}}
+    \PY{k+kt}{int} \PY{n}{i}\PY{p}{;}
+    \PY{k+kt}{int} \PY{n}{j}\PY{p}{;}
+
+    \PY{n}{param}\PY{p}{.}\PY{n}{sched\PYZus{}priority} \PY{o}{=} \PY{n}{sched\PYZus{}get\PYZus{}priority\PYZus{}max}\PY{p}{(}\PY{n}{SCHEDULER}\PY{p}{)}\PY{p}{;}
+    \PY{c+c1}{//printf("\PYZpc{}d\PYZbs{}n", param.sched\PYZus{}priority);}
+    \PY{k}{if}\PY{p}{(} \PY{n}{sched\PYZus{}setscheduler}\PY{p}{(} \PY{l+m+mi}{0}\PY{p}{,} \PY{n}{SCHEDULER}\PY{p}{,} \PY{o}{\PYZam{}}\PY{n}{param} \PY{p}{)} \PY{o}{=}\PY{o}{=} \PY{o}{-}\PY{l+m+mi}{1}\PY{p}{)}
+    \PY{p}{\PYZob{}}
+        \PY{n}{printf}\PY{p}{(}\PY{l+s}{"}\PY{l+s}{sched\PYZus{}setscheduler broke}\PY{l+s+se}{\PYZbs{}n}\PY{l+s}{"}\PY{p}{)}\PY{p}{;}
+        \PY{n}{exit}\PY{p}{(}\PY{o}{-}\PY{l+m+mi}{1}\PY{p}{)}\PY{p}{;}
+    \PY{p}{\PYZcb{}}
+
+    \PY{k+kt}{unsigned} \PY{k+kt}{long} \PY{n}{mask} \PY{o}{=} \PY{l+m+mi}{8}\PY{p}{;} \PY{c+cm}{/* processors 4 */}
+    \PY{k+kt}{unsigned} \PY{k+kt}{int} \PY{n}{len} \PY{o}{=} \PY{k}{sizeof}\PY{p}{(}\PY{n}{mask}\PY{p}{)}\PY{p}{;}
+    \PY{k}{if} \PY{p}{(}\PY{n}{sched\PYZus{}setaffinity}\PY{p}{(}\PY{l+m+mi}{0}\PY{p}{,} \PY{n}{len}\PY{p}{,} \PY{o}{\PYZam{}}\PY{n}{mask}\PY{p}{)} \PY{o}{\PYZlt{}} \PY{l+m+mi}{0}\PY{p}{)} \PY{p}{\PYZob{}}
+        \PY{n}{printf}\PY{p}{(}\PY{l+s}{"}\PY{l+s}{sched\PYZus{}setaffinity not working boss }\PY{l+s+se}{\PYZbs{}n}\PY{l+s}{"}\PY{p}{)}\PY{p}{;}
+        \PY{n}{exit}\PY{p}{(}\PY{o}{-}\PY{l+m+mi}{1}\PY{p}{)}\PY{p}{;}
+    \PY{p}{\PYZcb{}}
+
+    \PY{n}{pid\PYZus{}t} \PY{n}{pid}\PY{p}{;}
+    \PY{k+kt}{clock\PYZus{}t} \PY{n}{start}\PY{p}{,} \PY{n}{stop}\PY{p}{,} \PY{n}{start1}\PY{p}{,} \PY{n}{stop1}\PY{p}{;}
+    \PY{n}{printf}\PY{p}{(}\PY{l+s}{"}\PY{l+s}{START}\PY{l+s+se}{\PYZbs{}n}\PY{l+s}{"}\PY{p}{)}\PY{p}{;}
+    \PY{k+kt}{double} \PY{n}{time\PYZus{}elapsed}\PY{p}{,} \PY{n}{print\PYZus{}time}\PY{p}{;}
+    \PY{k}{for}\PY{p}{(}\PY{n}{i} \PY{o}{=} \PY{l+m+mi}{0}\PY{p}{;} \PY{n}{i}\PY{o}{\PYZlt{}}\PY{l+m+mi}{4}\PY{p}{;}\PY{n}{i}\PY{o}{+}\PY{o}{+}\PY{p}{)}
+    \PY{p}{\PYZob{}}
+        \PY{k}{switch}\PY{p}{(}\PY{n}{pid} \PY{o}{=} \PY{n}{fork}\PY{p}{(}\PY{p}{)}\PY{p}{)}
+        \PY{p}{\PYZob{}}
+            \PY{k}{case} \PY{o}{-}\PY{l+m+mi}{1}: \PY{c+c1}{//oops case}
+                \PY{n}{exit}\PY{p}{(}\PY{o}{-}\PY{l+m+mi}{1}\PY{p}{)}\PY{p}{;}
+            \PY{k}{case} \PY{l+m+mi}{0}:  \PY{c+c1}{//child case}
+                \PY{n}{j} \PY{o}{=} \PY{l+m+mi}{0}\PY{p}{;}
+                \PY{k}{while}\PY{p}{(}\PY{n}{j} \PY{o}{\PYZlt{}} \PY{l+m+mi}{4}\PY{p}{)}
+                \PY{p}{\PYZob{}}
+                    \PY{n}{start} \PY{o}{=} \PY{n}{clock}\PY{p}{(}\PY{p}{)}\PY{p}{;}
+                    \PY{n}{printf}\PY{p}{(}\PY{l+s}{"}\PY{l+s}{Parent: \PYZpc{}d PID: \PYZpc{}d Iter: \PYZpc{}d}\PY{l+s+se}{\PYZbs{}n}\PY{l+s}{"}\PY{p}{,}\PY{n}{i}\PY{p}{,}\PY{n}{getpid}\PY{p}{(}\PY{p}{)}\PY{p}{,}\PY{n}{j}\PY{p}{)}\PY{p}{;}
+                    \PY{n}{stop} \PY{o}{=} \PY{n}{clock}\PY{p}{(}\PY{p}{)}\PY{p}{;}
+                    \PY{n}{print\PYZus{}time} \PY{o}{=} \PY{p}{(}\PY{k+kt}{double}\PY{p}{)}\PY{p}{(}\PY{n}{stop}\PY{o}{-}\PY{n}{start}\PY{p}{)} \PY{o}{/} \PY{n}{CLOCKS\PYZus{}PER\PYZus{}SEC}\PY{p}{;}
+
+            \PY{n}{start} \PY{o}{=} \PY{n}{clock}\PY{p}{(}\PY{p}{)}\PY{p}{;}
+            \PY{n}{time\PYZus{}elapsed} \PY{o}{=} \PY{l+m+mi}{0}\PY{p}{;}
+            \PY{k}{while}\PY{p}{(}\PY{p}{(}\PY{n}{time\PYZus{}elapsed} \PY{o}{+} \PY{n}{print\PYZus{}time}\PY{p}{)} \PY{o}{\PYZlt{}} \PY{n}{TIMESLICE}\PY{p}{)}
+            \PY{p}{\PYZob{}}
+                \PY{n}{asm}\PY{p}{(}\PY{l+s}{"}\PY{l+s}{"}\PY{p}{)}\PY{p}{;}
+            \PY{n}{stop} \PY{o}{=} \PY{n}{clock}\PY{p}{(}\PY{p}{)}\PY{p}{;}
+                        \PY{n}{time\PYZus{}elapsed} \PY{o}{=} \PY{p}{(}\PY{k+kt}{double}\PY{p}{)}\PY{p}{(}\PY{n}{stop}\PY{o}{-}\PY{n}{start}\PY{p}{)} \PY{o}{/} \PY{n}{CLOCKS\PYZus{}PER\PYZus{}SEC}\PY{p}{;}
+            \PY{p}{\PYZcb{}}
+            \PY{n}{printf}\PY{p}{(}\PY{l+s}{"}\PY{l+s}{TIMESLICE \PYZpc{}f}\PY{l+s+se}{\PYZbs{}n}\PY{l+s}{"}\PY{p}{,}\PY{p}{(}\PY{n}{time\PYZus{}elapsed}\PY{o}{+}\PY{n}{print\PYZus{}time}\PY{p}{)}\PY{p}{)}\PY{p}{;}
+
+                    \PY{c+c1}{//sleep(.1 - time\PYZus{}elapsed - .01);}
+                    \PY{n}{j}\PY{o}{+}\PY{o}{+}\PY{p}{;}
+                \PY{p}{\PYZcb{}}
+                \PY{n}{\PYZus{}exit}\PY{p}{(}\PY{n}{EXIT\PYZus{}SUCCESS}\PY{p}{)}\PY{p}{;}
+            \PY{n+nl}{default:}  \PY{c+c1}{//parent case}
+            \PY{n}{printf}\PY{p}{(}\PY{l+s}{"}\PY{l+s}{OMG PARENT!}\PY{l+s+se}{\PYZbs{}n}\PY{l+s}{"}\PY{p}{)}\PY{p}{;}
+
+            \PY{k}{break}\PY{p}{;}
+
+        \PY{p}{\PYZcb{}}
+    \PY{p}{\PYZcb{}}
+    \PY{c+c1}{//wait();}
+    \PY{k}{for}\PY{p}{(}\PY{n}{i} \PY{o}{=}\PY{l+m+mi}{0}\PY{p}{;} \PY{n}{i}\PY{o}{\PYZlt{}}\PY{l+m+mi}{4}\PY{p}{;} \PY{n}{i}\PY{o}{+}\PY{o}{+}\PY{p}{)}
+    \PY{p}{\PYZob{}}
+        \PY{n}{wait}\PY{p}{(}\PY{p}{)}\PY{p}{;}
+    \PY{p}{\PYZcb{}}
+    \PY{n}{printf}\PY{p}{(}\PY{l+s}{"}\PY{l+s}{finished}\PY{l+s+se}{\PYZbs{}n}\PY{l+s}{"}\PY{p}{)}\PY{p}{;}
+
+\PY{p}{\PYZcb{}}
+\end{Verbatim}

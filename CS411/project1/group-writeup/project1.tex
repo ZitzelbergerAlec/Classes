@@ -1,0 +1,216 @@
+\documentclass[letterpaper,10pt,titlepage]{article}
+
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+
+\usepackage{alltt}
+\usepackage{float}
+\usepackage{color}
+\usepackage{url}
+\usepackage{minted}
+
+\usepackage{balance}
+\usepackage[TABBOTCAP, tight]{subfigure}
+\usepackage{enumitem}
+\usepackage{pstricks, pst-node}
+
+\usepackage{geometry}
+\geometry{textheight=8.5in, textwidth=6in}
+
+\newcommand{\cred}[1]{{\color{red}#1}}
+\newcommand{\cblue}[1]{{\color{blue}#1}}
+
+\usepackage{hyperref}
+
+\def\name{Doug Dziggel \newline Ke Fan \newline David Merrick \newline Michael Phan }
+
+%pull in the necessary preamble matter for pygments output
+\input{pygments.tex}
+\parindent = 0.0 in
+\parskip = 0.2 in
+\usepackage{listings}
+\lstset{ %
+language=C,                % choose the language of the code
+%basicstyle=\footnotesize,       % the size of the fonts that are used for the code
+basicstyle=\ttfamily,
+keywordstyle=\color{blue}\ttfamily,
+stringstyle=\color{red}\ttfamily,
+commentstyle=\color{green}\ttfamily,
+morecomment=[l][\color{magenta}]{\#}
+numbers=left,                   % where to put the line-numbers
+numberstyle=\footnotesize,      % the size of the fonts that are used for the line-numbers
+stepnumber=1,                   % the step between two line-numbers. If it is 1 each line will be numbered
+numbersep=5pt,                  % how far the line-numbers are from the code
+backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+showspaces=false,               % show spaces adding particular underscores
+showstringspaces=false,         % underline spaces within strings
+showtabs=false,                 % show tabs within strings adding particular underscores
+%frame=single,           % adds a frame around the code
+tabsize=4,          % sets default tabsize to 2 spaces
+captionpos=b,           % sets the caption-position to bottom
+breaklines=true,        % sets automatic line breaking
+breakatwhitespace=false,    % sets if automatic breaks should only happen at whitespace
+escapeinside={\%*}{*)}          % if you want to add a comment within your code
+}
+
+%% The following metadata will show up in the PDF properties
+\hypersetup{
+  colorlinks = true,
+  urlcolor = black,
+  pdfauthor = {\name},
+  pdfkeywords = {cs411 ``operating systems'' FIFO RR ``round robin''},
+  pdftitle = {CS 411 Project 1 Group Writeup},
+  pdfsubject = {CS 411 Project 1},
+  pdfpagemode = UseNone
+}
+
+\begin{document}
+\title{CS 411 Project 1 Group Writeup}
+\author{Doug Dziggel \and Ke Fan \and David Merrick \and Michael Phan}
+\date{\today}
+\maketitle
+
+\begin{abstract}
+This paper describes the design process and implementation of the Linux kernel in developing the FIFO and RR scheduling algorithms.
+\end{abstract}
+
+\section{Design}
+
+    We based our design for round-robin and FIFO scheduling policies on the actual implementation of them in the Linux 3.0.4 kernel. 
+    This allowed us to leverage the existing functions, definitions, and data structures that were already written in the kernel 
+    provided for us for the project. In several respects, round-robin and FIFO policies work very similarly and call many of the
+    same functions. Round-robin defines a timeslice for each process to run, then runnable processes that are set to use this policy
+    are placed in a runqueue. Each process executes for the amount of time specified by the timeslice definition, then the next process
+    in the queue is run. This cycle repeats itself, running each of the processes in the queue in turn for an equal amount of time.
+    If there are no other runnable SCHED\_RR processes in the queue, the current process continues to run. SCHED\_FIFO is implemented the
+    same way, but with infinite timeslices. This causes each process to run until it either completes or blocks and yields the CPU. 
+    When the CPU is free from that process, the next runnable SCHED\_FIFO task in the runqueue begins execution.
+
+\section{Implementation}
+
+System calls/functions we edited:\\
+
+{\bfseries In sched.c:}
+\begin{enumerate}
+%In sched.cj:
+    \item static inline int rt\_policy(int policy)
+
+        We added "if (unlikely(policy == SCHED\_FIFO $||$ policy == SCHED\_RR)) return 1;" to this function. The unlikely() function is a compiler optimization to tell the compiler to favor the more likely side of a jump instruction. It is essentially a hint that tells the compiler which direction the logic is likely to go. The code added to rt\_policy function causes it to return 1 if the task's policy is either SCHED\_RR or SCHED\_FIFO. Other options for policy are SCHED\_BATCH, and SCHED\_IDLE, and SCHED\_NORMAL, which is the most common way to schedule processes. The point of rt\_policy is to return true if a task has a realtime policy (SCHED\_RR or SCHED\_FIFO) and false otherwise. Since SCHED\_NORMAL is not a realtime policy, it is more likely that the policy is non-realtime so this compiler optimization can be put in place. 
+        
+        This function is called in the task\_has\_rt\_policy function. This function is primarily used in other functions throughout sched.c to determine how to set the priority of a task. So without the rt\_policy function returning 1 in the event of a realtime policy, none of the other functions set the task priority accordingly and this breaks both SCHED\_FIFO and SCHED\_RR algorithms.
+
+\newpage
+\item void sched\_fork(struct task\_struct *p)
+
+Inside the if (unlikely(p->sched\_reset\_on\_fork)){...} if statement, we added the following to occur first:
+\begin{quotation}
+\begin{minted}{c}
+ if (p->policy == SCHED_FIFO || p->policy == SCHED_RR) {
+     p->policy = SCHED_NORMAL;
+     p->normal_prio = p->static_prio;
+ }
+\end{minted}
+\end{quotation}
+These lines of code will check if the current task policy is either FIFO or RR. If so, it will set the scheduling policy back to normal and set the normal priority of the task to become static. It allows the task to calculate the nice value, time slices, interactivity, and dynamic priority.
+
+This function also resets the schedule policy of the child in the event this is specified in the parent.
+
+
+\item static int \_\_sched\_setscheduler(struct task\_struct *p, int policy, const struct sched\_param *param, bool user)
+
+ In the given kernel files, the \_\_sched\_setscheduler function was missing some statements for FIFO and RR in the if statement:
+\begin{quotation}
+\begin{minted}{c}
+if (policy != policy != SCHED_NORMAL && policy != SCHED_BATCH &&
+    policy != SCHED_IDLE)
+    return -EINVAL;
+\end{minted}
+\end{quotation}
+
+We replaced the statement to include policies for FIFO and RR:
+\begin{quotation}
+\begin{minted}{c}
+if (policy != SCHED_FIFO && policy != SCHED_RR &&
+     policy != SCHED_NORMAL && policy != SCHED_BATCH &&
+     policy != SCHED_IDLE)
+ return -EINVAL;
+\end{minted}
+\end{quotation}
+
+\item SYSCALL\_DEFINE1(sched\_get\_priority\_max, int, policy)
+
+Inside this function, there is a switch case that creates cases based on the current scheduling policy. We added a few lines of code to include cases for FIFO and RR:
+\begin{quotation}
+\begin{minted}{c}
+case SCHED_FIFO:
+case SCHED_RR:
+    ret = MAX_USER_RT_PRIO-1;
+    break;
+\end{minted}
+\end{quotation}
+  
+By including these two cases, the function sched\_get\_priority\_max will return the value MAX\_USER\_RT\_PRIO-1 for the scheduling policies FIFO and RR.
+
+This function returns the minimum priority value for a scheduling policy. In the case of SCHED\_FIFO and SCHED\_RR, these priorities can be between 1 and 99. So the maximum priority is 99. And this function will return 98.
+
+\newpage
+\item SYSCALL\_DEFINE1(sched\_get\_priority\_min, int, policy)
+
+
+\begin{quotation}
+\begin{minted}{c}
+case SCHED_FIFO:
+case SCHED_RR:
+    ret = 1;
+    break;
+\end{minted}
+\end{quotation}
+This function returns the minimum priority value for a scheduling policy. In the case of SCHED\_FIFO and SCHED\_RR, these priorities can be between 1 and 99. So the minimum priority is 1.\\
+\end{enumerate}
+
+{\bfseries In sched\_rt.c:}
+
+\begin{enumerate}[resume]
+\item static void task\_tick\_rt(struct rq *rq, struct task\_struct *p, int queued)
+Inside this function, there is a block of comment with nothing following it. It states:
+\begin{quotation}
+\begin{minted}{c}
+/*
+ * RR tasks need a special form of timeslice management.
+ * FIFO tasks have no timeslices.
+ */
+\end{minted}
+\end{quotation}
+The following lines of code were added after that comment:
+\begin{quotation}
+\begin{minted}{c}
+if (p->policy != SCHED_RR)
+    return;
+
+if (--p->rt.time_slice)
+    return;
+
+p->rt.time_slice = DEF_TIMESLICE;
+\end{minted}
+\end{quotation}
+This begins by checking if the current policy is RR. If it is not, then it will return from the function to end. If the previous task still has a time slice, it will return from the function to end. If neither of the previous cases occur, then it will continue to set the current task to have a time slice equal to DEF\_TIMESLICE.
+
+
+\item static unsigned int get\_rr\_interval\_rt(struct rq *rq, struct task\_struct *ttask)
+
+    This function's purpose is to get the RR interval time. In the kernel given, it would always return 0, which would cause
+    RR to become FIFO. The following lines of code were added before the return 0 to assure that when the policy is RR, the
+    function correctly returns the interval value.
+\begin{minted}{c}
+if (task->policy == SCHED_RR)
+     return DEF_TIMESLICE;
+    else
+{
+\end{minted}
+\end{enumerate}
+
+\section{Code}
+\input{__kernel_test.c.tex}
+\end{document}
