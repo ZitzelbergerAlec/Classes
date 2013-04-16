@@ -97,14 +97,14 @@ System calls/functions we edited:\\
 %In sched.cj:
     \item static inline int rt\_policy(int policy)
 
-        We added "if (unlikely(policy == SCHED\_FIFO $||$ policy == SCHED\_RR)) return 1;" to this function. The unlikely() function is a compiler optimization to tell the compiler to favor the more likely side of a jump instruction. It is essentially a hint that tells the compiler which direction the logic is likely to go. The code added to rt\_policy function causes it to return 1 if the task's policy is either SCHED\_RR or SCHED\_FIFO. Other options for policy are SCHED\_BATCH, and SCHED\_IDLE, and SCHED\_NORMAL, which is the most common way to schedule processes. The point of rt\_policy is to return true if a task has a realtime policy (SCHED\_RR or SCHED\_FIFO) and false otherwise. Since SCHED\_NORMAL is not a realtime policy, it is more likely that the policy is non-realtime so this compiler optimization can be put in place. 
+        We added ``if (unlikely(policy == SCHED\_FIFO $||$ policy == SCHED\_RR)) return 1;" to this function. The unlikely() function is a compiler optimization to tell the compiler to favor the more likely side of a jump instruction. It is essentially a hint that tells the compiler which direction the logic is likely to go. The code added to rt\_policy function causes it to return 1 if the task's policy is either SCHED\_RR or SCHED\_FIFO. Other options for policy are SCHED\_BATCH, and SCHED\_IDLE, and SCHED\_NORMAL, which is the most common way to schedule processes (it is better known as the Linux Completely Fair Scheduler, CFS). The point of rt\_policy is to return true (1) if a task has a real-time policy (SCHED\_RR or SCHED\_FIFO) and false (0) otherwise. Note: Since SCHED\_NORMAL is not a real-time policy, it is more likely that the policy is non-realtime so it makes sense for the unlikely() compiler optimization to be here. 
         
-        This function is called in the task\_has\_rt\_policy function. This function is primarily used in other functions throughout sched.c to determine how to set the priority of a task. So without the rt\_policy function returning 1 in the event of a realtime policy, none of the other functions set the task priority accordingly and this breaks both SCHED\_FIFO and SCHED\_RR algorithms.
+        rt\_policy() is called in the task\_has\_rt\_policy function, which is primarily used in other functions throughout sched.c to determine how to set the priority of a task. So without the rt\_policy function returning 1 in the event of a realtime policy, none of the other functions set the task priority accordingly and this breaks both the SCHED\_FIFO and SCHED\_RR algorithms.
 
 \newpage
 \item void sched\_fork(struct task\_struct *p)
 
-Inside the if (unlikely(p->sched\_reset\_on\_fork)){...} if statement, we added the following to occur first:
+Inside the if (unlikely(p-$\rangle$sched\_reset\_on\_fork)){...} if statement, we added the following to occur first:
 \begin{quotation}
 \begin{minted}{c}
  if (p->policy == SCHED_FIFO || p->policy == SCHED_RR) {
@@ -141,7 +141,7 @@ if (policy != SCHED_FIFO && policy != SCHED_RR &&
 
 \item SYSCALL\_DEFINE1(sched\_get\_priority\_max, int, policy)
 
-Inside this function, there is a switch case that creates cases based on the current scheduling policy. We added a few lines of code to include cases for FIFO and RR:
+Inside this function, there is a switch case statement for the current scheduling policy. We added a few lines of code to include cases for FIFO and RR:
 \begin{quotation}
 \begin{minted}{c}
 case SCHED_FIFO:
@@ -151,9 +151,7 @@ case SCHED_RR:
 \end{minted}
 \end{quotation}
   
-By including these two cases, the function sched\_get\_priority\_max will return the value MAX\_USER\_RT\_PRIO-1 for the scheduling policies FIFO and RR.
-
-This function returns the minimum priority value for a scheduling policy. In the case of SCHED\_FIFO and SCHED\_RR, these priorities can be between 1 and 99. So the maximum priority is 99. And this function will return 98.
+This function returns the maximum priority value for a scheduling policy. By including these two cases, the function sched\_get\_priority\_max will return the value MAX\_USER\_RT\_PRIO-1 for the scheduling policies FIFO and RR. In the case of SCHED\_FIFO and SCHED\_RR, these priorities can be between 1 and 99. Since MAX\_USER\_RT\_PRIO is defined as 100, the maximum priority value this function will return for SCHED\_RR and SCHED\_FIFO policies is 99. 
 
 \newpage
 \item SYSCALL\_DEFINE1(sched\_get\_priority\_min, int, policy)
@@ -167,7 +165,7 @@ case SCHED_RR:
     break;
 \end{minted}
 \end{quotation}
-This function returns the minimum priority value for a scheduling policy. In the case of SCHED\_FIFO and SCHED\_RR, these priorities can be between 1 and 99. So the minimum priority is 1.\\
+This function returns the minimum priority value for a scheduling policy. In the case of SCHED\_FIFO and SCHED\_RR, this is 1.
 \end{enumerate}
 
 {\bfseries In sched\_rt.c:}
@@ -200,9 +198,9 @@ This begins by checking if the current policy is RR. If it is not, then it will 
 
 \item static unsigned int get\_rr\_interval\_rt(struct rq *rq, struct task\_struct *ttask)
 
-    This function's purpose is to get the RR interval time. In the kernel given, it would always return 0, which would cause
-    RR to become FIFO. The following lines of code were added before the return 0 to assure that when the policy is RR, the
-    function correctly returns the interval value.
+    This function's purpose is to get the RR interval time. In the kernel provided for us for the project, it initially would always return 0, which would cause
+    RR to become FIFO. The following lines of code were added before the return 0 to ensure that when the policy is RR, the
+    function correctly returns the timeslice value.
 \begin{minted}{c}
 if (task->policy == SCHED_RR)
      return DEF_TIMESLICE;
@@ -211,6 +209,6 @@ if (task->policy == SCHED_RR)
 \end{minted}
 \end{enumerate}
 
-\section{Code}
+\section{Testing Code}
 \input{__kernel_test.c.tex}
 \end{document}
