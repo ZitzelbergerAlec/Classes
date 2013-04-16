@@ -1,7 +1,7 @@
 %!PS-Adobe-2.0
 %%Creator: dvips(k) 5.96.1 Copyright 2007 Radical Eye Software
 %%Title: project1.dvi
-%%CreationDate: Mon Apr 15 19:30:01 2013
+%%CreationDate: Mon Apr 15 19:36:12 2013
 %%Pages: 7
 %%PageOrder: Ascend
 %%BoundingBox: 0 0 612 792
@@ -12,7 +12,7 @@
 %DVIPSCommandLine: dvips -R -Poutline -t letter project1.dvi -o
 %+ project1.ps
 %DVIPSParameters: dpi=600
-%DVIPSSource:  TeX output 2013.04.15:1930
+%DVIPSSource:  TeX output 2013.04.15:1936
 %%BeginProcSet: tex.pro 0 0
 %!
 /TeXDict 300 dict def TeXDict begin/N{def}def/B{bind def}N/S{exch}N/X{S
@@ -3226,10 +3226,10 @@ SDict begin H.R end
 SDict begin [ /View [/XYZ H.V] /Dest (page.1) cvn H.B /DEST pdfmark end
  150 -208
 a 0 TeXcolorgray 0 TeXcolorgray 0 TeXcolorgray 0 TeXcolorgray
-1767 1790 a Ff(Abstract)150 2092 y Fe(This)31 b(pap)r(er)f(describ)r
-(es)g(the)h(design)f(pro)r(cess)f(and)h(implemen)n(tation)h(of)g(the)f
-(Lin)n(ux)h(k)n(ernel)e(in)i(dev)n(eloping)f(the)150
-2192 y(FIF)n(O)d(and)h(RR)g(sc)n(heduling)f(algorithms.)p
+1767 1790 a Ff(Abstract)150 2092 y Fe(This)22 b(pap)r(er)f(describ)r
+(es)g(the)h(design)f(pro)r(cess)f(and)i(implemen)n(tation)f(of)h(the)g
+(FIF)n(O)f(and)h(round-robin)e(sc)n(heduling)150 2192
+y(algorithms)26 b(in)i(the)g(Lin)n(ux)f(k)n(ernel.)p
 0 TeXcolorgray 0 TeXcolorgray eop end
 %%Page: 1 3
 TeXDict begin 1 2 bop 0 TeXcolorgray 0 0 a
@@ -3612,7 +3612,7 @@ TeXcolorrgb 14 w(include)g(<stdio.h>)p 0 TeXcolorgray
 0 TeXcolorgray 0.74 0.48 0.00 TeXcolorrgb 150 581 a(#)p
 0 TeXcolorgray 0.74 0.48 0.00 TeXcolorrgb 14 w(define)f(PROCESS_POLICY)
 d(SCHED_RR)p 0 TeXcolorgray 0.25 0.50 0.50 TeXcolorrgb
-55 w(//Change)i(to)j(SCHED_FIFO)c(to)k(test)f(FIFO)g(scheduling)p
+345 w(//Change)j(to)h(SCHED_FIFO)e(to)j(test)e(FIFO)h(scheduling)p
 0 TeXcolorgray 0.74 0.48 0.00 TeXcolorrgb 150 681 a(#)p
 0 TeXcolorgray 0.74 0.48 0.00 TeXcolorrgb 14 w(define)f(TIMESLICE)f
 (0.1)p 0 TeXcolorgray 0.25 0.50 0.50 TeXcolorrgb 150
@@ -3620,96 +3620,98 @@ d(SCHED_RR)p 0 TeXcolorgray 0.25 0.50 0.50 TeXcolorrgb
 b(to)43 b(function)d(correctly:)p 0 TeXcolorgray 0.00 0.50 0.00
 TeXcolorrgb 150 980 a Fb(struct)p 0 TeXcolorgray 41 w(sched_param)f
 (param;)p 0.69 0.00 0.25 TeXcolorrgb 150 1179 a(void)p
-0 TeXcolorgray 42 w(main)j(\(\){)p 0.69 0.00 0.25 TeXcolorrgb
-324 1279 a(int)p 0 TeXcolorgray 43 w(i;)p 0.69 0.00 0.25
-TeXcolorrgb 324 1378 a(int)p 0 TeXcolorgray 43 w(j;)324
-1577 y(param.sched_prior)o(it)o(y)p 0.40 0.40 0.40 TeXcolorrgb
-38 w(=)p 0 TeXcolorgray 43 w(sched_get_priori)o(ty)o(_ma)o(x\()o(PR)o
-(OCE)o(SS)o(_PO)o(LI)o(CY\))o(;)p 0.25 0.50 0.50 TeXcolorrgb
-324 1677 a Fa(//A)h("0")f(as)h(the)f(first)g(parameter)e(to)i
-(sched_setschedule)o(r\()o(\))c(means)p 0 TeXcolorgray
-0.25 0.50 0.50 TeXcolorrgb 324 1777 a(//set)k(policy)f(for)h(this)g
+0 TeXcolorgray 0.00 0.00 1.00 TeXcolorrgb 150 1279 a(main)p
+0 TeXcolorgray(\(\))150 1378 y({)p 0.69 0.00 0.25 TeXcolorrgb
+499 1478 a(int)p 0 TeXcolorgray 42 w(i;)p 0.69 0.00 0.25
+TeXcolorrgb 499 1577 a(int)p 0 TeXcolorgray 42 w(j;)499
+1777 y(param.sched_pri)o(ori)o(ty)p 0.40 0.40 0.40 TeXcolorrgb
+37 w(=)p 0 TeXcolorgray 43 w(sched_get_priorit)o(y_)o(ma)o(x\(P)o(RO)o
+(CES)o(S_)o(POL)o(IC)o(Y\))o(;)p 0.25 0.50 0.50 TeXcolorrgb
+499 1876 a Fa(//A)j("0")g(as)h(the)f(first)g(parameter)e(to)j
+(sched_setschedu)o(ler)o(\(\))37 b(means)p 0 TeXcolorgray
+0.25 0.50 0.50 TeXcolorrgb 499 1976 a(//set)k(policy)g(for)i(this)f
 (process)p 0 TeXcolorgray 0.00 0.50 0.00 TeXcolorrgb
-324 1876 a Fb(if)p 0 TeXcolorgray(\(sched_setsched)o(ul)o(er\()p
+499 2076 a Fb(if)p 0 TeXcolorgray 42 w(\(sched_setschedul)o(er\()p
 0.40 0.40 0.40 TeXcolorrgb -1 w(0)p 0 TeXcolorgray(,)37
 b(PROCESS_POLICY,)p 0.40 0.40 0.40 TeXcolorrgb 37 w(&)p
 0 TeXcolorgray(param\))p 0.40 0.40 0.40 TeXcolorrgb 41
 w(=)p 0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb(=)p 0
 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb 43 w(-)p 0 TeXcolorgray
-0.40 0.40 0.40 TeXcolorrgb(1)p 0 TeXcolorgray(\))324
-1976 y({)499 2076 y(printf\()p 0.73 0.13 0.13 TeXcolorrgb(")p
-0 TeXcolorgray 0.73 0.13 0.13 TeXcolorrgb(sched_s)o(ets)o(ch)o(edu)o
-(le)o(r)h(broke)p 0 TeXcolorgray 0.73 0.40 0.13 TeXcolorrgb(\\n)p
-0 TeXcolorgray 0.73 0.13 0.13 TeXcolorrgb(")p 0 TeXcolorgray(\);)499
-2175 y(exit\()p 0.40 0.40 0.40 TeXcolorrgb(-)p 0 TeXcolorgray
-0.40 0.40 0.40 TeXcolorrgb(1)p 0 TeXcolorgray(\);)324
-2275 y(})p 0.69 0.00 0.25 TeXcolorrgb 324 2474 a(unsigned)p
-0 TeXcolorgray 0.69 0.00 0.25 TeXcolorrgb 41 w(long)p
+0.40 0.40 0.40 TeXcolorrgb(1)p 0 TeXcolorgray(\))42 b({)847
+2175 y(printf\()p 0.73 0.13 0.13 TeXcolorrgb(")p 0 TeXcolorgray
+0.73 0.13 0.13 TeXcolorrgb(sched_set)o(sch)o(ed)o(ul)o(er)37
+b(broke)p 0 TeXcolorgray 0.73 0.40 0.13 TeXcolorrgb(\\n)p
+0 TeXcolorgray 0.73 0.13 0.13 TeXcolorrgb(")p 0 TeXcolorgray(\);)847
+2275 y(exit\()p 0.40 0.40 0.40 TeXcolorrgb(-)p 0 TeXcolorgray
+0.40 0.40 0.40 TeXcolorrgb(1)p 0 TeXcolorgray(\);)499
+2374 y(})p 0.69 0.00 0.25 TeXcolorrgb 499 2574 a(unsigned)p
+0 TeXcolorgray 0.69 0.00 0.25 TeXcolorrgb 40 w(long)p
 0 TeXcolorgray 42 w(mask)p 0.40 0.40 0.40 TeXcolorrgb
-41 w(=)p 0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb 44
-w(8)p 0 TeXcolorgray(;)p 0.25 0.50 0.50 TeXcolorrgb 42
-w Fa(/*)43 b(processors)d(4)j(*/)p 0 TeXcolorgray 0.69 0.00 0.25
-TeXcolorrgb 324 2574 a Fb(unsigned)p 0 TeXcolorgray 0.69 0.00 0.25
-TeXcolorrgb 41 w(int)p 0 TeXcolorgray 42 w(len)p 0.40 0.40 0.40
-TeXcolorrgb 42 w(=)p 0 TeXcolorgray 0.00 0.50 0.00 TeXcolorrgb
-43 w(sizeof)p 0 TeXcolorgray(\(mask\);)p 0.25 0.50 0.50
-TeXcolorrgb 324 2673 a Fa(//Set)f(the)g(CPU)h(affinity)d(to)j(CPU)f(0)p
-0 TeXcolorgray 0.00 0.50 0.00 TeXcolorrgb 324 2773 a
-Fb(if)p 0 TeXcolorgray 43 w(\(sched_setaffini)o(ty\()p
-0.40 0.40 0.40 TeXcolorrgb -1 w(0)p 0 TeXcolorgray(,)37
+42 w(=)p 0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb 43
+w(8)p 0 TeXcolorgray(;)p 0.25 0.50 0.50 TeXcolorrgb 348
+w Fa(/*)43 b(processors)c(4)k(*/)p 0 TeXcolorgray 0.69 0.00 0.25
+TeXcolorrgb 499 2673 a Fb(unsigned)p 0 TeXcolorgray 0.69 0.00 0.25
+TeXcolorrgb 40 w(int)p 0 TeXcolorgray 42 w(len)p 0.40 0.40 0.40
+TeXcolorrgb 43 w(=)p 0 TeXcolorgray 0.00 0.50 0.00 TeXcolorrgb
+43 w(sizeof)p 0 TeXcolorgray 41 w(\(mask\);)p 0.25 0.50 0.50
+TeXcolorrgb 499 2773 a Fa(//Set)e(the)i(CPU)f(affinity)e(to)j(CPU)f(0)p
+0 TeXcolorgray 0.00 0.50 0.00 TeXcolorrgb 499 2873 a
+Fb(if)p 0 TeXcolorgray 42 w(\(sched_setaffinit)o(y\()p
+0.40 0.40 0.40 TeXcolorrgb(0)p 0 TeXcolorgray -1 w(,)37
 b(len,)p 0.40 0.40 0.40 TeXcolorrgb 42 w(&)p 0 TeXcolorgray(mask\))p
 0.40 0.40 0.40 TeXcolorrgb 41 w(<)p 0 TeXcolorgray 0.40 0.40 0.40
-TeXcolorrgb 43 w(0)p 0 TeXcolorgray(\))43 b({)499 2873
+TeXcolorrgb 44 w(0)p 0 TeXcolorgray(\))42 b({)847 2972
 y(printf\()p 0.73 0.13 0.13 TeXcolorrgb(")p 0 TeXcolorgray
-0.73 0.13 0.13 TeXcolorrgb(sched_s)o(eta)o(ff)o(ini)o(ty)37
-b(not)42 b(working)f(boss)p 0 TeXcolorgray 0.73 0.40 0.13
-TeXcolorrgb 42 w(\\n)p 0 TeXcolorgray 0.73 0.13 0.13
-TeXcolorrgb(")p 0 TeXcolorgray(\);)499 2972 y(exit\()p
-0.40 0.40 0.40 TeXcolorrgb(-)p 0 TeXcolorgray 0.40 0.40 0.40
-TeXcolorrgb(1)p 0 TeXcolorgray(\);)324 3072 y(})324 3271
-y(pid_t)h(pid;)p 0.69 0.00 0.25 TeXcolorrgb 324 3371
-a(clock_t)p 0 TeXcolorgray 41 w(start,)f(stop,)h(start1,)e(stop1;)324
-3470 y(printf\()p 0.73 0.13 0.13 TeXcolorrgb(")p 0 TeXcolorgray
-0.73 0.13 0.13 TeXcolorrgb(START)p 0 TeXcolorgray 0.73 0.40 0.13
-TeXcolorrgb(\\n)p 0 TeXcolorgray 0.73 0.13 0.13 TeXcolorrgb(")p
-0 TeXcolorgray(\))o(;)p 0.69 0.00 0.25 TeXcolorrgb 324
-3570 a(double)p 0 TeXcolorgray 41 w(time_elapsed,)f(print_time;)p
-0.25 0.50 0.50 TeXcolorrgb 324 3670 a Fa(//Fork)i(off)i(four)f(child)f
-(processes)p 0 TeXcolorgray 0.00 0.50 0.00 TeXcolorrgb
-324 3769 a Fb(for)p 0 TeXcolorgray(\(i)p 0.40 0.40 0.40
-TeXcolorrgb 42 w(=)p 0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb
-43 w(0)p 0 TeXcolorgray(;)i(i)p 0.40 0.40 0.40 TeXcolorrgb(<)p
-0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb(4)p 0 TeXcolorgray(;i)p
-0.40 0.40 0.40 TeXcolorrgb(+)p 0 TeXcolorgray 0.40 0.40 0.40
-TeXcolorrgb(+)p 0 TeXcolorgray(\))324 3869 y({)p 0.00 0.50 0.00
-TeXcolorrgb 499 3968 a(switch)p 0 TeXcolorgray(\(pid)p
-0.40 0.40 0.40 TeXcolorrgb 39 w(=)p 0 TeXcolorgray 43
-w(fork\(\)\))499 4068 y({)p 0.00 0.50 0.00 TeXcolorrgb
-673 4168 a(case)p 0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb
-42 w(-)p 0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb(1)p
-0 TeXcolorgray(:)p 0.25 0.50 0.50 TeXcolorrgb 42 w Fa(//oops)e(case)p
-0 TeXcolorgray 847 4267 a Fb(exit\()p 0.40 0.40 0.40
+0.73 0.13 0.13 TeXcolorrgb(sched_set)o(aff)o(in)o(it)o(y)c(not)k
+(working)f(boss)p 0 TeXcolorgray 0.73 0.40 0.13 TeXcolorrgb
+42 w(\\n)p 0 TeXcolorgray 0.73 0.13 0.13 TeXcolorrgb(")p
+0 TeXcolorgray(\);)847 3072 y(exit\()p 0.40 0.40 0.40
 TeXcolorrgb(-)p 0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb(1)p
-0 TeXcolorgray(\);)p 0.00 0.50 0.00 TeXcolorrgb 673 4367
+0 TeXcolorgray(\);)499 3171 y(})499 3371 y(pid_t)g(pid;)p
+0.69 0.00 0.25 TeXcolorrgb 499 3470 a(clock_t)p 0 TeXcolorgray
+40 w(start,)g(stop,)h(start1,)f(stop1;)499 3570 y(printf\()p
+0.73 0.13 0.13 TeXcolorrgb(")p 0 TeXcolorgray 0.73 0.13 0.13
+TeXcolorrgb(START)p 0 TeXcolorgray 0.73 0.40 0.13 TeXcolorrgb(\\n)p
+0 TeXcolorgray 0.73 0.13 0.13 TeXcolorrgb -1 w(")p 0
+TeXcolorgray(\);)p 0.69 0.00 0.25 TeXcolorrgb 499 3670
+a(double)p 0 TeXcolorgray 41 w(time_elapsed,)d(print_time;)p
+0.25 0.50 0.50 TeXcolorrgb 499 3769 a Fa(//Fork)j(off)h(four)g(child)g
+(processes)p 0 TeXcolorgray 0.00 0.50 0.00 TeXcolorrgb
+499 3869 a Fb(for)p 0 TeXcolorgray 42 w(\(i)p 0.40 0.40 0.40
+TeXcolorrgb 43 w(=)p 0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb
+43 w(0)p 0 TeXcolorgray(;)h(i)p 0.40 0.40 0.40 TeXcolorrgb
+43 w(<)p 0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb 43
+w(4)p 0 TeXcolorgray(;)g(i)p 0.40 0.40 0.40 TeXcolorrgb(+)p
+0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb(+)p 0 TeXcolorgray(\))f({)p
+0.00 0.50 0.00 TeXcolorrgb 847 3968 a(switch)p 0 TeXcolorgray
+41 w(\(pid)p 0.40 0.40 0.40 TeXcolorrgb 42 w(=)p 0 TeXcolorgray
+44 w(fork\(\)\))e({)p 0.00 0.50 0.00 TeXcolorrgb 847
+4068 a(case)p 0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb
+42 w(-)p 0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb(1)p
+0 TeXcolorgray(:)p 0.25 0.50 0.50 TeXcolorrgb 348 w Fa(//oops)h(case)p
+0 TeXcolorgray 1196 4168 a Fb(exit\()p 0.40 0.40 0.40
+TeXcolorrgb(-)p 0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb(1)p
+0 TeXcolorgray(\);)p 0.00 0.50 0.00 TeXcolorrgb 847 4267
 a(case)p 0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb 42
-w(0)p 0 TeXcolorgray(:)p 0.25 0.50 0.50 TeXcolorrgb 86
-w Fa(//child)g(case)p 0 TeXcolorgray 847 4467 a Fb(j)p
-0.40 0.40 0.40 TeXcolorrgb 44 w(=)p 0 TeXcolorgray 0.40 0.40 0.40
+w(0)p 0 TeXcolorgray(:)p 0.25 0.50 0.50 TeXcolorrgb 348
+w Fa(//child)g(case)p 0 TeXcolorgray 1196 4367 a Fb(j)p
+0.40 0.40 0.40 TeXcolorrgb 43 w(=)p 0 TeXcolorgray 0.40 0.40 0.40
 TeXcolorrgb 43 w(0)p 0 TeXcolorgray(;)p 0.00 0.50 0.00
-TeXcolorrgb 847 4566 a(while)p 0 TeXcolorgray(\(j)p 0.40 0.40 0.40
-TeXcolorrgb 41 w(<)p 0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb
-43 w(4)p 0 TeXcolorgray(\))847 4666 y({)p 0.25 0.50 0.50
-TeXcolorrgb 1022 4765 a Fa(//Time)g(the)h(print)g(operation)p
-0 TeXcolorgray 1022 4865 a Fb(start)p 0.40 0.40 0.40
-TeXcolorrgb 41 w(=)p 0 TeXcolorgray 43 w(clock\(\);)1022
-4965 y(printf\()p 0.73 0.13 0.13 TeXcolorrgb(")p 0 TeXcolorgray
+TeXcolorrgb 1196 4467 a(while)p 0 TeXcolorgray 42 w(\(j)p
+0.40 0.40 0.40 TeXcolorrgb 42 w(<)p 0 TeXcolorgray 0.40 0.40 0.40
+TeXcolorrgb 44 w(4)p 0 TeXcolorgray(\))h({)p 0.25 0.50 0.50
+TeXcolorrgb 1545 4566 a Fa(//Time)f(the)h(print)g(operation)p
+0 TeXcolorgray 1545 4666 a Fb(start)p 0.40 0.40 0.40
+TeXcolorrgb 41 w(=)p 0 TeXcolorgray 43 w(clock\(\);)1545
+4765 y(printf\()p 0.73 0.13 0.13 TeXcolorrgb(")p 0 TeXcolorgray
 0.73 0.13 0.13 TeXcolorrgb(Parent:)37 b(\045d)43 b(PID:)f(\045d)h
 (Iter:)e(\045d)p 0 TeXcolorgray 0.73 0.40 0.13 TeXcolorrgb(\\n)p
-0 TeXcolorgray 0.73 0.13 0.13 TeXcolorrgb(")p 0 TeXcolorgray
-(,i,getpid\(\))o(,j\))o(;)1022 5064 y(stop)p 0.40 0.40 0.40
-TeXcolorrgb 42 w(=)p 0 TeXcolorgray 43 w(clock\(\);)p
-0 TeXcolorgray 1929 5349 a Fe(4)p 0 TeXcolorgray eop
-end
+0 TeXcolorgray 0.73 0.13 0.13 TeXcolorrgb(")p 0 TeXcolorgray(,)g(i,)
+1850 4865 y(getpid\(\),)f(j\);)1545 4965 y(stop)p 0.40 0.40 0.40
+TeXcolorrgb 42 w(=)p 0 TeXcolorgray 43 w(clock\(\);)1545
+5064 y(print_time)p 0.40 0.40 0.40 TeXcolorrgb 39 w(=)p
+0 TeXcolorgray 0 TeXcolorgray 1929 5349 a Fe(4)p 0 TeXcolorgray
+eop end
 %%Page: 5 7
 TeXDict begin 5 6 bop 0 TeXcolorgray 0 0 a
 SDict begin /product where{pop product(Distiller)search{pop pop pop version(.)search{exch pop exch pop(3011)eq{gsave newpath 0 0 moveto closepath clip/Courier findfont 10 scalefont setfont 72 72 moveto(.)show grestore}if}{pop}ifelse}{pop}ifelse}if end
@@ -3722,60 +3724,61 @@ SDict begin H.R end
  150 -208 a 150 -208 a
 SDict begin [ /View [/XYZ H.V] /Dest (page.5) cvn H.B /DEST pdfmark end
  150 -208
-a 0 TeXcolorgray 0 TeXcolorgray 1022 83 a Fb(print_time)p
-0.40 0.40 0.40 TeXcolorrgb 39 w(=)p 0 TeXcolorgray 43
-w(\()p 0.69 0.00 0.25 TeXcolorrgb(double)p 0 TeXcolorgray(\)\(stop)p
-0.40 0.40 0.40 TeXcolorrgb(-)p 0 TeXcolorgray(sta)o(rt)o(\))p
-0.40 0.40 0.40 TeXcolorrgb 38 w(/)p 0 TeXcolorgray 43
-w(CLOCKS_PER_SEC;)673 282 y(start)p 0.40 0.40 0.40 TeXcolorrgb
-42 w(=)p 0 TeXcolorgray 43 w(clock\(\);)673 382 y(time_elapsed)p
-0.40 0.40 0.40 TeXcolorrgb 39 w(=)p 0 TeXcolorgray 0.40 0.40 0.40
-TeXcolorrgb 43 w(0)p 0 TeXcolorgray(;)p 0.25 0.50 0.50
-TeXcolorrgb 673 482 a Fa(//Busy-wait)39 b(until)j(the)g(end)g(of)h(the)
-f(timeslice)p 0 TeXcolorgray 0.00 0.50 0.00 TeXcolorrgb
-673 581 a Fb(while)p 0 TeXcolorgray(\(\(time_elap)o(sed)p
-0.40 0.40 0.40 TeXcolorrgb 37 w(+)p 0 TeXcolorgray 43
-w(print_time\))p 0.40 0.40 0.40 TeXcolorrgb 39 w(<)p
-0 TeXcolorgray 43 w(TIMESLICE\))673 681 y({)847 780 y(asm\()p
-0.73 0.13 0.13 TeXcolorrgb(")p 0 TeXcolorgray 0.73 0.13 0.13
-TeXcolorrgb(")p 0 TeXcolorgray(\);)p 0.25 0.50 0.50 TeXcolorrgb
-847 880 a Fa(/*)h(^Assembly)d(language)g(code)i(added)g(to)g(prevent)f
-(compiler)f(from)i(potentially)p 0 TeXcolorgray 0.25 0.50 0.50
-TeXcolorrgb 891 980 a(*)h(optimizing)d(out)i(the)g(following)e(lines)p
-0 TeXcolorgray 0.25 0.50 0.50 TeXcolorrgb 847 1079 a(*/)p
-0 TeXcolorgray 847 1179 a Fb(stop)p 0.40 0.40 0.40 TeXcolorrgb
-42 w(=)p 0 TeXcolorgray 43 w(clock\(\);)847 1279 y(time_elapsed)p
-0.40 0.40 0.40 TeXcolorrgb 39 w(=)p 0 TeXcolorgray 43
-w(\()p 0.69 0.00 0.25 TeXcolorrgb(double)p 0 TeXcolorgray(\)\(stop)p
-0.40 0.40 0.40 TeXcolorrgb(-)p 0 TeXcolorgray(sta)o(rt)o(\))p
-0.40 0.40 0.40 TeXcolorrgb 37 w(/)p 0 TeXcolorgray 44
-w(CLOCKS_PER_SEC;)673 1378 y(})673 1478 y(printf\()p
-0.73 0.13 0.13 TeXcolorrgb(")p 0 TeXcolorgray 0.73 0.13 0.13
-TeXcolorrgb(TIMESLIC)o(E)e(\045f)p 0 TeXcolorgray 0.73 0.40 0.13
-TeXcolorrgb(\\n)p 0 TeXcolorgray 0.73 0.13 0.13 TeXcolorrgb(")p
-0 TeXcolorgray(,\(time_ela)o(pse)o(d)p 0.40 0.40 0.40
-TeXcolorrgb(+)p 0 TeXcolorgray -1 w(pr)o(int)o(_t)o(ime)o(\)\))o(;)1022
-1577 y(j)p 0.40 0.40 0.40 TeXcolorrgb(+)p 0 TeXcolorgray
-0.40 0.40 0.40 TeXcolorrgb(+)p 0 TeXcolorgray(;)847 1677
-y(})847 1777 y(_exit\(EXIT_SUCCES)o(S\);)p 0.63 0.63 0.00
-TeXcolorrgb 673 1876 a(default:)p 0 TeXcolorgray 0.25 0.50 0.50
-TeXcolorrgb 84 w Fa(//parent)i(case)p 0 TeXcolorgray
-0.00 0.50 0.00 TeXcolorrgb 673 1976 a Fb(break)p 0 TeXcolorgray(;)499
-2175 y(})324 2275 y(})p 0.00 0.50 0.00 TeXcolorrgb 324
-2374 a(for)p 0 TeXcolorgray(\(i)p 0.40 0.40 0.40 TeXcolorrgb
-42 w(=)p 0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb(0)p
-0 TeXcolorgray(;)i(i)p 0.40 0.40 0.40 TeXcolorrgb(<)p
-0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb(4)p 0 TeXcolorgray(;)g(i)p
-0.40 0.40 0.40 TeXcolorrgb(+)p 0 TeXcolorgray 0.40 0.40 0.40
-TeXcolorrgb(+)p 0 TeXcolorgray(\))324 2474 y({)p 0.25 0.50 0.50
-TeXcolorrgb 499 2574 a Fa(//Reap)f(the)h(souls)g(of)g(our)h(dead)f
-(children)p 0 TeXcolorgray 499 2673 a Fb(wait\(\);)324
-2773 y(})324 2873 y(printf\()p 0.73 0.13 0.13 TeXcolorrgb(")p
-0 TeXcolorgray 0.73 0.13 0.13 TeXcolorrgb(finished)p
-0 TeXcolorgray 0.73 0.40 0.13 TeXcolorrgb(\\)o(n)p 0
-TeXcolorgray 0.73 0.13 0.13 TeXcolorrgb(")p 0 TeXcolorgray
--1 w(\);)150 2972 y(})p 0 TeXcolorgray 1929 5349 a Fe(5)p
-0 TeXcolorgray eop end
+a 0 TeXcolorgray 0 TeXcolorgray 1719 83 a Fb(\()p 0.69 0.00 0.25
+TeXcolorrgb(double)p 0 TeXcolorgray(\))40 b(\(stop)p
+0.40 0.40 0.40 TeXcolorrgb 42 w(-)p 0 TeXcolorgray 43
+w(start\))p 0.40 0.40 0.40 TeXcolorrgb 41 w(/)p 0 TeXcolorgray
+43 w(CLOCKS_PER_SEC;)1545 282 y(start)p 0.40 0.40 0.40
+TeXcolorrgb 41 w(=)p 0 TeXcolorgray 43 w(clock\(\);)1545
+382 y(time_elapsed)p 0.40 0.40 0.40 TeXcolorrgb 38 w(=)p
+0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb 44 w(0)p 0
+TeXcolorgray(;)p 0.25 0.50 0.50 TeXcolorrgb 1545 482
+a Fa(//Busy-wait)f(until)i(the)i(end)f(of)h(the)f(timeslice)p
+0 TeXcolorgray 0.00 0.50 0.00 TeXcolorrgb 1545 581 a
+Fb(while)p 0 TeXcolorgray 41 w(\(\(time_elapsed)p 0.40 0.40 0.40
+TeXcolorrgb 38 w(+)p 0 TeXcolorgray 43 w(print_time\))p
+0.40 0.40 0.40 TeXcolorrgb 39 w(<)p 0 TeXcolorgray 43
+w(TIMESLICE\))e({)1893 681 y(asm\()p 0.73 0.13 0.13 TeXcolorrgb(")p
+0 TeXcolorgray 0.73 0.13 0.13 TeXcolorrgb(")p 0 TeXcolorgray(\);)p
+0.25 0.50 0.50 TeXcolorrgb 1893 780 a Fa(/*)j(^Assembly)d(language)g
+(code)i(added)g(to)p 0 TeXcolorgray 0.25 0.50 0.50 TeXcolorrgb
+1937 880 a(*)h(prevent)e(compiler)f(from)i(potentially)p
+0 TeXcolorgray 0.25 0.50 0.50 TeXcolorrgb 1937 980 a(*)h(optimizing)d
+(out)i(the)g(following)e(lines)p 0 TeXcolorgray 0.25 0.50 0.50
+TeXcolorrgb 1937 1079 a(*/)p 0 TeXcolorgray 1893 1179
+a Fb(stop)p 0.40 0.40 0.40 TeXcolorrgb 42 w(=)p 0 TeXcolorgray
+44 w(clock\(\);)1893 1279 y(time_elapsed)p 0.40 0.40 0.40
+TeXcolorrgb 39 w(=)p 0 TeXcolorgray 2068 1378 a(\()p
+0.69 0.00 0.25 TeXcolorrgb(double)p 0 TeXcolorgray(\))g(\(stop)p
+0.40 0.40 0.40 TeXcolorrgb 42 w(-)p 0 TeXcolorgray 2504
+1478 a(start\))p 0.40 0.40 0.40 TeXcolorrgb 41 w(/)p
+0 TeXcolorgray 43 w(CLOCKS_PER_SEC;)1545 1577 y(})1545
+1677 y(printf\()p 0.73 0.13 0.13 TeXcolorrgb(")p 0 TeXcolorgray
+0.73 0.13 0.13 TeXcolorrgb(TIMESLIC)o(E)d(\045f)p 0 TeXcolorgray
+0.73 0.40 0.13 TeXcolorrgb(\\n)p 0 TeXcolorgray 0.73 0.13 0.13
+TeXcolorrgb(")p 0 TeXcolorgray(,)1850 1777 y(\(time_elapsed)p
+0.40 0.40 0.40 TeXcolorrgb 38 w(+)p 0 TeXcolorgray 43
+w(print_time\)\);)1545 1876 y(j)p 0.40 0.40 0.40 TeXcolorrgb(+)p
+0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb(+)p 0 TeXcolorgray(;)1196
+1976 y(})1196 2076 y(_exit\(EXIT_SUCCE)o(SS\))o(;)p 0.63 0.63 0.00
+TeXcolorrgb 847 2175 a(default:)p 0 TeXcolorgray 0.25 0.50 0.50
+TeXcolorrgb 346 w Fa(//parent)j(case)p 0 TeXcolorgray
+0.00 0.50 0.00 TeXcolorrgb 1196 2275 a Fb(break)p 0 TeXcolorgray(;)847
+2474 y(})499 2574 y(})p 0.00 0.50 0.00 TeXcolorrgb 499
+2673 a(for)p 0 TeXcolorgray 42 w(\(i)p 0.40 0.40 0.40
+TeXcolorrgb 43 w(=)p 0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb
+43 w(0)p 0 TeXcolorgray(;)j(i)p 0.40 0.40 0.40 TeXcolorrgb
+43 w(<)p 0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb 43
+w(4)p 0 TeXcolorgray(;)g(i)p 0.40 0.40 0.40 TeXcolorrgb(+)p
+0 TeXcolorgray 0.40 0.40 0.40 TeXcolorrgb(+)p 0 TeXcolorgray(\))f({)p
+0.25 0.50 0.50 TeXcolorrgb 847 2773 a Fa(//Reap)f(the)i(souls)e(of)i
+(our)f(dead)g(children)p 0 TeXcolorgray 847 2873 a Fb(wait\(\);)499
+2972 y(})499 3072 y(printf\()p 0.73 0.13 0.13 TeXcolorrgb(")p
+0 TeXcolorgray 0.73 0.13 0.13 TeXcolorrgb(finishe)o(d)p
+0 TeXcolorgray 0.73 0.40 0.13 TeXcolorrgb(\\n)p 0 TeXcolorgray
+0.73 0.13 0.13 TeXcolorrgb -1 w(")p 0 TeXcolorgray(\))o(;)150
+3171 y(})p 0 TeXcolorgray 1929 5349 a Fe(5)p 0 TeXcolorgray
+eop end
 %%Trailer
 
 userdict /end-hook known{end-hook}if
