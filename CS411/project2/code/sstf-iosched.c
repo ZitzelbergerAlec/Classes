@@ -25,7 +25,7 @@ static int sstf_dispatch(struct request_queue *q, int force)
 	if (!list_empty(&nd->queue)) {
 		struct request *nextrq, *prevrq, *rq;  
 
-		nextrq = list_entry(nd->queue.next, struct request, queuelist);
+		nextrq = sd->queue; //list_entry(nd->queue.next, struct request, queuelist);
 		prevrq = list_entry(nd->queue.prev, struct request, queuelist);
 
 		/* Check if there is only one element in list */
