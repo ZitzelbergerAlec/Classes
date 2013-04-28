@@ -119,12 +119,12 @@ static void sstf_add_request(struct request_queue *q, struct request *rq)
 		if(pos > next){ //Move right
 			rprev = rnext;
 			prev = next; 
-			rnext = list_entry(sd->queue.next, struct request, queuelist);
+			rnext = list_entry(rnext.next, struct request, queuelist);
 			next = rnext->__sector;
 		} else { //Move left
 			rnext = rprev;
 			next = prev;
-			rprev = list_entry(sd->queue.prev, struct request, queuelist);
+			rprev = list_entry(rprev.prev, struct request, queuelist);
 			prev = rprev->__sector;
 		}
 	}
