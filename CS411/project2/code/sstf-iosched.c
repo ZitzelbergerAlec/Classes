@@ -51,14 +51,15 @@ static int sstf_dispatch(struct request_queue *q, int force)
 
 		list_del_init(&rq->queuelist);
 		/* Calculate the position where the head will end up */
-		nd->head_pos = rq->__sector + blk_rq_sectors(rq);
-		elv_dispatch_sort(q, rq);
+		nd->head_pos = blk_rq_pos(rq) + blk_rq_sectors(rq);
+		elv_dispatch_add_tail(q, rq);
 
-		/* Debugging */
-		if(rq_data_dir(rq) == 0)
+		/* For debugging */
+		if(rq_data_dir(rq) == 0){
 			printk("[SSTF] dsp READ %lu\n",rq->__sector);
-		else
+		} else {
 			printk("[SSTF] dsp WRITE %lu\n",rq->__sector);
+		}
 		return 1;
 	}
 	return 0;
@@ -72,10 +73,12 @@ static void sstf_add_request(struct request_queue *q, struct request *rq)
 	sector_t next, prev, pos;
 
 	/*
-	If the list is empty, just add it.
+	If the list is empty, just add the request.
 	*/
 	if(list_empty(&sd->queue))  {
 		list_add(&rq->queuelist,&sd->queue);
+		//For debugging: 
+		printk(KERN_INFO "[SSTF] add %s %ld",rq->cmd,(long) rq->__sector);
 		return;
 	}
 
@@ -125,6 +128,7 @@ static void sstf_add_request(struct request_queue *q, struct request *rq)
 			prev = rprev->__sector;
 		}
 	}
+	/* __list_add() adds between 2 consecutive entries */
 	__list_add(&rq->queuelist, &rprev->queuelist, &rnext->queuelist);
 	/* For debugging: */
 	printk(KERN_INFO "[SSTF] add %s %ld",rq->cmd,(long) rq->__sector);
