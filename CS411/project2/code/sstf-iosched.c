@@ -89,6 +89,7 @@ static void sstf_add_request(struct request_queue *q, struct request *rq)
 	/* 
 	Special case: Only 1 item in the queue 
 	*/
+	/*
 	if(prev == next){
 		if(pos < next){
 			list_add(&rq->queuelist,&sd->queue);
@@ -97,6 +98,7 @@ static void sstf_add_request(struct request_queue *q, struct request *rq)
 		}
 		return;
 	}
+	*/
 
 	while(1){
 		//Positioned in the queue in between 2 nodes. Put the request here.
