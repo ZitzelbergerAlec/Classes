@@ -20,30 +20,30 @@ static void noop_merged_requests(struct request_queue *q, struct request *rq, st
 
 static int sstf_dispatch(struct request_queue *q, int force)
 {
-	struct sstf_data *nd = q->elevator->elevator_data;
+	struct sstf_data *sd = q->elevator->elevator_data;
      
-	if (!list_empty(&nd->queue)) {
+	if (!list_empty(&sd->queue)) {
 		struct request *nextrq, *prevrq, *rq;  
 
-		nextrq = sd->queue; //list_entry(nd->queue.next, struct request, queuelist);
-		prevrq = list_entry(nd->queue.prev, struct request, queuelist);
+		nextrq = list_entry(sd->queue.next, struct request, queuelist);
+		prevrq = list_entry(nextrq->queuelist.prev, struct request, queuelist);
 
 		/* Check if there is only one element in list */
 		if (nextrq == prevrq) {
 			rq = nextrq;
 		} else {
-			if (nd->direction == HEAD_FWD) {
-				if (nextrq->__sector > nd->head_pos) {
+			if (sd->direction == HEAD_FWD) {
+				if (nextrq->__sector > sd->head_pos) {
 					rq = nextrq;
 				} else {
-					nd->direction = HEAD_BCK;
+					sd->direction = HEAD_BCK;
 					rq = prevrq;
 				}
 			} else { /* Head is going backwards */
-				if (prevrq->__sector < nd->head_pos) {
+				if (prevrq->__sector < sd->head_pos) {
 					rq = prevrq;
 				} else {
-					nd->direction = HEAD_FWD;
+					sd->direction = HEAD_FWD;
 					rq = nextrq;
 				}
 			}
@@ -51,7 +51,7 @@ static int sstf_dispatch(struct request_queue *q, int force)
 
 		list_del_init(&rq->queuelist);
 		/* Calculate the position where the head will end up */
-		nd->head_pos = blk_rq_pos(rq) + blk_rq_sectors(rq);
+		sd->head_pos = blk_rq_pos(rq) + blk_rq_sectors(rq);
 		elv_dispatch_add_tail(q, rq);
 
 		/* For debugging */
@@ -70,108 +70,71 @@ static void sstf_add_request(struct request_queue *q, struct request *rq)
 	struct sstf_data *sd = q->elevator->elevator_data;
 
 	struct request *rnext, *rprev;
-	sector_t next, prev, pos;
+	sector_t next, rq_sector;
 
 	/*
 	If the list is empty, just add the request.
 	*/
-	if(list_empty(&sd->queue))  {
+	if(list_empty(&sd->queue)){
 		list_add(&rq->queuelist,&sd->queue);
-		//For debugging: 
-		printk(KERN_INFO "[SSTF] add %s %ld",rq->cmd,(long) rq->__sector);
-		return;
-	}
+	} else {
+		rnext = list_entry(sd->queue.next, struct request, queuelist);
+		rprev = list_entry(sd->queue.prev, struct request, queuelist);
+		
+		next = blk_rq_pos(rnext);
+		rq_sector = blk_rq_pos(rq);
 
-	rnext = list_entry(sd->queue.next, struct request, queuelist);
-	rprev = list_entry(sd->queue.prev, struct request, queuelist);
-	
-	next = rnext->__sector;
-	prev = rprev->__sector;
-	pos = rq->__sector;
-
-	/* 
-	Special case: Only 1 item in the queue 
-	*/
-	/*
-	if(prev == next){
-		if(pos < next){
-			list_add(&rq->queuelist,&sd->queue);
-		} else {
-			list_add_tail(&rq->queuelist,&sd->queue);
+		while(rq_sector > next){
+			rnext = list_entry(sd->queue.next, struct request, queuelist);
+			rprev = list_entry(sd->queue.prev, struct request, queuelist);
+			next = blk_rq_pos(rnext);
 		}
-		return;
-	}
-	*/
 
-	while(1){
-		//Positioned in the queue in between 2 nodes. Put the request here.
-		if(pos > prev && pos < next)
-			break;
-		//Positioned at right edge of queue
-		if(next < prev && pos > prev)
-			break;
-		//Positioned at left edge of queue
-		if(prev > next && pos < next)
-			break;
-		//Rare (impossible?) case where they're equal
-		if(pos == next || pos == prev)
-			break;
-		if(pos > next){ //Move right
-			rprev = rnext;
-			prev = next; 
-			rnext = list_entry(rnext.next, struct request, queuelist);
-			next = rnext->__sector;
-		} else { //Move left
-			rnext = rprev;
-			next = prev;
-			rprev = list_entry(rprev.prev, struct request, queuelist);
-			prev = rprev->__sector;
-		}
+		/* __list_add() adds between 2 consecutive entries */
+		__list_add(&rq->queuelist, &rprev->queuelist, &rnext->queuelist);
 	}
-	/* __list_add() adds between 2 consecutive entries */
-	__list_add(&rq->queuelist, &rprev->queuelist, &rnext->queuelist);
 	/* For debugging: */
-	printk(KERN_INFO "[SSTF] add %s %ld",rq->cmd,(long) rq->__sector);
+	printk(KERN_INFO "[SSTF] add %s %ld\n",rq->cmd,(long) rq->__sector);
 }
 
 static struct request *noop_former_request(struct request_queue *q, struct request *rq)
 {
-	struct sstf_data *nd = q->elevator->elevator_data;
+	struct sstf_data *sd = q->elevator->elevator_data;
 
-	if (rq->queuelist.prev == &nd->queue)
+	if (rq->queuelist.prev == &sd->queue)
 		return NULL;
 	return list_entry(rq->queuelist.prev, struct request, queuelist);
 }
 
 static struct request *noop_latter_request(struct request_queue *q, struct request *rq)
 {
-	struct sstf_data *nd = q->elevator->elevator_data;
+	struct sstf_data *sd = q->elevator->elevator_data;
 
-	if (rq->queuelist.next == &nd->queue)
+	if (rq->queuelist.next == &sd->queue)
 		return NULL;
 	return list_entry(rq->queuelist.next, struct request, queuelist);
 }
 
 static void *noop_init_queue(struct request_queue *q)
 {
-	struct sstf_data *nd;
+	struct sstf_data *sd;
 	
-	nd = kmalloc_node(sizeof(*nd), GFP_KERNEL, q->node);
-	if (!nd)
+	sd = kmalloc_node(sizeof(*sd), GFP_KERNEL, q->node);
+	if (!sd)
 		return NULL;
-	INIT_LIST_HEAD(&nd->queue);
-	nd->head_pos = 0;
+	INIT_LIST_HEAD(&sd->queue);
+	sd->head_pos = 0;
 	/* Initialize head going forward */
-	nd->direction = HEAD_FWD;
-	return nd;
+	sd->direction = HEAD_FWD;
+	return sd;
 }
 
 static void noop_exit_queue(struct elevator_queue *e)
 {
-	struct noop_data *nd = e->elevator_data;
+	struct noop_data *sd = e->elevator_data;
 
-	//BUG_ON(!list_empty(&nd->queue));
-	kfree(nd);
+	//BUG_ON(!list_empty(&sd->queue));
+	kfree(sd);
 }
 
 static struct elevator_type elevator_sstf = {
