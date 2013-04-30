@@ -1,0 +1,213 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PY{c+cp}{\PYZsh{}}\PY{c+cp}{include <linux}\PY{c+cp}{/}\PY{c+cp}{blkdev.h>}
+\PY{c+cp}{\PYZsh{}}\PY{c+cp}{include <linux}\PY{c+cp}{/}\PY{c+cp}{elevator.h>}
+\PY{c+cp}{\PYZsh{}}\PY{c+cp}{include <linux}\PY{c+cp}{/}\PY{c+cp}{bio.h>}
+\PY{c+cp}{\PYZsh{}}\PY{c+cp}{include <linux}\PY{c+cp}{/}\PY{c+cp}{module.h>}
+\PY{c+cp}{\PYZsh{}}\PY{c+cp}{include <linux}\PY{c+cp}{/}\PY{c+cp}{init.h>}
+
+\PY{c+cp}{\PYZsh{}}\PY{c+cp}{define HEAD\PYZus{}FWD 1}
+\PY{c+cp}{\PYZsh{}}\PY{c+cp}{define HEAD\PYZus{}BCK 0}
+
+\PY{k}{struct} \PY{n}{sstf\PYZus{}data} \PY{p}{\PYZob{}}
+	\PY{k}{struct} \PY{n}{list\PYZus{}head} \PY{n}{queue}\PY{p}{;}
+	\PY{n}{sector\PYZus{}t} \PY{n}{head\PYZus{}pos}\PY{p}{;}
+	\PY{k+kt}{unsigned} \PY{k+kt}{char} \PY{n}{direction}\PY{p}{;}
+\PY{p}{\PYZcb{}}\PY{p}{;}
+
+\PY{k}{static} \PY{k+kt}{void} \PY{n+nf}{noop\PYZus{}merged\PYZus{}requests}\PY{p}{(}\PY{k}{struct} \PY{n}{request\PYZus{}queue} \PY{o}{*}\PY{n}{q}\PY{p}{,} \PY{k}{struct} \PY{n}{request} \PY{o}{*}\PY{n}{rq}\PY{p}{,}
+				 \PY{k}{struct} \PY{n}{request} \PY{o}{*}\PY{n}{next}\PY{p}{)}
+\PY{p}{\PYZob{}}
+	\PY{n}{list\PYZus{}del\PYZus{}init}\PY{p}{(}\PY{o}{&}\PY{n}{next}\PY{o}{-}\PY{o}{>}\PY{n}{queuelist}\PY{p}{)}\PY{p}{;}
+\PY{p}{\PYZcb{}}
+
+\PY{k}{static} \PY{k+kt}{int} \PY{n+nf}{sstf\PYZus{}dispatch}\PY{p}{(}\PY{k}{struct} \PY{n}{request\PYZus{}queue} \PY{o}{*}\PY{n}{q}\PY{p}{,} \PY{k+kt}{int} \PY{n}{force}\PY{p}{)}
+\PY{p}{\PYZob{}}
+	\PY{k}{struct} \PY{n}{sstf\PYZus{}data} \PY{o}{*}\PY{n}{nd} \PY{o}{=} \PY{n}{q}\PY{o}{-}\PY{o}{>}\PY{n}{elevator}\PY{o}{-}\PY{o}{>}\PY{n}{elevator\PYZus{}data}\PY{p}{;}
+     
+	\PY{k}{if} \PY{p}{(}\PY{o}{!}\PY{n}{list\PYZus{}empty}\PY{p}{(}\PY{o}{&}\PY{n}{nd}\PY{o}{-}\PY{o}{>}\PY{n}{queue}\PY{p}{)}\PY{p}{)} \PY{p}{\PYZob{}}
+		\PY{k}{struct} \PY{n}{request} \PY{o}{*}\PY{n}{nextrq}\PY{p}{,} \PY{o}{*}\PY{n}{prevrq}\PY{p}{,} \PY{o}{*}\PY{n}{rq}\PY{p}{;}  
+
+		\PY{n}{nextrq} \PY{o}{=} \PY{n}{list\PYZus{}entry}\PY{p}{(}\PY{n}{nd}\PY{o}{-}\PY{o}{>}\PY{n}{queue}\PY{p}{.}\PY{n}{next}\PY{p}{,} \PY{k}{struct} \PY{n}{request}\PY{p}{,} \PY{n}{queuelist}\PY{p}{)}\PY{p}{;}
+		\PY{n}{prevrq} \PY{o}{=} \PY{n}{list\PYZus{}entry}\PY{p}{(}\PY{n}{nd}\PY{o}{-}\PY{o}{>}\PY{n}{queue}\PY{p}{.}\PY{n}{prev}\PY{p}{,} \PY{k}{struct} \PY{n}{request}\PY{p}{,} \PY{n}{queuelist}\PY{p}{)}\PY{p}{;}
+
+		\PY{c+cm}{/* Check if there is only one element in list */}
+		\PY{k}{if} \PY{p}{(}\PY{n}{nextrq} \PY{o}{=}\PY{o}{=} \PY{n}{prevrq}\PY{p}{)} \PY{p}{\PYZob{}}
+			\PY{n}{rq} \PY{o}{=} \PY{n}{nextrq}\PY{p}{;}
+		\PY{p}{\PYZcb{}} \PY{k}{else} \PY{p}{\PYZob{}}
+			\PY{k}{if} \PY{p}{(}\PY{n}{nd}\PY{o}{-}\PY{o}{>}\PY{n}{direction} \PY{o}{=}\PY{o}{=} \PY{n}{HEAD\PYZus{}FWD}\PY{p}{)} \PY{p}{\PYZob{}}
+				\PY{k}{if} \PY{p}{(}\PY{n}{nextrq}\PY{o}{-}\PY{o}{>}\PY{n}{sector} \PY{o}{>} \PY{n}{nd}\PY{o}{-}\PY{o}{>}\PY{n}{head\PYZus{}pos}\PY{p}{)} \PY{p}{\PYZob{}}
+					\PY{n}{rq} \PY{o}{=} \PY{n}{nextrq}\PY{p}{;}
+				\PY{p}{\PYZcb{}} \PY{k}{else} \PY{p}{\PYZob{}}
+					\PY{n}{nd}\PY{o}{-}\PY{o}{>}\PY{n}{direction} \PY{o}{=} \PY{n}{HEAD\PYZus{}BCK}\PY{p}{;}
+					\PY{n}{rq} \PY{o}{=} \PY{n}{prevrq}\PY{p}{;}
+				\PY{p}{\PYZcb{}}
+			\PY{p}{\PYZcb{}} \PY{k}{else} \PY{p}{\PYZob{}} \PY{c+cm}{/* Head is going backwards */}
+				\PY{k}{if} \PY{p}{(}\PY{n}{prevrq}\PY{o}{-}\PY{o}{>}\PY{n}{sector} \PY{o}{<} \PY{n}{nd}\PY{o}{-}\PY{o}{>}\PY{n}{head\PYZus{}pos}\PY{p}{)} \PY{p}{\PYZob{}}
+					\PY{n}{rq} \PY{o}{=} \PY{n}{prevrq}\PY{p}{;}
+				\PY{p}{\PYZcb{}} \PY{k}{else} \PY{p}{\PYZob{}}
+					\PY{n}{nd}\PY{o}{-}\PY{o}{>}\PY{n}{direction} \PY{o}{=} \PY{n}{HEAD\PYZus{}FWD}\PY{p}{;}
+					\PY{n}{rq} \PY{o}{=} \PY{n}{nextrq}\PY{p}{;}
+				\PY{p}{\PYZcb{}}
+			\PY{p}{\PYZcb{}}
+		\PY{p}{\PYZcb{}}
+
+		\PY{n}{list\PYZus{}del\PYZus{}init}\PY{p}{(}\PY{o}{&}\PY{n}{rq}\PY{o}{-}\PY{o}{>}\PY{n}{queuelist}\PY{p}{)}\PY{p}{;}
+		\PY{n}{nd}\PY{o}{-}\PY{o}{>}\PY{n}{head\PYZus{}pos} \PY{o}{=} \PY{n}{rq}\PY{o}{-}\PY{o}{>}\PY{n}{sector} \PY{o}{+} \PY{n}{rq}\PY{o}{-}\PY{o}{>}\PY{n}{nr\PYZus{}sectors}\PY{p}{;}
+		\PY{n}{elv\PYZus{}dispatch\PYZus{}sort}\PY{p}{(}\PY{n}{q}\PY{p}{,} \PY{n}{rq}\PY{p}{)}\PY{p}{;}
+
+		\PY{c+cm}{/* Debugging */}
+		\PY{k}{if}\PY{p}{(}\PY{n}{rq\PYZus{}data\PYZus{}dir}\PY{p}{(}\PY{n}{rq}\PY{p}{)} \PY{o}{=}\PY{o}{=} \PY{l+m+mi}{0}\PY{p}{)}
+			\PY{n}{printk}\PY{p}{(}\PY{l+s}{"}\PY{l+s}{[SSTF] dsp READ \PYZpc{}lu}\PY{l+s+se}{\PYZbs{}n}\PY{l+s}{"}\PY{p}{,}\PY{n}{rq}\PY{o}{-}\PY{o}{>}\PY{n}{sector}\PY{p}{)}\PY{p}{;}
+		\PY{k}{else}
+			\PY{n}{printk}\PY{p}{(}\PY{l+s}{"}\PY{l+s}{[SSTF] dsp WRITE \PYZpc{}lu}\PY{l+s+se}{\PYZbs{}n}\PY{l+s}{"}\PY{p}{,}\PY{n}{rq}\PY{o}{-}\PY{o}{>}\PY{n}{sector}\PY{p}{)}\PY{p}{;}
+		\PY{k}{return} \PY{l+m+mi}{1}\PY{p}{;}
+	\PY{p}{\PYZcb{}}
+	\PY{k}{return} \PY{l+m+mi}{0}\PY{p}{;}
+\PY{p}{\PYZcb{}}
+
+\PY{k}{static} \PY{k+kt}{void} \PY{n+nf}{sstf\PYZus{}add\PYZus{}request}\PY{p}{(}\PY{k}{struct} \PY{n}{request\PYZus{}queue} \PY{o}{*}\PY{n}{q}\PY{p}{,} \PY{k}{struct} \PY{n}{request} \PY{o}{*}\PY{n}{rq}\PY{p}{)}
+\PY{p}{\PYZob{}}
+	\PY{k}{struct} \PY{n}{sstf\PYZus{}data} \PY{o}{*}\PY{n}{sd} \PY{o}{=} \PY{n}{q}\PY{o}{-}\PY{o}{>}\PY{n}{elevator}\PY{o}{-}\PY{o}{>}\PY{n}{elevator\PYZus{}data}\PY{p}{;}
+
+	\PY{k}{struct} \PY{n}{request} \PY{o}{*}\PY{n}{rnext}\PY{p}{,} \PY{o}{*}\PY{n}{rprev}\PY{p}{;}
+	\PY{n}{sector\PYZus{}t} \PY{n}{next}\PY{p}{,} \PY{n}{prev}\PY{p}{,} \PY{n}{pos}\PY{p}{;}
+
+	\PY{c+cm}{/*}
+\PY{c+cm}{	If the list is empty, just add it.}
+\PY{c+cm}{	*/}
+	\PY{k}{if}\PY{p}{(}\PY{n}{list\PYZus{}empty}\PY{p}{(}\PY{o}{&}\PY{n}{sd}\PY{o}{-}\PY{o}{>}\PY{n}{queue}\PY{p}{)}\PY{p}{)}  \PY{p}{\PYZob{}}
+		\PY{n}{list\PYZus{}add}\PY{p}{(}\PY{o}{&}\PY{n}{rq}\PY{o}{-}\PY{o}{>}\PY{n}{queuelist}\PY{p}{,}\PY{o}{&}\PY{n}{sd}\PY{o}{-}\PY{o}{>}\PY{n}{queue}\PY{p}{)}\PY{p}{;}
+		\PY{k}{return}\PY{p}{;}
+	\PY{p}{\PYZcb{}}
+
+	\PY{n}{rnext} \PY{o}{=} \PY{n}{list\PYZus{}entry}\PY{p}{(}\PY{n}{sd}\PY{o}{-}\PY{o}{>}\PY{n}{queue}\PY{p}{.}\PY{n}{next}\PY{p}{,} \PY{k}{struct} \PY{n}{request}\PY{p}{,} \PY{n}{queuelist}\PY{p}{)}\PY{p}{;}
+	\PY{n}{rprev} \PY{o}{=} \PY{n}{list\PYZus{}entry}\PY{p}{(}\PY{n}{sd}\PY{o}{-}\PY{o}{>}\PY{n}{queue}\PY{p}{.}\PY{n}{prev}\PY{p}{,} \PY{k}{struct} \PY{n}{request}\PY{p}{,} \PY{n}{queuelist}\PY{p}{)}\PY{p}{;}
+	
+	\PY{n}{next} \PY{o}{=} \PY{n}{rnext}\PY{o}{-}\PY{o}{>}\PY{n}{sector}\PY{p}{;}
+	\PY{n}{prev} \PY{o}{=} \PY{n}{rprev}\PY{o}{-}\PY{o}{>}\PY{n}{sector}\PY{p}{;}
+	\PY{n}{pos} \PY{o}{=} \PY{n}{rq}\PY{o}{-}\PY{o}{>}\PY{n}{sector}\PY{p}{;}
+
+	\PY{c+cm}{/* }
+\PY{c+cm}{	Special case: Only 1 item in the queue }
+\PY{c+cm}{	*/}
+	\PY{k}{if}\PY{p}{(}\PY{n}{prev} \PY{o}{=}\PY{o}{=} \PY{n}{next}\PY{p}{)}\PY{p}{\PYZob{}}
+		\PY{k}{if}\PY{p}{(}\PY{n}{pos} \PY{o}{<} \PY{n}{next}\PY{p}{)}\PY{p}{\PYZob{}}
+			\PY{n}{list\PYZus{}add}\PY{p}{(}\PY{o}{&}\PY{n}{rq}\PY{o}{-}\PY{o}{>}\PY{n}{queuelist}\PY{p}{,}\PY{o}{&}\PY{n}{sd}\PY{o}{-}\PY{o}{>}\PY{n}{queue}\PY{p}{)}\PY{p}{;}
+		\PY{p}{\PYZcb{}} \PY{k}{else} \PY{p}{\PYZob{}}
+			\PY{n}{list\PYZus{}add\PYZus{}tail}\PY{p}{(}\PY{o}{&}\PY{n}{rq}\PY{o}{-}\PY{o}{>}\PY{n}{queuelist}\PY{p}{,}\PY{o}{&}\PY{n}{sd}\PY{o}{-}\PY{o}{>}\PY{n}{queue}\PY{p}{)}\PY{p}{;}
+		\PY{p}{\PYZcb{}}
+		\PY{k}{return}\PY{p}{;}
+	\PY{p}{\PYZcb{}}
+
+	\PY{k}{while}\PY{p}{(}\PY{l+m+mi}{1}\PY{p}{)}\PY{p}{\PYZob{}}
+		\PY{c+c1}{//Positioned in the queue in between 2 nodes. Put the request here.}
+		\PY{k}{if}\PY{p}{(}\PY{n}{pos} \PY{o}{>} \PY{n}{prev} \PY{o}{&}\PY{o}{&} \PY{n}{pos} \PY{o}{<} \PY{n}{next}\PY{p}{)}
+			\PY{k}{break}\PY{p}{;}
+		\PY{c+c1}{//Positioned at right edge of queue}
+		\PY{k}{if}\PY{p}{(}\PY{n}{next} \PY{o}{<} \PY{n}{prev} \PY{o}{&}\PY{o}{&} \PY{n}{pos} \PY{o}{>} \PY{n}{prev}\PY{p}{)}
+			\PY{k}{break}\PY{p}{;}
+		\PY{c+c1}{//Positioned at left edge of queue}
+		\PY{k}{if}\PY{p}{(}\PY{n}{prev} \PY{o}{>} \PY{n}{next} \PY{o}{&}\PY{o}{&} \PY{n}{pos} \PY{o}{<} \PY{n}{next}\PY{p}{)}
+			\PY{k}{break}\PY{p}{;}
+		\PY{c+c1}{//Rare (impossible?) case where they're equal}
+		\PY{k}{if}\PY{p}{(}\PY{n}{pos} \PY{o}{=}\PY{o}{=} \PY{n}{next} \PY{o}{|}\PY{o}{|} \PY{n}{pos} \PY{o}{=}\PY{o}{=} \PY{n}{prev}\PY{p}{)}
+			\PY{k}{break}\PY{p}{;}
+		\PY{k}{if}\PY{p}{(}\PY{n}{pos} \PY{o}{>} \PY{n}{next}\PY{p}{)}\PY{p}{\PYZob{}} \PY{c+c1}{//Move right}
+			\PY{n}{rprev} \PY{o}{=} \PY{n}{rnext}\PY{p}{;}
+			\PY{n}{prev} \PY{o}{=} \PY{n}{next}\PY{p}{;} 
+			\PY{n}{rnext} \PY{o}{=} \PY{n}{list\PYZus{}entry}\PY{p}{(}\PY{n}{sd}\PY{o}{-}\PY{o}{>}\PY{n}{queue}\PY{p}{.}\PY{n}{next}\PY{p}{,} \PY{k}{struct} \PY{n}{request}\PY{p}{,} \PY{n}{queuelist}\PY{p}{)}\PY{p}{;}
+			\PY{n}{next} \PY{o}{=} \PY{n}{rnext}\PY{o}{-}\PY{o}{>}\PY{n}{sector}\PY{p}{;}
+		\PY{p}{\PYZcb{}} \PY{k}{else} \PY{p}{\PYZob{}} \PY{c+c1}{//Move left}
+			\PY{n}{rnext} \PY{o}{=} \PY{n}{rprev}\PY{p}{;}
+			\PY{n}{next} \PY{o}{=} \PY{n}{prev}\PY{p}{;}
+			\PY{n}{rprev} \PY{o}{=} \PY{n}{list\PYZus{}entry}\PY{p}{(}\PY{n}{sd}\PY{o}{-}\PY{o}{>}\PY{n}{queue}\PY{p}{.}\PY{n}{prev}\PY{p}{,} \PY{k}{struct} \PY{n}{request}\PY{p}{,} \PY{n}{queuelist}\PY{p}{)}\PY{p}{;}
+			\PY{n}{prev} \PY{o}{=} \PY{n}{rprev}\PY{o}{-}\PY{o}{>}\PY{n}{sector}\PY{p}{;}
+		\PY{p}{\PYZcb{}}
+	\PY{p}{\PYZcb{}}
+	\PY{n}{\PYZus{}\PYZus{}list\PYZus{}add}\PY{p}{(}\PY{o}{&}\PY{n}{rq}\PY{o}{-}\PY{o}{>}\PY{n}{queuelist}\PY{p}{,} \PY{o}{&}\PY{n}{rprev}\PY{o}{-}\PY{o}{>}\PY{n}{queuelist}\PY{p}{,} \PY{o}{&}\PY{n}{rnext}\PY{o}{-}\PY{o}{>}\PY{n}{queuelist}\PY{p}{)}\PY{p}{;}
+	\PY{c+cm}{/* For debugging: */}
+	\PY{n}{printk}\PY{p}{(}\PY{n}{KERN\PYZus{}INFO} \PY{l+s}{"}\PY{l+s}{[SSTF] add \PYZpc{}s \PYZpc{}ld}\PY{l+s}{"}\PY{p}{,}\PY{n}{rq}\PY{o}{-}\PY{o}{>}\PY{n}{cmd}\PY{p}{,}\PY{p}{(}\PY{k+kt}{long}\PY{p}{)} \PY{n}{rq}\PY{o}{-}\PY{o}{>}\PY{n}{sector}\PY{p}{)}\PY{p}{;}
+\PY{p}{\PYZcb{}}
+
+\PY{k}{static} \PY{k+kt}{int} \PY{n+nf}{noop\PYZus{}queue\PYZus{}empty}\PY{p}{(}\PY{k}{struct} \PY{n}{request\PYZus{}queue} \PY{o}{*}\PY{n}{q}\PY{p}{)}
+\PY{p}{\PYZob{}}
+	\PY{k}{struct} \PY{n}{sstf\PYZus{}data} \PY{o}{*}\PY{n}{nd} \PY{o}{=} \PY{n}{q}\PY{o}{-}\PY{o}{>}\PY{n}{elevator}\PY{o}{-}\PY{o}{>}\PY{n}{elevator\PYZus{}data}\PY{p}{;}
+
+	\PY{k}{return} \PY{n}{list\PYZus{}empty}\PY{p}{(}\PY{o}{&}\PY{n}{nd}\PY{o}{-}\PY{o}{>}\PY{n}{queue}\PY{p}{)}\PY{p}{;}
+\PY{p}{\PYZcb{}}
+
+\PY{k}{static} \PY{k}{struct} \PY{n}{request} \PY{o}{*}
+\PY{n+nf}{noop\PYZus{}former\PYZus{}request}\PY{p}{(}\PY{k}{struct} \PY{n}{request\PYZus{}queue} \PY{o}{*}\PY{n}{q}\PY{p}{,} \PY{k}{struct} \PY{n}{request} \PY{o}{*}\PY{n}{rq}\PY{p}{)}
+\PY{p}{\PYZob{}}
+	\PY{k}{struct} \PY{n}{sstf\PYZus{}data} \PY{o}{*}\PY{n}{nd} \PY{o}{=} \PY{n}{q}\PY{o}{-}\PY{o}{>}\PY{n}{elevator}\PY{o}{-}\PY{o}{>}\PY{n}{elevator\PYZus{}data}\PY{p}{;}
+
+	\PY{k}{if} \PY{p}{(}\PY{n}{rq}\PY{o}{-}\PY{o}{>}\PY{n}{queuelist}\PY{p}{.}\PY{n}{prev} \PY{o}{=}\PY{o}{=} \PY{o}{&}\PY{n}{nd}\PY{o}{-}\PY{o}{>}\PY{n}{queue}\PY{p}{)}
+		\PY{k}{return} \PY{n+nb}{NULL}\PY{p}{;}
+	\PY{k}{return} \PY{n}{list\PYZus{}entry}\PY{p}{(}\PY{n}{rq}\PY{o}{-}\PY{o}{>}\PY{n}{queuelist}\PY{p}{.}\PY{n}{prev}\PY{p}{,} \PY{k}{struct} \PY{n}{request}\PY{p}{,} \PY{n}{queuelist}\PY{p}{)}\PY{p}{;}
+\PY{p}{\PYZcb{}}
+
+\PY{k}{static} \PY{k}{struct} \PY{n}{request} \PY{o}{*}
+\PY{n+nf}{noop\PYZus{}latter\PYZus{}request}\PY{p}{(}\PY{k}{struct} \PY{n}{request\PYZus{}queue} \PY{o}{*}\PY{n}{q}\PY{p}{,} \PY{k}{struct} \PY{n}{request} \PY{o}{*}\PY{n}{rq}\PY{p}{)}
+\PY{p}{\PYZob{}}
+	\PY{k}{struct} \PY{n}{sstf\PYZus{}data} \PY{o}{*}\PY{n}{nd} \PY{o}{=} \PY{n}{q}\PY{o}{-}\PY{o}{>}\PY{n}{elevator}\PY{o}{-}\PY{o}{>}\PY{n}{elevator\PYZus{}data}\PY{p}{;}
+
+	\PY{k}{if} \PY{p}{(}\PY{n}{rq}\PY{o}{-}\PY{o}{>}\PY{n}{queuelist}\PY{p}{.}\PY{n}{next} \PY{o}{=}\PY{o}{=} \PY{o}{&}\PY{n}{nd}\PY{o}{-}\PY{o}{>}\PY{n}{queue}\PY{p}{)}
+		\PY{k}{return} \PY{n+nb}{NULL}\PY{p}{;}
+	\PY{k}{return} \PY{n}{list\PYZus{}entry}\PY{p}{(}\PY{n}{rq}\PY{o}{-}\PY{o}{>}\PY{n}{queuelist}\PY{p}{.}\PY{n}{next}\PY{p}{,} \PY{k}{struct} \PY{n}{request}\PY{p}{,} \PY{n}{queuelist}\PY{p}{)}\PY{p}{;}
+\PY{p}{\PYZcb{}}
+
+\PY{k}{static} \PY{k+kt}{void} \PY{o}{*}\PY{n+nf}{noop\PYZus{}init\PYZus{}queue}\PY{p}{(}\PY{k}{struct} \PY{n}{request\PYZus{}queue} \PY{o}{*}\PY{n}{q}\PY{p}{)}
+\PY{p}{\PYZob{}}
+	\PY{k}{struct} \PY{n}{sstf\PYZus{}data} \PY{o}{*}\PY{n}{nd}\PY{p}{;}
+	
+
+	\PY{n}{nd} \PY{o}{=} \PY{n}{kmalloc\PYZus{}node}\PY{p}{(}\PY{k}{sizeof}\PY{p}{(}\PY{o}{*}\PY{n}{nd}\PY{p}{)}\PY{p}{,} \PY{n}{GFP\PYZus{}KERNEL}\PY{p}{,} \PY{n}{q}\PY{o}{-}\PY{o}{>}\PY{n}{node}\PY{p}{)}\PY{p}{;}
+	\PY{k}{if} \PY{p}{(}\PY{o}{!}\PY{n}{nd}\PY{p}{)}
+		\PY{k}{return} \PY{n+nb}{NULL}\PY{p}{;}
+	\PY{n}{INIT\PYZus{}LIST\PYZus{}HEAD}\PY{p}{(}\PY{o}{&}\PY{n}{nd}\PY{o}{-}\PY{o}{>}\PY{n}{queue}\PY{p}{)}\PY{p}{;}
+	\PY{n}{nd}\PY{o}{-}\PY{o}{>}\PY{n}{head\PYZus{}pos} \PY{o}{=} \PY{l+m+mi}{0}\PY{p}{;}
+	\PY{c+cm}{/* Initialize head going forward */}
+	\PY{n}{nd}\PY{o}{-}\PY{o}{>}\PY{n}{direction} \PY{o}{=} \PY{n}{HEAD\PYZus{}FWD}\PY{p}{;}
+	\PY{k}{return} \PY{n}{nd}\PY{p}{;}
+\PY{p}{\PYZcb{}}
+
+\PY{k}{static} \PY{k+kt}{void} \PY{n+nf}{noop\PYZus{}exit\PYZus{}queue}\PY{p}{(}\PY{n}{elevator\PYZus{}t} \PY{o}{*}\PY{n}{e}\PY{p}{)}
+\PY{p}{\PYZob{}}
+	\PY{k}{struct} \PY{n}{sstf\PYZus{}data} \PY{o}{*}\PY{n}{nd} \PY{o}{=} \PY{n}{e}\PY{o}{-}\PY{o}{>}\PY{n}{elevator\PYZus{}data}\PY{p}{;}
+
+	\PY{n}{BUG\PYZus{}ON}\PY{p}{(}\PY{o}{!}\PY{n}{list\PYZus{}empty}\PY{p}{(}\PY{o}{&}\PY{n}{nd}\PY{o}{-}\PY{o}{>}\PY{n}{queue}\PY{p}{)}\PY{p}{)}\PY{p}{;}
+	\PY{n}{kfree}\PY{p}{(}\PY{n}{nd}\PY{p}{)}\PY{p}{;}
+\PY{p}{\PYZcb{}}
+
+\PY{k}{static} \PY{k}{struct} \PY{n}{elevator\PYZus{}type} \PY{n}{elevator\PYZus{}sstf} \PY{o}{=} \PY{p}{\PYZob{}}
+	\PY{p}{.}\PY{n}{ops} \PY{o}{=} \PY{p}{\PYZob{}}
+		\PY{p}{.}\PY{n}{elevator\PYZus{}merge\PYZus{}req\PYZus{}fn}		\PY{o}{=} \PY{n}{noop\PYZus{}merged\PYZus{}requests}\PY{p}{,}
+		\PY{p}{.}\PY{n}{elevator\PYZus{}dispatch\PYZus{}fn}		\PY{o}{=} \PY{n}{sstf\PYZus{}dispatch}\PY{p}{,}
+		\PY{p}{.}\PY{n}{elevator\PYZus{}add\PYZus{}req\PYZus{}fn}		\PY{o}{=} \PY{n}{sstf\PYZus{}add\PYZus{}request}\PY{p}{,}
+		\PY{p}{.}\PY{n}{elevator\PYZus{}queue\PYZus{}empty\PYZus{}fn}	\PY{o}{=} \PY{n}{noop\PYZus{}queue\PYZus{}empty}\PY{p}{,}
+		\PY{p}{.}\PY{n}{elevator\PYZus{}former\PYZus{}req\PYZus{}fn}		\PY{o}{=} \PY{n}{noop\PYZus{}former\PYZus{}request}\PY{p}{,}
+		\PY{p}{.}\PY{n}{elevator\PYZus{}latter\PYZus{}req\PYZus{}fn}		\PY{o}{=} \PY{n}{noop\PYZus{}latter\PYZus{}request}\PY{p}{,}
+		\PY{p}{.}\PY{n}{elevator\PYZus{}init\PYZus{}fn}		\PY{o}{=} \PY{n}{noop\PYZus{}init\PYZus{}queue}\PY{p}{,}
+		\PY{p}{.}\PY{n}{elevator\PYZus{}exit\PYZus{}fn}		\PY{o}{=} \PY{n}{noop\PYZus{}exit\PYZus{}queue}\PY{p}{,}
+  \PY{p}{\PYZcb{}}\PY{p}{,}
+	\PY{p}{.}\PY{n}{elevator\PYZus{}name} \PY{o}{=} \PY{l+s}{"}\PY{l+s}{sstf}\PY{l+s}{"}\PY{p}{,}
+	\PY{p}{.}\PY{n}{elevator\PYZus{}owner} \PY{o}{=} \PY{n}{THIS\PYZus{}MODULE}\PY{p}{,}
+\PY{p}{\PYZcb{}}\PY{p}{;}
+
+\PY{k}{static} \PY{k+kt}{int} \PY{n}{\PYZus{}\PYZus{}init} \PY{n+nf}{noop\PYZus{}init}\PY{p}{(}\PY{k+kt}{void}\PY{p}{)}
+\PY{p}{\PYZob{}}
+	\PY{k}{return} \PY{n}{elv\PYZus{}register}\PY{p}{(}\PY{o}{&}\PY{n}{elevator\PYZus{}noop}\PY{p}{)}\PY{p}{;}
+\PY{p}{\PYZcb{}}
+
+\PY{k}{static} \PY{k+kt}{void} \PY{n}{\PYZus{}\PYZus{}exit} \PY{n+nf}{noop\PYZus{}exit}\PY{p}{(}\PY{k+kt}{void}\PY{p}{)}
+\PY{p}{\PYZob{}}
+	\PY{n}{elv\PYZus{}unregister}\PY{p}{(}\PY{o}{&}\PY{n}{elevator\PYZus{}noop}\PY{p}{)}\PY{p}{;}
+\PY{p}{\PYZcb{}}
+
+\PY{n}{module\PYZus{}init}\PY{p}{(}\PY{n}{noop\PYZus{}init}\PY{p}{)}\PY{p}{;}
+\PY{n}{module\PYZus{}exit}\PY{p}{(}\PY{n}{noop\PYZus{}exit}\PY{p}{)}\PY{p}{;}
+
+\PY{n}{MODULE\PYZus{}AUTHOR}\PY{p}{(}\PY{l+s}{"}\PY{l+s}{David, Alex, Michael}\PY{l+s}{"}\PY{p}{)}\PY{p}{;}
+\PY{n}{MODULE\PYZus{}LICENSE}\PY{p}{(}\PY{l+s}{"}\PY{l+s}{GPL}\PY{l+s}{"}\PY{p}{)}\PY{p}{;}
+\PY{n}{MODULE\PYZus{}DESCRIPTION}\PY{p}{(}\PY{l+s}{"}\PY{l+s}{SSTF I/O scheduler}\PY{l+s}{"}\PY{p}{)}\PY{p}{;}
+\end{Verbatim}
