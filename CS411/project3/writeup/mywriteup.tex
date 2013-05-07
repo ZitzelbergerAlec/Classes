@@ -89,10 +89,14 @@ CS 411
 
 \begin{enumerate} 
 \item \emph{What do you think the main point of this assignment is?}
+The main points of this assignment were to learn about the Linux crypto API, writing device drivers, and the way memory works in Linux. From my understanding, the final project is to write a device driver for a USB Nerf dart gun, so learning how to write a device driver will be very helpful for this.
 
 \item \emph{How did you approach the problem? Design decisions, algorithm, etc.}
 
 \tab \textbf{Background:} 
+\tab Linux is a virtual memory operating system. This means that it abstracts the memory available to each process into a contiguous address space. The kernel manages virtual address spaces and the assignment of real memory to virtual memory. The CPU automatically translates virtual addresses to physical addresses using the Memory Management Unit (MMU)\ignore{source:http://en.wikipedia.org/wiki/Virtual_memory}. On a more specific level, memory in Linux is divided into pages. The kernel treats these pages as the basic unit of memory management\ignore{source:Love pg. 231}. Linux uses a page table to keep track of the mapping between virtual and physical memory addresses.
+
+\tab A block driver provides access to devices that transfer randomly accessible data in fixed-size blocks—disk drives, primarily. The first step taken by most block drivers is to register themselves with the kernel. The function for this task is register\_blkdev (which is declared in <linux/fs.h>). The block driver request method has the following prototype: void request(request_queue_t *queue). This function is called whenever the kernel believes it is time for your driver to process some reads, writes, or other operations on the device\ignore{source: http://lwn.net/images/pdf/LDD3/ch16.pdf}. 
 
 \tab \textbf{Design:} 
 
