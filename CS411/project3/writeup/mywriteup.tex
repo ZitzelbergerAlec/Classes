@@ -98,6 +98,10 @@ The main points of this assignment were to learn about the Linux crypto API, wri
 
 \tab A block driver provides access to devices that transfer randomly accessible data in fixed-size blocks—disk drives, primarily. The first step taken by most block drivers is to register themselves with the kernel. The function for this task is register\_blkdev (which is declared in <linux/fs.h>). The block driver request method has the following prototype: void request(request_queue_t *queue). This function is called whenever the kernel believes it is time for your driver to process some reads, writes, or other operations on the device\ignore{source: http://lwn.net/images/pdf/LDD3/ch16.pdf}. 
 
+\tab Drivers allow the kernel to interact with hardware. Modules are the mechanism by which the Linux kernel can load and unload object code on demand. Writing modules is very similar to writing a new application, rather than development on the core subsystems of the kernel. This is because modules live in their own files and have predefined entry and exit points. To initialize a module, place a module\_init function at the end of the module file. All init functions must have the form int my_init(void). They accept a function that initializes the module. Module\_exit() defines a module's exit point. The exit point is invoked when the kernel removes a module from memory\ignore{source: Love, pg 339}. 
+
+\tab Once a module is compiled, it still needs to be loaded. This can be done with the insmod module.ko command, where module.ko is the name of the desired module. Similarly, rmmod module.ko is used to remove a module. The modules are located in the /lib/modules/<kernel-version>/kernel/drivers directory.
+
 \tab \textbf{Design:} 
 
 \tab \textbf{Algorithm:} 
