@@ -25,6 +25,18 @@
 
 MODULE_LICENSE("Dual BSD/GPL");
 
+/* 
+ * Global variables and stuff
+ */
+/* for crypto */
+char *key = "someweakkey";
+/* For testing crypto */
+static char *badkey = "someweakkey"; //Default to key. Can be redifined at runtime.
+int cur_key = 0; //0 for key, 1 for badkey;
+struct crypto_cipher *tfm;
+
+
+module_param(badkey, charp, 0000);
 static int osurd_major = 0;
 module_param(osurd_major, int, 0);
 static int hardsect_size = 512;
@@ -51,7 +63,7 @@ module_param(request_mode, int, 0);
 #define OSURD_MINORS 16
 #define MINOR_SHIFT 4
 #define DEVNUM(kdevnum) (MINOR(kdev_t_to_nr(kdevnum)) >> MINOR_SHIFT
-#define OSU_CIPHER "aes"
+#define OSU_CIPHER "aes" //Cipher algorithm to use 
 
 
 /*
@@ -80,10 +92,6 @@ struct osurd_dev {
 };
 static struct osurd_dev *Devices = NULL;
 
-//Crypto cipher variable here
-char *key = "someweakkey";
-struct crypto_cipher *tfm;
-
 /*
 * Handle an I/O request, in sectors.
 */
@@ -91,8 +99,8 @@ static void
 osurd_transfer(struct osurd_dev *dev, unsigned long sector,
 	       unsigned long nsect, char *buffer, int write)
 {
-	unsigned long offset = sector * KERNEL_SECTOR_SIZE;
-	unsigned long nbytes = nsect * KERNEL_SECTOR_SIZE;
+	unsigned long offset = sector *KERNEL_SECTOR_SIZE;
+	unsigned long nbytes = nsect *KERNEL_SECTOR_SIZE;
 	int i;
 	if ((offset + nbytes) > dev->size) {
 		printk(KERN_NOTICE "Beyond-end write (%ld %ld)\n", offset,
@@ -101,8 +109,19 @@ osurd_transfer(struct osurd_dev *dev, unsigned long sector,
 	}
 
 	crypto_cipher_clear_flags(tfm, ~0);
-	crypto_cipher_setkey(tfm, key, strlen(key));
-
+	//crypto_cipher_setkey(tfm, key, strlen(key));
+	/*
+ 	 * The following logic toggles the crypto key to a bad one (if bad key is defined), for testing purposes
+	 */
+	if(cur_key == 0){
+		cur_key = 1;
+		crypto_cipher_setkey(tfm, badkey, strlen(badkey));
+		printk("Toggling key to badkey: %s\n", badkey);
+	} else {
+		cur_key = 0;
+		crypto_cipher_setkey(tfm, key, strlen(key));
+		printk("Toggling key to badkey: %s\n", key);
+	}
 	if (write)
 
 		for (i = 0; i < nbytes; i += crypto_cipher_blocksize(tfm)) {
