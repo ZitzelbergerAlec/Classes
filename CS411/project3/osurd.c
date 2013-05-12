@@ -1,6 +1,9 @@
 /*
 * Sample disk driver, from the beginning.
 * Ported to kernel v2.6.31 by casualfish. 2010.7.20
+*
+*
+* Hexdump reference code: http://www.logix.cz/michal/devel/cryptodev/cryptoapi-demo.c
 */
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -28,15 +31,10 @@ MODULE_LICENSE("Dual BSD/GPL");
 /* 
  * Global variables and stuff
  */
-/* for crypto */
-char *key = "someweakkey";
-/* For testing crypto */
-static char *badkey = "someweakkey"; //Default to key. Can be redifined at runtime.
-int cur_key = 0; //0 for key, 1 for badkey;
-struct crypto_cipher *tfm;
+static char *key = "someweakkey"; //Crypto key
+struct crypto_cipher *tfm; //Crypto cipher struct. Critical for crypto.
 
-
-module_param(badkey, charp, 0000);
+module_param(key, charp, 0000); //Allow user to set key as param in module
 static int osurd_major = 0;
 module_param(osurd_major, int, 0);
 static int hardsect_size = 512;
@@ -65,7 +63,6 @@ module_param(request_mode, int, 0);
 #define DEVNUM(kdevnum) (MINOR(kdev_t_to_nr(kdevnum)) >> MINOR_SHIFT
 #define OSU_CIPHER "aes" //Cipher algorithm to use 
 
-
 /*
 * We can tweak our hardware sector size, but the kernel talks to us
 * in terms of small sectors, always.
@@ -93,6 +90,17 @@ struct osurd_dev {
 static struct osurd_dev *Devices = NULL;
 
 /*
+ * For debugging crypto.
+ */
+static void hexdump(unsigned char *buf, unsigned int len)
+{
+	while (len--)
+		printk("%02x", *buf++);
+
+	printk("\n");
+}
+
+/*
 * Handle an I/O request, in sectors.
 */
 static void
@@ -109,32 +117,30 @@ osurd_transfer(struct osurd_dev *dev, unsigned long sector,
 	}
 
 	crypto_cipher_clear_flags(tfm, ~0);
-	//crypto_cipher_setkey(tfm, key, strlen(key));
-	/*
- 	 * The following logic toggles the crypto key to a bad one (if bad key is defined), for testing purposes
-	 */
-	if(cur_key == 0){
-		cur_key = 1;
-		crypto_cipher_setkey(tfm, badkey, strlen(badkey));
-		printk("Toggling key to badkey: %s\n", badkey);
-	} else {
-		cur_key = 0;
-		crypto_cipher_setkey(tfm, key, strlen(key));
-		printk("Toggling key to badkey: %s\n", key);
-	}
-	if (write)
-
+	crypto_cipher_setkey(tfm, key, strlen(key));
+	
+	if (write){
+		printk("Writing to RAMdisk\n");
+		printk("Pre-encrypted data: ");
+		hexdump(buffer, nbytes);
 		for (i = 0; i < nbytes; i += crypto_cipher_blocksize(tfm)) {
 			memset(dev->data + offset + i, 0,
 			       crypto_cipher_blocksize(tfm));
 			crypto_cipher_encrypt_one(tfm, dev->data + offset + i,
 						  buffer + i);
+		}
+		printk("Encrypted data:");
+		hexdump(dev->data +offset, nbytes);
 	} else {
-
+		printk("Reading from RAMdisk\n");
+		printk("Encrypted data:");
+		hexdump(dev->data +offset, nbytes);
 		for (i = 0; i < nbytes; i += crypto_cipher_blocksize(tfm)) {
 			crypto_cipher_decrypt_one(tfm, buffer + i,
 						  dev->data + offset + i);
 		}
+		printk("Decrypted data: ");
+		hexdump(buffer, nbytes);
 	}
 }
 
@@ -451,18 +457,18 @@ osurd_init(void)
 		return PTR_ERR(tfm);
 	}
 
-/*
-* Get registered.
-*/
+	/*
+	* Get registered.
+	*/
 	osurd_major = register_blkdev(osurd_major, "osurd");
 	if (osurd_major <= 0) {
 		printk(KERN_WARNING "osurd: unable to get major number\n");
 		return -EBUSY;
 	}
 
-/*
-* Allocate the device array, and initialize each one.
-*/
+	/*
+	* Allocate the device array, and initialize each one.
+	*/
 	Devices = kmalloc(ndevices * sizeof (struct osurd_dev), GFP_KERNEL);
 	if (Devices == NULL)
 		goto out_unregister;
@@ -471,7 +477,7 @@ osurd_init(void)
 
 	return 0;
       out_unregister:
-	unregister_blkdev(osurd_major, "sbd");
+	unregister_blkdev(osurd_major, "osurd");
 	return -ENOMEM;
 }
 
