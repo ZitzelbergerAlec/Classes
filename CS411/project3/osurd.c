@@ -1,10 +1,13 @@
 /*
-* Sample disk driver, from the beginning.
+*
+* Modified version of the sbull.c driver from 
+* http://hi.baidu.com/casualfish/item/7931bbb58925fb951846977d.
+* by Alex Dziggle, David Merrick, and Michael Phan.
 * Ported to kernel v2.6.31 by casualfish. 2010.7.20
 *
-*
-* Hexdump reference code: http://www.logix.cz/michal/devel/cryptodev/cryptoapi-demo.c
+* Crypto testing/Hexdump reference code: http://www.logix.cz/michal/devel/cryptodev/cryptoapi-demo.c
 */
+
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -36,12 +39,14 @@ struct crypto_cipher *tfm; //Crypto cipher struct. Critical for crypto.
 
 module_param(key, charp, 0000); //Allow user to set key as param in module
 static int osurd_major = 0;
+/* Passing 0 for the major number means the kernel will allocate a new number for it.
+*/
 module_param(osurd_major, int, 0);
 static int hardsect_size = 512;
 module_param(hardsect_size, int, 0);
-static int nsectors = 1024;	/* How big the drive is. In theirs this is 2*1024 */
+static int nsectors = 1024;	//Size of the drive
 module_param(nsectors, int, 0);
-static int ndevices = 4;
+static int ndevices = 4; //Number of RAM disks we want
 module_param(ndevices, int, 0);
 
 /*
@@ -117,12 +122,12 @@ osurd_transfer(struct osurd_dev *dev, unsigned long sector,
 	}
 
 	crypto_cipher_clear_flags(tfm, ~0);
-	crypto_cipher_setkey(tfm, key, strlen(key));
+	crypto_cipher_setkey(tfm, key, strlen(key)); //Set the key to be our crypto key
 	
 	if (write){
 		printk("Writing to RAMdisk\n");
 		printk("Pre-encrypted data: ");
-		hexdump(buffer, nbytes);
+		hexdump(buffer, nbytes); //For debugging
 		for (i = 0; i < nbytes; i += crypto_cipher_blocksize(tfm)) {
 			memset(dev->data + offset + i, 0,
 			       crypto_cipher_blocksize(tfm));
@@ -130,17 +135,17 @@ osurd_transfer(struct osurd_dev *dev, unsigned long sector,
 						  buffer + i);
 		}
 		printk("Encrypted data:");
-		hexdump(dev->data +offset, nbytes);
+		hexdump(dev->data +offset, nbytes); //For debugging
 	} else {
 		printk("Reading from RAMdisk\n");
 		printk("Encrypted data:");
-		hexdump(dev->data +offset, nbytes);
+		hexdump(dev->data +offset, nbytes); //For debugging
 		for (i = 0; i < nbytes; i += crypto_cipher_blocksize(tfm)) {
 			crypto_cipher_decrypt_one(tfm, buffer + i,
 						  dev->data + offset + i);
 		}
 		printk("Decrypted data: ");
-		hexdump(buffer, nbytes);
+		hexdump(buffer, nbytes); //For debugging
 	}
 }
 
@@ -252,6 +257,7 @@ osurd_make_request(struct request_queue *q, struct bio *bio)
 
 /*
 * Open and close.
+* Simulates removable media.
 * Same.
 */
 static int
@@ -304,6 +310,7 @@ osurd_media_changed(struct gendisk *gd)
 /*
 * Revalidate.  WE DO NOT TAKE THE LOCK HERE, for fear of deadlocking
 * with open.  That needs to be reevaluated.
+* This function is called after a media change.
 * Same.
 */
 int
@@ -337,9 +344,8 @@ osurd_invalidate(unsigned long ldev)
 }
 
 /* 
- * Added getgeo() function here
+ * Added getgeo() function 
 */
-
 static int
 osurd_getgeo(struct block_device *device, struct hd_geometry *geo)
 {
@@ -366,25 +372,29 @@ static struct block_device_operations osurd_ops = {
 
 /*
 * Set up our internal device.
+* Called by the init function.
 * Same.
 */
 static void
 setup_device(struct osurd_dev *dev, int which)
 {
-/*
-* Get some memory.
-*/
+	/*
+	* Get some memory.
+	*/
 	memset(dev, 0, sizeof (struct osurd_dev));
-	dev->size = nsectors * hardsect_size;
-	dev->data = vmalloc(dev->size);
+	dev->size = nsectors * hardsect_size; //Set the device size
+	dev->data = vmalloc(dev->size); //Allocate virtually contiguous memory for the RAM disk
 	if (dev->data == NULL) {
 		printk(KERN_NOTICE "vmalloc failure.\n");
 		return;
 	}
+	/* Allocate a spinlock for mutual exclusion */
 	spin_lock_init(&dev->lock);
 
 	/*
 	 * The timer which "invalidates" the device.
+	 * This is a 30-second timer used to simulate 
+	 * behavior of a removable device.
 	 */
 	init_timer(&dev->timer);
 	dev->timer.data = (unsigned long) dev;
@@ -402,6 +412,7 @@ setup_device(struct osurd_dev *dev, int which)
 		blk_queue_make_request(dev->queue, osurd_make_request);
 		break;
 	case RM_FULL:
+		/* blk_init_queue() allocates the request queue. */
 		dev->queue = blk_init_queue(osurd_full_request, &dev->lock);
 		if (dev->queue == NULL)
 			goto out_vfree;
@@ -421,6 +432,7 @@ setup_device(struct osurd_dev *dev, int which)
 
 	/*
 	 * And the gendisk structure.
+	 * gendisk is the kernel's representation of an individual disk device.
 	 */
 	dev->gd = alloc_disk(OSURD_MINORS);
 	if (!dev->gd) {
@@ -432,6 +444,9 @@ setup_device(struct osurd_dev *dev, int which)
 	dev->gd->fops = &osurd_ops;
 	dev->gd->queue = dev->queue;
 	dev->gd->private_data = dev;
+	/* 
+	 * Set the device names to osurda, osurdb, etc.
+	 */
 	snprintf(dev->gd->disk_name, 32, "osurd%c", which + 'a');
 	set_capacity(dev->gd, nsectors * (hardsect_size / KERNEL_SECTOR_SIZE));
 	add_disk(dev->gd);
@@ -443,15 +458,15 @@ setup_device(struct osurd_dev *dev, int which)
 }
 
 /* 
-  *Added some crypto stuff to this one
+ * Module initialization function.
  */
-
 static int __init
 osurd_init(void)
 {
 	int i;
-
+	/* Initialize the cipher with AES encryption */
 	tfm = crypto_alloc_cipher(OSU_CIPHER, 0, 0);
+	/* Error checking for crypto */
 	if (IS_ERR(tfm)) {
 		printk(KERN_ERR "osurd: cipher allocation failed");
 		return PTR_ERR(tfm);
@@ -459,6 +474,7 @@ osurd_init(void)
 
 	/*
 	* Get registered.
+	* Register a block device called "osurd."
 	*/
 	osurd_major = register_blkdev(osurd_major, "osurd");
 	if (osurd_major <= 0) {
@@ -472,18 +488,16 @@ osurd_init(void)
 	Devices = kmalloc(ndevices * sizeof (struct osurd_dev), GFP_KERNEL);
 	if (Devices == NULL)
 		goto out_unregister;
+	/* Setup each device */
 	for (i = 0; i < ndevices; i++)
 		setup_device(Devices + i, i);
 
 	return 0;
       out_unregister:
-	unregister_blkdev(osurd_major, "osurd");
-	return -ENOMEM;
+		unregister_blkdev(osurd_major, "osurd");
+		return -ENOMEM;
 }
 
-/* 
- * Just added crypto_free_cipher to this one 
-*/
 static void
 osurd_exit(void)
 {
@@ -497,12 +511,15 @@ osurd_exit(void)
 			put_disk(dev->gd);
 		}
 		if (dev->queue)
+			/* Destroy the request queue by releasing the request_queue_t */
 			blk_cleanup_queue(dev->queue);
 		if (dev->data)
+			/* Free the virtual memory allocated earlier for the disk */
 			vfree(dev->data);
 	}
+	/* Unregister the osurd block device */
 	unregister_blkdev(osurd_major, "osurd");
-	//Added crypto_free_cipher to here
+	/* Free the crypto cipher struct from memory */
 	crypto_free_cipher(tfm);
 	kfree(Devices);
 }
