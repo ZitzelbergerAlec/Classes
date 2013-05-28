@@ -15,7 +15,7 @@ dvi: ${TARGET}.tex
 #	bibtex $(TARGET).tex
 	latex -shell-escape $(TARGET).tex
 #	remove the pygmentized output to avoid cluttering up the directory
-#	rm __${SRC}.tex
+	rm __${SRC}.tex
 
 ps: dvi
 	dvips -R -Poutline -t letter ${TARGET}.dvi -o ${TARGET}.ps
