@@ -1,0 +1,102 @@
+\documentclass[letterpaper,10pt,titlepage]{article}
+
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+
+\usepackage{alltt}
+\usepackage{float}
+\usepackage{color}
+\usepackage{url}
+\usepackage{minted}
+
+\usepackage{balance}
+\usepackage[TABBOTCAP, tight]{subfigure}
+\usepackage{enumitem}
+\usepackage{pstricks, pst-node}
+
+\usepackage{geometry}
+\geometry{textheight=8.5in, textwidth=6in}
+
+\usepackage{hyperref}
+
+\newcommand{\ignore}[2]{\hspace{0in}#2} %Used for inline comments
+\newcommand{\tab}{\hspace*{2em}} %For tabbing
+
+\geometry{textheight=10in, textwidth=7.5in}
+
+\newcommand{\cred}[1]{{\color{red}#1}}
+\newcommand{\cblue}[1]{{\color{blue}#1}}
+
+\usepackage{hyperref}
+
+
+%pull in the necessary preamble matter for pygments output
+\input{pygments.tex}
+\parindent = 0.0 in
+\parskip = 0.2 in
+
+%Used for code snippets
+\usepackage{listings}
+\lstset{ %
+	language=C,                % choose the language of the code
+	basicstyle=\footnotesize,       % the size of the fonts that are used for the code
+	numbers=left,                   % where to put the line-numbers
+	numberstyle=\footnotesize,      % the size of the fonts that are used for the line-numbers
+	stepnumber=1,                   % the step between two line-numbers. If it is 1 each line will be numbered
+	numbersep=5pt,                  % how far the line-numbers are from the code
+	backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+	showspaces=false,               % show spaces adding particular underscores
+	showstringspaces=false,         % underline spaces within strings
+	showtabs=false,                 % show tabs within strings adding particular underscores
+	frame=single,           % adds a frame around the code
+	tabsize=4,          % sets default tabsize to 2 spaces
+	captionpos=b,           % sets the caption-position to bottom
+	breaklines=true,        % sets automatic line breaking
+	breakatwhitespace=false,    % sets if automatic breaks should only happen at whitespace
+	escapeinside={\%*}{*)}          % if you want to add a comment within your code
+}
+
+\def\name{David Merrick}
+\def\project{Final Exam}
+\def\date{4 June, 2013}
+
+%% The following metadata will show up in the PDF properties
+\hypersetup{
+  colorlinks = true,
+  urlcolor = black,
+  pdfauthor = {\name},
+  pdfkeywords = {cs411 ``operating systems''},
+  pdftitle = {CS 411 \project},
+  pdfsubject = {CS 411 \project},
+  pdfpagemode = UseNone
+}
+
+\parindent = 0.0 in
+\parskip = 0.2 in
+
+\begin{document}
+\name
+
+CS 411
+
+\date
+
+\begin{center}
+{\LARGE Writeup for \project}
+\end{center}
+
+\tab The Android operating system is built on top of a Linux foundation. We have spent the semester studying in-depth the ways in which the Linux kernel schedules processes, schedules I/O, handles memory allocation, encryption, and how the kernel interacts with devices through drivers. I will be comparing and contrasting the implementation we used for class with the Android operating system in terms of process scheduling and I/O scheduling.
+
+\emph{I/O Scheduling in Android}
+
+In Android, by default, applications run as processes in a single thread of execution. By default, every component of the application is run in the same process. However, different components of an application can be run as separate processes, and extra threads for each process can be created by the developer's specifications. This is all specified at runtime in the manifest file for each application. Only a certain amount of memory is able to be allocated for all processes, so the kernel may decide to put a process to sleep when memory is required for others. The kernel chooses which applications to put to sleep based on an algorithm that estimates their relative importance to the user. A process whose activities are visible on the screen, for example, takes a higher priority than one whose activities are not visible.
+
+Source: http://developer.android.com/guide/components/processes-and-threads.html.
+
+
+%input the pygmentized output of mt19937ar.c, using a (hopefully) unique name
+%this file only exists at compile time. Feel free to change that.
+%\input{\\\_\\\_mt.h.tex}
+\end{document}
