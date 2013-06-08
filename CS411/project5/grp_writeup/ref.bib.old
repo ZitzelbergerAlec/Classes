@@ -1,0 +1,32 @@
+@book{Love,
+    author    = "Robert Love",
+    title     = "Linux Kernel Development",
+    publisher = "Pearson Education, Inc.",
+    edition  = "Third",
+    year      = "2010",
+}
+
+@misc{AES,
+    author    = "Wikipedia",
+    title     = "Advanced Encryption Standard",
+    howpublished = "\url{http://en.wikipedia.org/wiki/Advanced\_Encryption\_Standard}",
+}
+
+@misc{DES,
+    author    = "Wikipedia",
+    title     = "Data Encryption Standard",
+    howpublished = "\url{http://en.wikipedia.org/wiki/Data\_Encryption\_Standard}",
+}
+
+@misc{blowfish,
+    author    = "Wikipedia",
+    title     = "Blowfish",
+    howpublished = "\url{http://en.wikipedia.org/wiki/Blowfish\_(cipher)}",
+}
+
+@misc{mcgrath,
+    author    = "Kevin McGrath",
+    title     = "OSURD.c",
+    year      = "2012",
+    howpublished = "\url{http://web.engr.oregonstate.edu/cgi-bin/cgiwrap/dmcgrath/classes/12S/cs411/index.cgi?file=project4}",
+}

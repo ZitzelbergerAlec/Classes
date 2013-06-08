@@ -1,0 +1,124 @@
+\documentclass[letterpaper,10pt,titlepage]{article}
+
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+
+\usepackage{alltt}
+\usepackage{float}
+\usepackage{color}
+\usepackage{url}
+\usepackage{minted}
+
+\usepackage{balance}
+\usepackage[TABBOTCAP, tight]{subfigure}
+\usepackage{enumitem}
+\usepackage{pstricks, pst-node}
+
+\usepackage{geometry}
+\geometry{textheight=8.5in, textwidth=6in}
+
+\usepackage{hyperref}
+
+\newcommand{\ignore}[2]{\hspace{0in}#2} %Used for inline comments
+\newcommand{\tab}{\hspace*{2em}} %For tabbing
+
+\geometry{textheight=10in, textwidth=7.5in}
+
+\newcommand{\cred}[1]{{\color{red}#1}}
+\newcommand{\cblue}[1]{{\color{blue}#1}}
+
+\usepackage{hyperref}
+
+
+%pull in the necessary preamble matter for pygments output
+\input{pygments.tex}
+\parindent = 0.0 in
+\parskip = 0.2 in
+
+%Used for code snippets
+\usepackage{listings}
+\lstset{ %
+	language=C,                % choose the language of the code
+	basicstyle=\footnotesize,       % the size of the fonts that are used for the code
+	numbers=left,                   % where to put the line-numbers
+	numberstyle=\footnotesize,      % the size of the fonts that are used for the line-numbers
+	stepnumber=1,                   % the step between two line-numbers. If it is 1 each line will be numbered
+	numbersep=5pt,                  % how far the line-numbers are from the code
+	backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+	showspaces=false,               % show spaces adding particular underscores
+	showstringspaces=false,         % underline spaces within strings
+	showtabs=false,                 % show tabs within strings adding particular underscores
+	frame=single,           % adds a frame around the code
+	tabsize=4,          % sets default tabsize to 2 spaces
+	captionpos=b,           % sets the caption-position to bottom
+	breaklines=true,        % sets automatic line breaking
+	breakatwhitespace=false,    % sets if automatic breaks should only happen at whitespace
+	escapeinside={\%*}{*)}          % if you want to add a comment within your code
+}
+
+\def\name{David Merrick}
+\def\project{Project 5}
+\def\date{4 June, 2013}
+
+%% The following metadata will show up in the PDF properties
+\hypersetup{
+  colorlinks = true,
+  urlcolor = black,
+  pdfauthor = {\name},
+  pdfkeywords = {cs411 ``operating systems''},
+  pdftitle = {CS 411 \project},
+  pdfsubject = {CS 411 \project},
+  pdfpagemode = UseNone
+}
+
+\parindent = 0.0 in
+\parskip = 0.2 in
+
+\begin{document}
+\name
+
+CS 411
+
+\date
+
+\begin{center}
+{\LARGE Individual Writeup for \project}
+\end{center}
+
+\begin{enumerate} 
+\item \emph{What do you think the main point of this assignment is?}
+
+\tab The main point of this assignment is to bring together all the knowledge of kernel programming in order to design a USB driver. We will be learning about the USB protocol, learning how to write a USB device driver using this protocol, and reviewing how to compile a driver as a module.
+
+\item \emph{How did you approach the problem? Design decisions, algorithm, etc.}\newline
+
+\textbf{Background:} 
+
+\tab \emph{The USB protocol:} We did extensive research before starting this project. One of the first useful resources we found was this site. http://matthias.vallentin.net/blog/2007/04/writing-a-linux-kernel-driver-for-an-unknown-usb-device/. USB was designed to unify a range of bus types into a single bus type. Linux supports two types of drivers: host and device. USB devices have one or more interfaces, which each have zero or more endpoints. These endpoints are always unidirectional (in from device or out to device). There are four types of endpoints: control, interrupt, bulk, and isochronous. The relevant endpoints for our purposes are contral and interrupt. Control endpoints are used to send commands to the USB device or to receive status information about it. Every USB device has a control endpoint 0 to initialize it. Interrupt endpoints occur occasionally and transfer small data packets every time the USB host requests them. These endpoints are commonly used by USB mice and keyboards. A USB device is identified by a vendor ID and product ID. This information can be viewed using ``lsusb -v." These IDs are used by the kernel to decide which driver to use to interact with the device.
+
+\textbf{Design and Implementation:} 
+
+\tab \emph{Reverse Engineering the Protocol:} Since there was a Windows driver written for the missile launcher, we decided to leverage this. We used a USB sniffer called USBlyzer to intercept the commands being passed to do different actions (move left, right, fire, etc). We discovered through this process that stop corresponded to 0x00, up was 0x01, down was 0x02, left was 0x04, right was 0x08, and fire was 0x10. 
+
+\tab We needed to know the vendor ID and product ID in order to write our driver. We acquired this information using the ``lsusb -v" command.
+
+\tab \emph{Writing the driver:} We were able to find a driver online at https://github.com/feabhas/dreamlauncher. We used that driver because we did not see how we could improve on it, but made sure we completely understood exactly how it worked and thoroughly commented it. 
+
+\tab \emph{Binding the device to our driver:} We were confused for a short time at one point because our launcher control code was able to open a file descriptor for the launcher but was not able to write to it. We used ``watch ``dmesg | tail -50"" and then plugged in our launcher. We realized that the USBHID driver was binding to it. After some research, we realized that we could unbind it simply using ``sudo sh -c 'echo 7-1:1.0 > /sys/bus/usb/drivers/usbhid/unbind," where 7-1:1.0 was the USB port that the device was connecting to (we identified this port by checking the dmesg output). Upon insmodding our driver, it was able to bind to the launcher. We confirmed this with the output of ``ls /sys/bus/usb/drivers/launcher_driver." 
+
+\textbf{Testing:} 
+
+\tab We tested our driver by writing control code for the missile launcher. This code would open a file descriptor to the device, read characters from the keyboard to determine which command to run, and write different commands to the launcher (move left, right, down, up, fire, stop, etc) for 500 milliseconds and then would write the stop command. After binding the device to our driver, we ran our control code and immediately saw the missile launcher respond. We tested every command to ensure our control code, driver, and launcher were functioning as expected.
+
+\item \emph{What did you learn?}
+
+I reiterated the concepts I had learned about programming kernel drivers, debugging kernel code, and building drivers as modules. I also learned about the USB protocol in greater depth and learned how to write a driver that uses this protocol.
+
+\end{enumerate}
+
+%input the pygmentized output of mt19937ar.c, using a (hopefully) unique name
+%this file only exists at compile time. Feel free to change that.
+%\input{\\\_\\\_mt.h.tex}
+\end{document}

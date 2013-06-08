@@ -1,0 +1,167 @@
+\documentclass[letterpaper,10pt,titlepage]{article}
+
+\usepackage{graphicx}                                        
+\usepackage{amssymb}                                         
+\usepackage{amsmath}                                         
+\usepackage{amsthm}                                          
+
+\usepackage{alltt}                                           
+\usepackage{float}
+\usepackage{color}
+\usepackage{url}
+
+\usepackage{balance}
+\usepackage[TABBOTCAP, tight]{subfigure}
+\usepackage{enumitem}
+\usepackage{pstricks, pst-node}
+
+\usepackage{geometry}
+\geometry{textheight=8.5in, textwidth=6in}
+
+%random comment
+
+\newcommand{\cred}[1]{{\color{red}#1}}
+\newcommand{\cblue}[1]{{\color{blue}#1}}
+
+\usepackage{hyperref}
+\usepackage{geometry}
+
+\usepackage{minted}
+\usepackage{listings}
+\lstset{ %
+language=C,                % choose the language of the code
+%basicstyle=\footnotesize,       % the size of the fonts that are used for the code
+basicstyle=\ttfamily,
+keywordstyle=\color{blue}\ttfamily,
+stringstyle=\color{red}\ttfamily,
+commentstyle=\color{green}\ttfamily,
+morecomment=[l][\color{magenta}]{\#}
+numbers=left,                   % where to put the line-numbers
+numberstyle=\footnotesize,      % the size of the fonts that are used for the line-numbers
+stepnumber=1,                   % the step between two line-numbers. If it is 1 each line will be numbered
+numbersep=5pt,                  % how far the line-numbers are from the code
+backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+showspaces=false,               % show spaces adding particular underscores
+showstringspaces=false,         % underline spaces within strings
+showtabs=false,                 % show tabs within strings adding particular underscores
+%frame=single,           % adds a frame around the code
+tabsize=4,          % sets default tabsize to 2 spaces
+captionpos=b,           % sets the caption-position to bottom
+breaklines=true,        % sets automatic line breaking
+breakatwhitespace=false,    % sets if automatic breaks should only happen at whitespace
+escapeinside={\%*}{*)}          % if you want to add a comment within your code
+}
+
+
+\def\name{Doug Dziggel \newline David Merrick \newline Michael Phan}
+\def\titles{CS 411 Project 5: USB Missile Turret}
+\def\subj{CS 411 Project 5}
+\def\dates{\today}
+
+
+%pull in the necessary preamble matter for pygments output
+\input{pygments.tex}
+
+%% The following metadata will show up in the PDF properties
+\hypersetup{
+  colorlinks = true,
+  urlcolor = black,
+  pdfauthor = {\name},
+  pdfkeywords = {cs411 ``operating systems II'' usb missile turret},
+  pdftitle = {\titles},
+  pdfsubject = {\subj},
+  pdfpagemode = UseNone
+}
+
+\begin{document}
+
+\title{\titles}
+\author{Doug Dziggel \and David Merrick \and Michael Phan}
+\date{\dates}
+\maketitle
+
+\begin{abstract}
+This paper describes the design process and implementation of creating a driver for the Dream Cheeky USB Missile Launcher.
+\end{abstract}
+
+\section{Background}
+
+
+\emph{The USB protocol:} We did extensive research before starting this project. One of the first useful resources we found was this site. \hyperref[http://matthias.vallentin.net/blog/2007/04/writing-a-linux-kernel-driver-for-an-unknown-usb-device/]{''http://matthias.vallentin.net/blog/2007/04/writing-a-linux-kernel-driver-for-an-unknown-usb-device/''}. USB was designed to unify a range of bus types into a single bus type. Linux supports two types of drivers: host and device. USB devices have one or more interfaces, which each have zero or more endpoints. These endpoints are always unidirectional (in from device or out to device). There are four types of endpoints: control, interrupt, bulk, and isochronous. The relevant endpoints for our purposes are contral and interrupt. Control endpoints are used to send commands to the USB device or to receive status information about it. Every USB device has a control endpoint 0 to initialize it. Interrupt endpoints occur occasionally and transfer small data packets every time the USB host requests them. These endpoints are commonly used by USB mice and keyboards. A USB device is identified by a vendor ID and product ID. This information can be viewed using ``lsusb -v." These IDs are used by the kernel to decide which driver to use to interact with the device.
+
+\newpage
+\section{Design}
+
+To design our USB driver we first needed to download and run the Dream Cheeky software in Windows. Once we had successfully installed the software and Windows driver we then found a USB sniffer called USBlyzer. I found that the following Commands controlled the USB Missile Launcher.
+
+Up: 01 00 00 00 00 00 00 00
+
+Down: 02 01 00 00 00 00 00 00
+
+Left: 02 04 00 00 00 00 00 00 
+
+Right: 02 08 00 00 00 00 00 00
+
+Fire: 02 10 00 00 00 00 00 00 
+
+LED on: 30 01 00 00 00 00 00 00
+
+LED off: 30 00 00 00 00 00 00 00
+
+Filler: 01 00 00 00 00 00 00 00
+
+Stop: 02 20 00 00 00 00 00 00
+
+
+The next step was to create a driver that would use the above commands. For our design we found code that was written specifically for the Dream Cheeky USB Missile Launcher on Linux. The driver was set up to initalize, remove and run input commands. The file operations was set up to tie the userspace with the driver. We had two userspace programs, one to bind the missile launcher to our driver and the other to control the missile launcher. For the missile launch controller we decided to control it by holding the keys down rather than specifying a direction and a time to move in that direction.
+
+%\newpage
+\section{Implementation}
+\begin{quotation}
+\begin{minted}{c}
+\end{minted}
+\end{quotation}
+The struct usb\_ml holds all of the different variables associated with the USB device. It holds the name, interface, IDs, number of times opened, locks, and pointers.
+
+The struct launcher\_table creates an entry of the form usb\_device\_id and inserts it into MODULE\_DEVICE\_TABLE, which tells the kernel that this driver code is able to support the specified hardware.
+
+The struct launcher\_driver sets the name of the driver that supports the hardware.
+
+The function launcher\_ctrl\_callback will grab the usb device from the request and then set the usb to have correction\_required = 0. The correction\_required field is a variable for setting up the packets that are sent to USB.
+
+The function launcher\_abort\_transfers performs checks to see if the usb device that is passed in the arguments exists, if its udev exists, and if it is actually connected. If so, it will set the USB to be seen as no longer running by setting int\_in\_running = 0. It will then kill any current request by looking at int\_in\_urb.
+
+The function launcher\_int\_in\_callback will take a request and print out debug messages that alert the function is called and state what the data and number of characters is. It then prints out the status of the request and if the status is something recoverable, it will try to resubmit. It then checks the request, locks it for use, and checks the position of the launcher in comparison with the max ranges. If the launcher is at its max, it will disable the command and mark that correction\_required occured. If correction\_required is set, it will insert the command to stop the direction of movement, unlock the data, and then submit the new request. The resubmit will send what is current in the request.
+
+The function launcher\_delete will call launcher\_abort\_transfers to cancel all transfers, then will free all data structures.
+
+The function launcher\_open will create pointers to structs usb\_ml and usb\_interface. It creates an int variable called subminor and sets it to the MINOR of the inode inodep. It creates a mutex and attempts to find the interface of the minor using usb\_find\_interface, then tries to find dev using usb\_get\_intfdata. Afterward, it will lock the device using down\_interruptible, then increment open\_count. It then instantiates the interrupt URB and sets itself to running through int\_in\_running. It submits the request in int\_in\_urb, then saves the object in the file pointer's private\_data. It then unlocks the device, unlocks the mutex, and then return the result of usb\_submit\_urb.
+
+The function launcher\_close will create a file over to the device and grab it from the file pointer's private\_data. It checks if it exists, then locks the device. The open\_count is checked to see if the device is opened before. If the device isn't mounted, then it will unlock the device, delete it, then exit. It then calls launcher\_abort\_transfers and unlocks the device.
+
+The function launcher\_read will return an error -EFAULT.
+
+The function launcher\_write will set retval to -EFAULT and change it to other errors should they occur. It grabs the device from the file pointer's private\_data, and then checks to see if dev exists, is open, has data, and sets count to 1. It copies over the command and stores it into the buffer user\_buf. Then it will begins clearing the buffer, and sets the device command to cmd. When it verifies that the byte has been submitted, it will unlock and exit.
+
+The struct fops will set the name of open, release, read, and write functions to be using the launcher functions.
+
+The function launcher\_probe will set up the class, which contains the name of the launcher node and the list of functions that replace the file operations. It then registers the interface and class to the kernel. If the device isn't opened in the kernel, it will print an error. Otherwise it continues and allocates dev to usb\_ml. It sets up the initial values with command set to stop, semaphores initialized, and then sets the device variables. The interrupt endpoint information is created through each byte in a for loop that sets the int\_in\_endpoint in dev to the endpoints. It allocates spec for the different variables in the dev struct and grabs the serial number from the device. The data pointer is saved using usb\_set\_intfdata and the interface minor is saved to the device, then exits.
+
+The function launcher\_disconnect will lock the mutex, grab the inferface, and completely unlocks the device. The minor node is deregistered using usb\_deregister\_dev and deletes the device, then unlocks the mutex.
+
+The functions launcher\_init will set the driver to recognize the launcher\_probe and launcher\_disconnect, then connects the driver to the usb, and then returns the result.
+
+The function launcher\_exit will deregister the driver.
+
+
+\newpage
+\section{Driver Code}
+\input{__launcher_driver.c.tex}
+\newpage
+\section{Controller Code}
+\input{__launcher_control.c.tex}
+
+%\newpage
+%\bibliographystyle{plain}
+%\bibliography{ref}
+\end{document}
