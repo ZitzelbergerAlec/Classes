@@ -1,0 +1,48 @@
+\begin{thebibliography}{1}
+
+\bibitem{Bovet}
+Daniel Bovet.
+\newblock Understanding the linux kernel.
+\newblock \url{http://oreilly.com/catalog/linuxkernel/chapter/ch10.html}.
+
+\bibitem{Bray}
+Tim Bray.
+\newblock What android is.
+\newblock
+  \url{http://www.tbray.org/ongoing/When/201x/2010/11/14/What-Android-Is}.
+
+\bibitem{features}
+eLinux.org.
+\newblock Android kernel features.
+\newblock \url{http://elinux.org/Android_Kernel_Features}.
+
+\bibitem{gomo}
+gomo.
+\newblock Scheduling in android.
+\newblock \url{https://github.com/keesj/gomo/wiki/AndroidScheduling}.
+
+\bibitem{AndroidDev1}
+Android~Developer Guide.
+\newblock Processes and threads.
+\newblock
+  \url{http://developer.android.com/guide/components/processes-and-threads.htm%
+l}.
+
+\bibitem{Hackborn}
+Dianne Hackborn.
+\newblock Google+ post, dec 9 2011.
+\newblock
+  \url{https://plus.google.com/u/0/105051985738280261832/posts/XAZ4CeVP6DC}.
+
+\bibitem{Love}
+Robert Love.
+\newblock {\em Linux Kernel Development}.
+\newblock Pearson Education, Inc., third edition, 2010.
+
+\bibitem{SO1}
+StackOverflow.
+\newblock Android process scheduling.
+\newblock
+  \url{http://stackoverflow.com/questions/7931032/android-process-scheduling}.
+
+\end{thebibliography}

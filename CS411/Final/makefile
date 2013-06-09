@@ -12,7 +12,7 @@ dvi: ${TARGET}.tex
 #	run latex twice to get references correct
 	latex -shell-escape ${TARGET}.tex
 #	you can also have a bibtex line here
-#	bibtex $(TARGET).tex
+	bibtex $(TARGET)
 	latex -shell-escape $(TARGET).tex
 #	remove the pygmentized output to avoid cluttering up the directory
 	rm __${SRC}.tex
