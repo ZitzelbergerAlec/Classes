@@ -109,6 +109,23 @@ Android has separate process groups for background and foreground processes. And
 
 The goal behind the Android scheduling policy is responsiveness to the user. Android, like the Linux foundation it is built on, uses time slices for scheduling processes. Processes can have a dynamic priority from 19 to -20, very high to very low, respectively. Higher priority processes will get more CPU time when needed. At startup, Service processes are run in the background process group unless this has been specified otherwise. Background threads are given a priority level of 10. \cite{gomo}
 
+\emph{Block I/O Scheduling in Android}
+
+\tab \emph{Overview:} Block devices are characterized by random access of fixed-sized blocks of data. The smallest addressable unit on a block device is the sector. All device I/O must be done in units of sectors, which are then mapped to blocks in memory\ignore{[Source: Book pg. 289-290]}. The Linux kernel provides an entire subsystem for block devices. 
+
+\tab The subsystem dedicated to performing these I/O operations is called the I/O scheduler. Block devices maintain request queues to store their pending I/O requests\ignore{[Source: Book pg. 297]}. The I/O scheduler essentially works by managing this request queue, deciding the order of requests in the queue and when to dispatch each request to the block device. Seek time is the amount of time required to position the hard disk's head at the location of a specific block. One of the primary optimizations that can be made to block I/O performance is minimizing seek time. I/O schedulers do this by merging and sorting the requests in the queue. The entire request queue is kept sorted sectorwise so that all seeking along the queue moves sequentially. Since this is similar to the algorithm employed by elevators, I/O schedulers are referred to as elevators\ignore{[Source: Book pg. 298-299]}. 
+
+\tab There are several flavors of I/O schedulers built in the kernel already and optimized for different purposes. The Deadline I/O Scheduler is designed to prevent starvation of certain requests (such as write operations starving reads).\ignore{[Source: Book pg. 300]} The Anticipatory I/O Scheduler is designed to maximize thoroughput and is ideal for servers\ignore{[Source: Book pg. 303]}. The Completely Fair Queueing (CFQ) I/O Scheduler performs well in nearly all workloads and is the default scheduler in Linux\ignore{[Source: Book pg. 303]}. The Noop I/O Scheduler only performs merging of requests, maintaining the request queue in near-FIFO order. It is intended for block devices that are truly random-access, such as flash memory cards\ignore{[Source: Book pg. 304]}.
+
+\tab As for managing request queues, the kernel provides several data structures. Kernel developers are encouraged to use these data structures wherever possible as opposed to designing their own. While generic, they have been thoroughly tested and perform well in most circumstances. The most useful of these data structures are linked lists, queues, maps, and binary trees. The I/O schedulers use either linked lists or binary trees to manage their request queues. For our purposes in designing our shortest-seek-time-first I/O scheduler, the built-in linked list data structure was well-suited. The kernel provides methods for adding to, deleting from, and retrieving items from lists, as well as moving items from one list to another or to a different location in a list. Our particular implementation was a circular linked list, meaning that the last item in the list was linked to the first.
+
+\tab \emph{I/O Scheduling in Android:} 
+
+
+\tab \emph{Group Evaluation}
+
+\tab I've been very satisfied with my group. Initially, we had one member, Ke Fan, who 
+
 \bibliographystyle{plain}
 \bibliography{ref}
 
