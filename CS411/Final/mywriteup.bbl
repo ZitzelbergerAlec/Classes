@@ -1,4 +1,4 @@
-\begin{thebibliography}{1}
+\begin{thebibliography}{10}
 
 \bibitem{Bovet}
 Daniel Bovet.
@@ -15,6 +15,11 @@ Tim Bray.
 eLinux.org.
 \newblock Android kernel features.
 \newblock \url{http://elinux.org/Android_Kernel_Features}.
+
+\bibitem{farmatito}
+farmatito.
+\newblock Speed up your system with the noop scheduler.
+\newblock \url{http://forum.xda-developers.com/showthread.php?t=576004}.
 
 \bibitem{gomo}
 gomo.
@@ -34,6 +39,20 @@ Dianne Hackborn.
 \newblock
   \url{https://plus.google.com/u/0/105051985738280261832/posts/XAZ4CeVP6DC}.
 
+\bibitem{Optimus}
+Optimus Kernel.
+\newblock Bfs vs cfs: Some personal observations on linux kernel performance.
+\newblock
+  \url{http://optimus-linux.blogspot.com/2012/03/for-some-time-now-i-have-stop%
+ped-using.html}.
+
+\bibitem{Forbes}
+Robert Love.
+\newblock What are the major changes that android made to the linux kernel?
+\newblock
+  \url{http://www.forbes.com/sites/quora/2013/05/13/what-are-the-major-changes%
+-that-android-made-to-the-linux-kernel/}.
+
 \bibitem{Love}
 Robert Love.
 \newblock {\em Linux Kernel Development}.
@@ -44,5 +63,15 @@ StackOverflow.
 \newblock Android process scheduling.
 \newblock
   \url{http://stackoverflow.com/questions/7931032/android-process-scheduling}.
+
+\bibitem{cgroups}
+Wikipedia.
+\newblock cgroups.
+\newblock \url{http://en.wikipedia.org/wiki/Cgroups}.
+
+\bibitem{zhanjia}
+zhanjia.
+\newblock Governors, i/o schedulers, optimization tips.
+\newblock \url{http://forum.xda-developers.com/showthread.php?t=1989824}.
 
 \end{thebibliography}

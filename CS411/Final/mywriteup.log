@@ -1,4 +1,4 @@
-This is pdfTeXk, Version 3.141592-1.40.3 (Web2C 7.5.6) (format=latex 2012.7.12)  8 JUN 2013 18:52
+This is pdfTeXk, Version 3.141592-1.40.3 (Web2C 7.5.6) (format=latex 2012.7.12)  10 JUN 2013 18:25
 entering extended mode
 \write18 enabled.
  %&-line parsing enabled.
@@ -504,39 +504,80 @@ LaTeX Info: Redefining \pageref on input line 79.
 
 
 
-LaTeX Warning: Citation `features' on page 1 undefined on input line 92.
+LaTeX Warning: Citation `features' on page 1 undefined on input line 94.
 
 
-LaTeX Warning: Citation `Bray' on page 1 undefined on input line 92.
+LaTeX Warning: Citation `Bray' on page 1 undefined on input line 94.
 
 
-LaTeX Warning: Citation `Love' on page 1 undefined on input line 96.
-
-
-LaTeX Warning: Citation `Love' on page 1 undefined on input line 98.
-
-
-LaTeX Warning: Citation `Bovet' on page 1 undefined on input line 101.
-
-
-LaTeX Warning: Citation `Love' on page 1 undefined on input line 104.
-
-
-LaTeX Warning: Citation `AndroidDev1' on page 1 undefined on input line 106.
-
-
-LaTeX Warning: Citation `SO1' on page 1 undefined on input line 106.
+LaTeX Warning: Citation `Forbes' on page 1 undefined on input line 96.
 
 [1
 
 ]
 
-LaTeX Warning: Citation `Hackborn' on page 2 undefined on input line 108.
+LaTeX Warning: Citation `Love' on page 2 undefined on input line 103.
 
 
-LaTeX Warning: Citation `gomo' on page 2 undefined on input line 110.
+LaTeX Warning: Citation `Love' on page 2 undefined on input line 105.
 
-(./mywriteup.bbl
+
+LaTeX Warning: Citation `Love' on page 2 undefined on input line 107.
+
+
+LaTeX Warning: Citation `Bovet' on page 2 undefined on input line 107.
+
+
+LaTeX Warning: Citation `Love' on page 2 undefined on input line 109.
+
+
+LaTeX Warning: Citation `Optimus' on page 2 undefined on input line 111.
+
+
+LaTeX Warning: Citation `AndroidDev1' on page 2 undefined on input line 113.
+
+
+LaTeX Warning: Citation `SO1' on page 2 undefined on input line 113.
+
+
+LaTeX Warning: Citation `Hackborn' on page 2 undefined on input line 115.
+
+
+LaTeX Warning: Citation `cgroups' on page 2 undefined on input line 115.
+
+
+LaTeX Warning: Citation `gomo' on page 2 undefined on input line 117.
+
+[2]
+
+LaTeX Warning: Citation `AndroidDev1' on page 3 undefined on input line 119.
+
+[3]
+
+LaTeX Warning: Citation `Love' on page 4 undefined on input line 126.
+
+
+LaTeX Warning: Citation `Love' on page 4 undefined on input line 128.
+
+
+LaTeX Warning: Citation `Love' on page 4 undefined on input line 128.
+
+
+LaTeX Warning: Citation `Love' on page 4 undefined on input line 130.
+
+
+LaTeX Warning: Citation `Love' on page 4 undefined on input line 130.
+
+
+LaTeX Warning: Citation `Love' on page 4 undefined on input line 130.
+
+
+LaTeX Warning: Citation `zhanjia' on page 4 undefined on input line 132.
+
+
+LaTeX Warning: Citation `farmatito' on page 4 undefined on input line 134.
+
+[4] (./mywriteup.bbl
 LaTeX Font Info:    Try loading font information for U+msa on input line 6.
  (/usr/share/texmf/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2002/01/19 v2.2g AMS font definitions
@@ -546,23 +587,52 @@ LaTeX Font Info:    Try loading font information for U+msb on input line 6.
 (/usr/share/texmf/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2002/01/19 v2.2g AMS font definitions
 )
-Overfull \hbox (70.11917pt too wide) in paragraph at lines 25--30
+Overfull \hbox (19.1062pt too wide) in paragraph at lines 20--23
+[]\OT1/cmr/m/n/10 farmatito.  Speed up your sys-tem with the noop sched-uler.  
+[][][][][][]. 
+ []
+
+
+Overfull \hbox (75.11919pt too wide) in paragraph at lines 30--35
 []\OT1/cmr/m/n/10 Android De-vel-oper Guide.  Pro-cesses and threads.  [][][][]
 [][]. 
  []
 
 
-Overfull \hbox (22.425pt too wide) in paragraph at lines 32--36
+Overfull \hbox (27.42502pt too wide) in paragraph at lines 37--41
 []\OT1/cmr/m/n/10 Dianne Hack-born.  Google+ post, dec 9 2011.  [][][][][][]. 
  []
 
 
-Overfull \hbox (30.04987pt too wide) in paragraph at lines 43--47
+Underfull \hbox (badness 10000) in paragraph at lines 43--48
+[]\OT1/cmr/m/n/10 Optimus Ker-nel.  Bfs vs cfs: Some per-sonal ob-ser-va-tions 
+on linux ker-nel per-for-mance.
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 50--55
+[]\OT1/cmr/m/n/10 Robert Love.  What are the ma-jor changes that an-droid made 
+to the linux ker-nel?
+ []
+
+
+Overfull \hbox (64.30336pt too wide) in paragraph at lines 50--55
+[][][][][][]\OT1/cmr/m/n/10 . 
+ []
+
+
+Overfull \hbox (35.04988pt too wide) in paragraph at lines 62--66
 []\OT1/cmr/m/n/10 StackOverflow.  An-droid pro-cess schedul-ing.  [][][][][][].
  
  []
 
-) [2] (./mywriteup.aux)
+
+Overfull \hbox (5.48112pt too wide) in paragraph at lines 73--76
+[]\OT1/cmr/m/n/10 zhanjia.  Gov-er-nors, i/o sched-ulers, op-ti-miza-tion tips.
+  [][][][][][]. 
+ []
+
+) [5] (./mywriteup.aux)
 
 LaTeX Warning: There were undefined references.
 
@@ -571,12 +641,12 @@ LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
 
  ) 
 Here is how much of TeX's memory you used:
- 8185 strings out of 256217
- 107862 string characters out of 1917095
- 203743 words of memory out of 1500000
- 11330 multiletter control sequences out of 10000+200000
+ 8194 strings out of 256217
+ 107931 string characters out of 1917095
+ 204743 words of memory out of 1500000
+ 11339 multiletter control sequences out of 10000+200000
  7065 words of font info for 28 fonts, out of 1200000 for 2000
  645 hyphenation exceptions out of 8191
- 33i,6n,49p,1386b,386s stack positions out of 5000i,500n,6000p,200000b,15000s
+ 33i,6n,49p,1336b,387s stack positions out of 5000i,500n,6000p,200000b,15000s
 
-Output written on mywriteup.dvi (2 pages, 16504 bytes).
+Output written on mywriteup.dvi (5 pages, 31552 bytes).
