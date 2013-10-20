@@ -8,32 +8,45 @@
 
 int *compute_sum_array(int *array, int size);
 void print_array(int *array, int size);
+void merge(int numbers[], int temp[], int left, int mid, int right);
+void m_sort(int numbers[], int temp[], int left, int right);
+void mergeSort(int numbers[], int temp[], int array_size);
 
-int main()
-{
-	int array1_size = 4;
-	int array2_size = 5;
-	
-	int array1[] = {-3,-1,0,0};
-	int array2[] = {0,0,1,3,0};
+
+int array1_size = 4;
+int array2_size = 4;
+
+int main(){	
+	int array1[] = {3,5,7,9};
+	int array2[] = {2,4,6,8};
 
 	//Compute sum arrays
-	int *sumarray1 = compute_sum_array(array1, array1_size);
-	int *sumarray2 = compute_sum_array(array2, array2_size);
-	
-	//Find the smallest sum
-	int smallestsum = sumarray1[0] + sumarray2[0];
-	int tempsum;
-	int j = 0; //index for sumarray 2
-	for(int i = 1; i < array1_size; i++){
-		tempsum = sumarray1[i] + sumarray2[j];
-		if(abs(tempsum) < abs(smallestsum)){
-			smallestsum = tempsum;
-		}
+	//Dump positive array 1 sums into first half of sumarray
+	int sumarray[array1_size + array2_size];
+	int j = 0; //index for sumarray
+	int tempsum = 0;
+	for (int i=array1_size-1; i >= 0; i--){
+		tempsum += array1[i];
+		sumarray[j] = tempsum;
+		j++;
+	}
+	tempsum = 0;
+	//Dump negative array 2 sums into second half of sumarray
+	for (int i=array2_size-1; i >= 0; i--){
+		tempsum += array2[i];
+		sumarray[j] = -tempsum;
 		j++;
 	}
 	
-	printf("Smallest sum is %d\n", smallestsum);
+	int temp[array1_size + array2_size];
+	
+	mergeSort(sumarray, temp, array1_size + array2_size);
+	
+	print_array(sumarray, array1_size+array2_size);
+	
+	
+	
+//	printf("Smallest sum is %d\n", smallestsum);
 }
 
 int *compute_sum_array(int *array, int size){
@@ -48,6 +61,75 @@ int *compute_sum_array(int *array, int size){
 	return sumarray;
 }
 
+int *compute_negative_sum_array(int *array, int size){
+	int *sumarray = malloc(size * sizeof(int));
+	int j = 0; //index for sumarray
+	int tempsum = 0;
+	for (int i=size-1; i >= 0; i--){
+		tempsum += array[i];
+		sumarray[j] = -tempsum;
+		j++;
+	}
+	return sumarray;
+}
+
+void mergeSort(int numbers[], int temp[], int array_size){
+	m_sort(numbers, temp, 0, array_size - 1);
+}
+
+void m_sort(int numbers[], int temp[], int left, int right){
+	  int mid;
+
+	  if (right > left){
+		mid = (right + left) / 2;
+	    m_sort(numbers, temp, left, mid);
+	    m_sort(numbers, temp, mid+1, right);
+
+	    merge(numbers, temp, left, mid+1, right);
+	  }
+}
+
+void merge(int numbers[], int temp[], int left, int mid, int right){
+	  int i, left_end, num_elements, tmp_pos;
+
+	  left_end = mid - 1;
+	  tmp_pos = left;
+	  num_elements = right - left + 1;
+
+	  while ((left <= left_end) && (mid <= right))
+	  {
+	    if (numbers[left] <= numbers[mid])
+	    {
+	      temp[tmp_pos] = numbers[left];
+	      tmp_pos = tmp_pos + 1;
+	      left = left +1;
+	    }
+	    else
+	    {
+	      temp[tmp_pos] = numbers[mid];
+	      tmp_pos = tmp_pos + 1;
+	      mid = mid + 1;
+	    }
+	  }
+
+	  while (left <= left_end){
+	    temp[tmp_pos] = numbers[left];
+	    left = left + 1;
+	    tmp_pos = tmp_pos + 1;
+	  }
+	
+	  while (mid <= right){
+	    temp[tmp_pos] = numbers[mid];
+	    mid = mid + 1;
+	    tmp_pos = tmp_pos + 1;
+	  }
+
+	  for (i=0; i <= num_elements; i++){
+	  	numbers[right] = temp[right];
+	    right = right - 1;
+	  }
+}
+	
 void print_array(int *array, int size){
 	for(int i = 0; i < size; i++){
 		printf("%d\n", array[i]);
